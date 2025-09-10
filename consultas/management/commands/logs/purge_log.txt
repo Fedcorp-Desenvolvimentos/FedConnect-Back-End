@@ -1,0 +1,6 @@
+System check identified some issues:
+
+WARNINGS:
+?: (staticfiles.W004) The directory 'D:\estacao53\Desktop\Codes\BIGCORP\BIGCORP---BackEnd\static' in the STATICFILES_DIRS setting does not exist.
+Starting data purging for HistoricoConsulta...
+Successfully deleted 8 records from HistoricoConsulta older than 2025-07-17 16:14:16.236370+00:00.

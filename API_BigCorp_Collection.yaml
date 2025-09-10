@@ -1,0 +1,514 @@
+_type: export
+__export_format: 4
+__export_date: 2025-06-27T19:05:28.851Z
+__export_source: insomnia.desktop.app:v9.1.0
+resources:
+  - _id: req_c541f56908dd4d1ead1693741b6d3cc8
+    parentId: fld_edf9c44f5e9f49cfb19f018ef92b65b1
+    modified: 1751048285663
+    created: 1751048051275
+    url: "{{ _.base_url }}/logout/"
+    name: /logout/
+    description: ""
+    method: POST
+    body: {}
+    preRequestScript: ""
+    parameters: []
+    headers: []
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048278399
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: fld_edf9c44f5e9f49cfb19f018ef92b65b1
+    parentId: wrk_3ad667ca706447c1b4c6f93b2adb4da0
+    modified: 1751048601587
+    created: 1751048253665
+    name: Login ++
+    description: ""
+    environment: {}
+    environmentPropertyOrder: null
+    metaSortKey: -1751048418231
+    _type: request_group
+  - _id: wrk_3ad667ca706447c1b4c6f93b2adb4da0
+    parentId: null
+    modified: 1751042907546
+    created: 1751042907546
+    name: Big Corp
+    description: ""
+    scope: collection
+    _type: workspace
+  - _id: req_6128f421e8034aeea09c88f2523e3972
+    parentId: fld_edf9c44f5e9f49cfb19f018ef92b65b1
+    modified: 1751050892499
+    created: 1751048051273
+    url: "{{ _.base_url }}/login/"
+    name: /login/
+    description: ""
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "email": "danielmello0110@gmail.com",
+          "password": "123"
+        }
+    preRequestScript: ""
+    parameters: []
+    headers:
+      - name: Content-Type
+        disabled: false
+        value: application/json
+    authentication: {}
+    metaSortKey: -1751048278299
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_a42380adc36c4744aa208b6ffb048b27
+    parentId: fld_edf9c44f5e9f49cfb19f018ef92b65b1
+    modified: 1751048278248
+    created: 1751048051274
+    url: "{{ _.base_url }}/login/refresh/"
+    name: /login/refresh/
+    description: ""
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "refresh": "string"
+        }
+    preRequestScript: ""
+    parameters: []
+    headers:
+      - name: Content-Type
+        disabled: false
+        value: application/json
+    authentication: {}
+    metaSortKey: -1751048278199
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_e828de91054946289f345b4b45e88606
+    parentId: fld_7b04180df3b4446eb80a46f4bbff37e0
+    modified: 1751050956312
+    created: 1751050708838
+    url: "{{ _.base_url }}/consultas/historico/{{ _.id }}"
+    name: /consultas/historico/{id}
+    description: ""
+    method: GET
+    body: {}
+    preRequestScript: ""
+    parameters: []
+    headers:
+      - name: User-Agent
+        value: insomnia/9.1.0
+    authentication:
+      type: bearer
+      token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxMDU0NTA4LCJpYXQiOjE3NTEwNTA5MDgsImp0aSI6IjBkYzQ2NjAwOTllYTQ2OTg4YWViYzljNTBjYWRlNmYyIiwidXNlcl9pZCI6ImRhbmllbG1lbGxvMDExMEBnbWFpbC5jb20ifQ.QeFD7LWFhmtmllaKg4MSTwkYyVJrkzfLUCpwZKj7Bwc
+    metaSortKey: -1751048421958
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: fld_7b04180df3b4446eb80a46f4bbff37e0
+    parentId: wrk_3ad667ca706447c1b4c6f93b2adb4da0
+    modified: 1751048418131
+    created: 1751048418131
+    name: Consultas
+    description: ""
+    environment: {}
+    environmentPropertyOrder: null
+    metaSortKey: -1751048418131
+    _type: request_group
+  - _id: req_d1113dd7ed5e46b1ac433a6ade4b3adb
+    parentId: fld_7b04180df3b4446eb80a46f4bbff37e0
+    modified: 1751050933854
+    created: 1751050797616
+    url: "{{ _.base_url }}/consultas/historico/usuario/{{ _.id }}"
+    name: /consultas/historico/usuario/{id}
+    description: ""
+    method: GET
+    body: {}
+    preRequestScript: ""
+    parameters: []
+    headers:
+      - name: User-Agent
+        value: insomnia/9.1.0
+    authentication:
+      type: bearer
+      token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxMDU0NTA4LCJpYXQiOjE3NTEwNTA5MDgsImp0aSI6IjBkYzQ2NjAwOTllYTQ2OTg4YWViYzljNTBjYWRlNmYyIiwidXNlcl9pZCI6ImRhbmllbG1lbGxvMDExMEBnbWFpbC5jb20ifQ.QeFD7LWFhmtmllaKg4MSTwkYyVJrkzfLUCpwZKj7Bwc
+    metaSortKey: -1751048421908
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_e09f764c02f24c76a0bc67367a5eca1b
+    parentId: fld_7b04180df3b4446eb80a46f4bbff37e0
+    modified: 1751048423519
+    created: 1751048051270
+    url: "{{ _.base_url }}/consultas/historico/"
+    name: /consultas/historico/
+    description: ""
+    method: GET
+    body: {}
+    preRequestScript: ""
+    parameters:
+      - name: page
+        disabled: true
+        value: "0"
+    headers: []
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048421858
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_37c90810bd4b4418979931584d930c9f
+    parentId: fld_7b04180df3b4446eb80a46f4bbff37e0
+    modified: 1751048421788
+    created: 1751048051272
+    url: "{{ _.base_url }}/consultas/realizar/"
+    name: /consultas/realizar/
+    description: ""
+    method: POST
+    body: {}
+    preRequestScript: ""
+    parameters: []
+    headers: []
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048421758
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_baf6c78601a94e03a9d133f264d6143c
+    parentId: fld_b482c71ec652439ab332ca06a09565a3
+    modified: 1751048402808
+    created: 1751048051276
+    url: "{{ _.base_url }}/users/"
+    name: /users/
+    description: ""
+    method: POST
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "email": "user@example.com",
+          "nome_completo": "string",
+          "nivel_acesso": null,
+          "password": "string",
+          "is_active": true
+        }
+    preRequestScript: ""
+    parameters: []
+    headers:
+      - name: Content-Type
+        disabled: false
+        value: application/json
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048400770
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: fld_b482c71ec652439ab332ca06a09565a3
+    parentId: wrk_3ad667ca706447c1b4c6f93b2adb4da0
+    modified: 1751048393546
+    created: 1751048393546
+    name: Users
+    description: ""
+    environment: {}
+    environmentPropertyOrder: null
+    metaSortKey: -1751048393546
+    _type: request_group
+  - _id: req_5902a6720405440b8dcc167cf903c3b8
+    parentId: fld_b482c71ec652439ab332ca06a09565a3
+    modified: 1751048400711
+    created: 1751048051275
+    url: "{{ _.base_url }}/users/"
+    name: /users/
+    description: ""
+    method: GET
+    body: {}
+    preRequestScript: ""
+    parameters:
+      - name: page
+        disabled: true
+        value: "0"
+    headers: []
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048400670
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_3fc6320b1a0145eeae840bebe7ff3d0b
+    parentId: fld_9df556176c494ddf9a7eded53cea59b2
+    modified: 1751048362940
+    created: 1751048051277
+    url: "{{ _.base_url }}/users/{{ _.id }}/"
+    name: /users/{id}/
+    description: ""
+    method: PUT
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "email": "user@example.com",
+          "nome_completo": "string",
+          "nivel_acesso": null,
+          "password": "string",
+          "is_active": true
+        }
+    preRequestScript: ""
+    parameters: []
+    headers:
+      - name: Content-Type
+        disabled: false
+        value: application/json
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048350366
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: fld_9df556176c494ddf9a7eded53cea59b2
+    parentId: wrk_3ad667ca706447c1b4c6f93b2adb4da0
+    modified: 1751048342579
+    created: 1751048342579
+    name: User
+    description: ""
+    environment: {}
+    environmentPropertyOrder: null
+    metaSortKey: -1751048342579
+    _type: request_group
+  - _id: req_856baa0595e3451c85cfd15e15bdb017
+    parentId: fld_9df556176c494ddf9a7eded53cea59b2
+    modified: 1751048360876
+    created: 1751048051277
+    url: "{{ _.base_url }}/users/{{ _.id }}/"
+    name: /users/{id}/
+    description: ""
+    method: GET
+    body: {}
+    preRequestScript: ""
+    parameters: []
+    headers: []
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048350266
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_16abcbb82e114baca2ea61ea50894b1c
+    parentId: fld_9df556176c494ddf9a7eded53cea59b2
+    modified: 1751048358786
+    created: 1751048051278
+    url: "{{ _.base_url }}/users/{{ _.id }}/"
+    name: /users/{id}/
+    description: ""
+    method: PATCH
+    body:
+      mimeType: application/json
+      text: |-
+        {
+          "email": "user@example.com",
+          "nome_completo": "string",
+          "nivel_acesso": null,
+          "password": "string",
+          "is_active": true
+        }
+    preRequestScript: ""
+    parameters: []
+    headers:
+      - name: Content-Type
+        disabled: false
+        value: application/json
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048350166
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_4a5e52883c464f178a46dab67c04c075
+    parentId: fld_9df556176c494ddf9a7eded53cea59b2
+    modified: 1751048356524
+    created: 1751048051279
+    url: "{{ _.base_url }}/users/{{ _.id }}/"
+    name: /users/{id}/
+    description: ""
+    method: DELETE
+    body: {}
+    preRequestScript: ""
+    parameters: []
+    headers: []
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048350066
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: req_aa37058e94d349d5b0626409d3ea112f
+    parentId: fld_9df556176c494ddf9a7eded53cea59b2
+    modified: 1751048350015
+    created: 1751048051279
+    url: http://127.0.0.1:8000//users/me/
+    name: /users/me/
+    description: ""
+    method: GET
+    body: {}
+    preRequestScript: ""
+    parameters: []
+    headers: []
+    authentication:
+      type: bearer
+      token: "{{ _.bearerToken }}"
+      prefix: ""
+    metaSortKey: -1751048349966
+    isPrivate: false
+    pathParameters: []
+    settingStoreCookies: true
+    settingSendCookies: true
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingRebuildPath: true
+    settingFollowRedirects: global
+    _type: request
+  - _id: env_7d6ba65415c9f87327d6b689df929a138709530a
+    parentId: wrk_3ad667ca706447c1b4c6f93b2adb4da0
+    modified: 1751042907548
+    created: 1751042907548
+    name: Base Environment
+    data: {}
+    dataPropertyOrder: null
+    color: null
+    isPrivate: false
+    metaSortKey: 1751042907548
+    _type: environment
+  - _id: jar_7d6ba65415c9f87327d6b689df929a138709530a
+    parentId: wrk_3ad667ca706447c1b4c6f93b2adb4da0
+    modified: 1751042907549
+    created: 1751042907549
+    name: Default Jar
+    cookies: []
+    _type: cookie_jar
+  - _id: env_1c1eabee362f42e3962de41651b27c4f
+    parentId: env_7d6ba65415c9f87327d6b689df929a138709530a
+    modified: 1751050920805
+    created: 1751048051263
+    name: OpenAPI env example.com
+    data:
+      scheme: http
+      base_path: ""
+      host: example.com
+      bearerToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUxMDU0NTA4LCJpYXQiOjE3NTEwNTA5MDgsImp0aSI6IjBkYzQ2NjAwOTllYTQ2OTg4YWViYzljNTBjYWRlNmYyIiwidXNlcl9pZCI6ImRhbmllbG1lbGxvMDExMEBnbWFpbC5jb20ifQ.QeFD7LWFhmtmllaKg4MSTwkYyVJrkzfLUCpwZKj7Bwc
+      base_url: http://127.0.0.1:8000/
+      id: "1"
+    dataPropertyOrder:
+      "&":
+        - scheme
+        - base_path
+        - host
+        - bearerToken
+        - base_url
+        - id
+    color: null
+    isPrivate: false
+    metaSortKey: 1751048051263
+    _type: environment
