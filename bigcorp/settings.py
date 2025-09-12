@@ -20,7 +20,9 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".render.com",
-    "front-fedconnect-98i8n.ondigitalocean.app"
+    "front-fedconnect-98i8n.ondigitalocean.app",
+    "back-fedconnect-y46st.ondigitalocean.app",
+    
     
     
 ]
@@ -157,7 +159,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://bigcorp-react-aj3a.vercel.app",
+    "front-fedconnect-98i8n.ondigitalocean.app",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
