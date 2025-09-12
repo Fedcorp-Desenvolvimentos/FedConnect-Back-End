@@ -1,5 +1,5 @@
 # Estágio 1: Build da aplicação (não toca no banco de dados)
-FROM python:3.10-slim AS builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
