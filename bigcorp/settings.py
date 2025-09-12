@@ -20,8 +20,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".render.com",
-    "front-fedconnect-98i8n.ondigitalocean.app",
-    "back-fedconnect-y46st.ondigitalocean.app",
+    "https://back-fedconnect-y46st.ondigitalocean.app",
     
     
     
@@ -61,12 +60,12 @@ ROOT_URLCONF = "bigcorp.urls"
 
 DATABASES = {
     'default': {
-        'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.postgresql'),
-        'NAME': os.environ.get('database', 'defaultdb'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('database'),
         'USER': os.environ.get('username'),
         'PASSWORD': os.environ.get('password'),
         'HOST': os.environ.get('host'),
-        'PORT': '25060',
+        'PORT': os.environ.get('port'),
     }
 }
 TEMPLATES = [
@@ -159,7 +158,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "front-fedconnect-98i8n.ondigitalocean.app",
+    "https://front-fedconnect-98i8n.ondigitalocean.app",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
