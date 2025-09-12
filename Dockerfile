@@ -19,7 +19,7 @@ FROM python:3.13-slim
 WORKDIR /app
 
 # Copia os arquivos da imagem de build, incluindo os arquivos estáticos
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /app .
 
 # Comando para rodar a aplicação em produção
