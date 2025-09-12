@@ -14,7 +14,7 @@ COPY . .
 RUN python manage.py collectstatic --noinput
 
 # Estágio 2: Imagem final para execução (produção)
-FROM python:3.10-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
