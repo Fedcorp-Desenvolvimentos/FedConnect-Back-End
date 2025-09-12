@@ -58,20 +58,13 @@ MIDDLEWARE = [
 ROOT_URLCONF = "bigcorp.urls"
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("SUPABASE_DB_NAME"),
-        "USER": config("SUPABASE_DB_USER"),
-        "PASSWORD": config("SUPABASE_DB_PASSWORD"),
-        "HOST": config("SUPABASE_DB_HOST"),
-        "PORT": config("SUPABASE_DB_PORT", default=5432, cast=int),
-        "OPTIONS": {
-            "sslmode": (
-                "require"
-                if config("SUPABASE_DB_SSL", default=True, cast=bool)
-                else None
-            ),
-        },
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'FedConnect',
+        'USER': 'postgres',
+        'PASSWORD': 'masterkey',
+        'HOST': 'db',
+        'PORT': '5432',
     }
 }
 TEMPLATES = [
@@ -90,10 +83,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "bigcorp.wsgi.application"
-
-
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 
 AUTH_PASSWORD_VALIDATORS = [
