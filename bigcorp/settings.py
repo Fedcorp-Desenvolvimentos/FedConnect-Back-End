@@ -20,7 +20,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".render.com",
-    "https://back-fedconnect-y46st.ondigitalocean.app",
+    "back-fedconnect-y46st.ondigitalocean.app"
     
     
     
