@@ -19,9 +19,8 @@ SECRET_KEY = config("DJANGO_SECRET_KEY", default = "59189659c050c968f50c01d04d36
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "bigcorp-backend.onrender.com",
     ".render.com",
-    "back-fedconnect-ocrmr.ondigitalocean.app"
+    "front-fedconnect-98i8n.ondigitalocean.app"
     
     
 ]
