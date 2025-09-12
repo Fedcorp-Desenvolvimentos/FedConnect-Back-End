@@ -1,29 +1,26 @@
-# Usa uma imagem oficial do Python como base, agora com a versão 3.13
-FROM python:3.13-slim
+# Estágio 1: Build da aplicação (não toca no banco de dados)
+FROM python:3.10-slim AS builder
 
-# Define o diretório de trabalho dentro do contêiner.
 WORKDIR /app
 
-# Instala as dependências de sistema necessárias, como a biblioteca para o PostgreSQL.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copia o arquivo de requisitos para o diretório de trabalho.
+# Instala as dependências, incluindo as de desenvolvimento
 COPY requirements.txt .
-
-# Instala as dependências do Python.
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o restante do código da aplicação para o contêiner.
+# Copia o código da sua aplicação
 COPY . .
 
-# Coleta os arquivos estáticos para o Gunicorn
+# Executa o collectstatic aqui (sem necessidade de banco de dados)
 RUN python manage.py collectstatic --noinput
 
-# Expõe a porta que a aplicação Django vai usar.
-EXPOSE 8000
+# Estágio 2: Imagem final para execução (produção)
+FROM python:3.10-slim
 
-# Comando para rodar as migrações e o servidor Gunicorn
-CMD ["/bin/sh", "-c", "python manage.py migrate --noinput && gunicorn bigcorp.wsgi:application --bind 0.0.0.0:8000"]
+WORKDIR /app
+
+# Copia os arquivos da imagem de build, incluindo os arquivos estáticos
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /app .
+
+# Comando para rodar a aplicação em produção
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "sua_app.wsgi:application"]
