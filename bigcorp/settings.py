@@ -20,7 +20,7 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 # Imprime o valor de DEBUG no console do servidor ao iniciar, para verificar
 logger.info(f"DEBUG está definido como: {DEBUG}")
 
-
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 
 STATIC_URL = '/static/'
@@ -172,6 +172,9 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+
+
+
 # Configurações do JWT
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=120),
@@ -180,7 +183,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": os.environ.get("DJANGO_SECRET_KEY"),
+    "SIGNING_KEY": SECRET_KEY,
     "VERIFYING_KEY": None,
     "AUDIENCE": None,
     "ISSUER": None,
