@@ -84,52 +84,31 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    # serializer_class = CustomTokenObtainPairSerializer # Se você estiver usando um custom serializer
-
+    # This view is now simplified as it doesn't handle cookies.
+    # It just returns the standard JWT response.
     def post(self, request, *args, **kwargs):
+        # The parent class (TokenObtainPairView) already handles
+        # obtaining the tokens and returning them in the response body.
+        # The client-side (e.g., JavaScript) will then store these
+        # tokens in localStorage.
         response = super().post(request, *args, **kwargs)
-
-        if response.status_code == status.HTTP_200_OK:
-            access_token = response.data.get('access')
-
-            access_token_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
-
-            # Calcular a expiração em segundos
-            max_age = int(access_token_lifetime.total_seconds())
-
-            response.set_cookie(
-                key=settings.SIMPLE_JWT['AUTH_COOKIE'], # Geralmente 'access_token'
-                value=access_token,
-                expires=max_age,
-                httponly=True,
-                secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'], # Use a configuração do settings.py
-                samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'] # Use a configuração do settings.py
-            )
-            
-            # Remova os tokens do corpo da resposta se eles já estão no cookie
-            # Opcional, mas boa prática para não expor tokens em dois lugares
-            # if 'access' in response.data:
-            #     del response.data['access']
-            # if 'refresh' in response.data:
-            #     del response.data['refresh']
-
         return response
-
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        response = Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
-        response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE']) # Exclui o cookie de acesso
-        # Opcional: Se você tiver um cookie de refresh, exclua-o também
-        # response.delete_cookie(settings.SIMPLE_JWT['AUTH_COOKIE_REFRESH']) 
-        return response
-    
-    
+        # When using localStorage, the client is responsible for
+        # clearing the tokens. The backend just needs to confirm
+        # the logout.
+        # You might optionally blacklist the token here if you need
+        # to invalidate it immediately on the server side.
+        
+        return Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
+
 class PasswordView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         user = request.user
         old_password = request.data.get('old_password')
