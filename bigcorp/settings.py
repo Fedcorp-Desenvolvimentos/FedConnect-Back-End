@@ -61,12 +61,12 @@ ROOT_URLCONF = "bigcorp.urls"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'FedConnect',
-        'USER': 'postgres',
-        'PASSWORD': 'masterkey',
-        'HOST': 'db',
-        'PORT': '5432',
+        'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.postgresql'),
+        'NAME': os.environ.get('database', 'defaultdb'),
+        'USER': os.environ.get('username'),
+        'PASSWORD': os.environ.get('password'),
+        'HOST': os.environ.get('host'),
+        'PORT': '25060',
     }
 }
 TEMPLATES = [
