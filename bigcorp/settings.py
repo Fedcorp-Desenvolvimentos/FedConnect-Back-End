@@ -13,8 +13,7 @@ logger.info(f"DEBUG está definido como: {DEBUG}")
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+SECRET_KEY = config("DJANGO_SECRET_KEY")
 
 
 ALLOWED_HOSTS = [
