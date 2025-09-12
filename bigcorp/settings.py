@@ -21,7 +21,9 @@ ALLOWED_HOSTS = [
     "localhost",
     "bigcorp-backend.onrender.com",
     ".render.com",
-    "bigcorp-react-aj3a.vercel.app"
+    "back-fedconnect-ocrmr.ondigitalocean.app"
+    
+    
 ]
 
 INSTALLED_APPS = [
@@ -229,4 +231,4 @@ logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 
 API_CONSULTA_TIMEOUT = 600
 
-CONSULTA_API_URL ="https://bigcorp-backend.onrender.com/consultas/realizar/"
+CONSULTA_API_URL ="back-fedconnect-ocrmr.ondigitalocean.app/consultas/realizar/"
