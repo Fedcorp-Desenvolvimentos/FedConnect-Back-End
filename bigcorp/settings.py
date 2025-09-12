@@ -122,8 +122,6 @@ WSGI_APPLICATION = "bigcorp.wsgi.application"
 
 DJANGO_SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
-SECRET_KEY = DJANGO_SECRET_KEY
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -182,7 +180,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
+    "SIGNING_KEY": os.environ.get("DJANGO_SECRET_KEY"),
     "VERIFYING_KEY": None,
     "AUDIENCE": None,
     "ISSUER": None,
