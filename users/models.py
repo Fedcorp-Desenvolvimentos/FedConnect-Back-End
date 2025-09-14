@@ -48,7 +48,7 @@ class Usuario(AbstractUser):
     nome_completo = models.CharField(_("nome completo"), max_length=150, blank=True)
     nivel_acesso = models.CharField(
         _("nível de acesso"),
-        max_length=10,
+        max_length=20,
         choices=NIVEL_ACESSO_CHOICES,
         default="usuario",
     )
