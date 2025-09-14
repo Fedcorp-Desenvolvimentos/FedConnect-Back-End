@@ -10,20 +10,20 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = config("DEBUG", default=False, cast=bool)
 logger.info(f"DEBUG está definido como: {DEBUG}")
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-SECRET_KEY = config("DJANGO_SECRET_KEY", default = "59189659c050c968f50c01d04d3634bced76415cce6738402d9e101478129efa")
+SECRET_KEY = config(
+    "DJANGO_SECRET_KEY",
+    default="59189659c050c968f50c01d04d3634bced76415cce6738402d9e101478129efa",
+)
 
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     ".render.com",
-    "back-fedconnect-y46st.ondigitalocean.app"
-    
-    
-    
+    "back-fedconnect-y46st.ondigitalocean.app",
 ]
 
 INSTALLED_APPS = [
@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
-    "corsheaders",  
+    "corsheaders",
     "drf_spectacular",
     "users",
     "consultas",
@@ -50,7 +50,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware", 
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -59,13 +59,13 @@ MIDDLEWARE = [
 ROOT_URLCONF = "bigcorp.urls"
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('database'),
-        'USER': os.environ.get('username'),
-        'PASSWORD': os.environ.get('password'),
-        'HOST': os.environ.get('host'),
-        'PORT': os.environ.get('port'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("database"),
+        "USER": os.environ.get("username"),
+        "PASSWORD": os.environ.get("password"),
+        "HOST": os.environ.get("host"),
+        "PORT": os.environ.get("port"),
     }
 }
 TEMPLATES = [
@@ -159,6 +159,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://front-fedconnect-98i8n.ondigitalocean.app",
+    "https://fedconnect.com.br/",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -215,12 +216,12 @@ LOGGING = {
     },
     "loggers": {
         "django.db.backends": {
-            "level": "ERROR",  
+            "level": "ERROR",
             "handlers": ["console"],
             "propagate": False,
         },
         "corsheaders": {
-            "level": "ERROR",  
+            "level": "ERROR",
             "handlers": ["console"],
             "propagate": False,
         },
@@ -231,4 +232,4 @@ logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 
 API_CONSULTA_TIMEOUT = 600
 
-CONSULTA_API_URL ="back-fedconnect-ocrmr.ondigitalocean.app/consultas/realizar/"
+CONSULTA_API_URL = "back-fedconnect-ocrmr.ondigitalocean.app/consultas/realizar/"
