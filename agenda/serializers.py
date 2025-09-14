@@ -4,7 +4,10 @@ from .models import Reserva
 
 
 class ReservaSerializer(serializers.ModelSerializer):
-    participantes = serializers.SerializerMethodField()
+    # O DRF irá automaticamente lidar com a leitura e escrita do campo
+    # como uma string de texto, que é o que seu modelo espera.
+    # O frontend agora envia uma string, e o serializer aceitará isso.
+    # Não precisa de SerializerMethodField nem de métodos create/update customizados.
 
     class Meta:
         model = Reserva
@@ -20,29 +23,22 @@ class ReservaSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "criado_por",
-        ]  # O ID e o criador são definidos automaticamente
-
-    def get_participantes(self, obj):
-        return [p.strip() for p in obj.participantes.split(",") if p.strip()]
+        ]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        # Opcional: Adicionar o nome do usuário que criou a reserva
+
+        # Transforma a string de participantes de volta em um array para o frontend
+        # Isso garante que a API continue retornando os dados como uma lista
+        if instance.participantes:
+            representation["participantes"] = [
+                p.strip() for p in instance.participantes.split(",")
+            ]
+        else:
+            representation["participantes"] = []
+
+        # Adiciona o nome do usuário que criou a reserva
         if instance.criado_por:
             representation["criado_por_nome"] = instance.criado_por.username
+
         return representation
-
-    def create(self, validated_data):
-        participantes_str = ",".join(validated_data.pop("participantes"))
-        reserva = Reserva.objects.create(
-            participantes=participantes_str, **validated_data
-        )
-        return reserva
-
-    def update(self, instance, validated_data):
-        # Lidar com a atualização dos participantes, se necessário
-        if "participantes" in validated_data:
-            participantes_str = ",".join(validated_data.pop("participantes"))
-            instance.participantes = participantes_str
-
-        return super().update(instance, validated_data)
