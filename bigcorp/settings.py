@@ -234,5 +234,5 @@ logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 API_CONSULTA_TIMEOUT = 600
 
 CONSULTA_API_URL = (
-    "https://back-fedconnect-ocrmr.ondigitalocean.app/consultas/realizar/"
+    "https://back-fedconnect-y46st.ondigitalocean.app/consultas/realizar/"
 )
