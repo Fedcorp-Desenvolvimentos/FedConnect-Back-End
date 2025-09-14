@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "consultas",
     "planilha",
     "empresas",
+    "agenda",
 ]
 
 MIDDLEWARE = [
