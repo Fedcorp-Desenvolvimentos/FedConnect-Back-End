@@ -182,7 +182,7 @@ CEP_URL = "https://brasilapi.com.br/api/cep/v1/"
 CNPJ_URL = "https://brasilapi.com.br/api/cnpj/v1/"
 CPF_URL = "https://plataforma.bigdatacorp.com.br/pessoas"
 ALT_CNPJ_URL = "https://plataforma.bigdatacorp.com.br/empresas"
-ALT_CEP_URL = "viacep.com.br/ws"
+ALT_CEP_URL = "https://viacep.com.br/ws"
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
 SPECTACULAR_SETTINGS = {
@@ -233,4 +233,6 @@ logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 
 API_CONSULTA_TIMEOUT = 600
 
-CONSULTA_API_URL = "back-fedconnect-ocrmr.ondigitalocean.app/consultas/realizar/"
+CONSULTA_API_URL = (
+    "https://back-fedconnect-ocrmr.ondigitalocean.app/consultas/realizar/"
+)
