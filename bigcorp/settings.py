@@ -22,7 +22,7 @@ SECRET_KEY = config(
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    ".render.com",
+    "bigcorp-backend.onrender.com",
     "back-fedconnect-y46st.ondigitalocean.app",
     "fedconnect.com.br",
 ]
@@ -234,4 +234,4 @@ logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 
 API_CONSULTA_TIMEOUT = 600
 
-CONSULTA_API_URL = "https://back-fedconnect-y46st.ondigitalocean.app/consultas/realizar"
+CONSULTA_API_URL = "https://bigcorp-backend.onrender.com/consultas/realizar/"
