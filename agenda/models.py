@@ -1,6 +1,6 @@
 # agenda/models.py
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.utils import timezone
 
 
@@ -14,7 +14,9 @@ class Reserva(models.Model):
     duracao = models.IntegerField()  # Em minutos
     # Adicionamos um campo para rastrear quem fez a reserva
     criado_por = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, related_name="reservas"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reservas_criadas",  # Recommended for clarity
     )
     criado_em = models.DateTimeField(auto_now_add=True)
 
