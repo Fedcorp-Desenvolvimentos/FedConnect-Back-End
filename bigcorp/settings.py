@@ -161,7 +161,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://front-fedconnect-98i8n.ondigitalocean.app",
-    "https://fedconnect.com.br"
+    "https://fedconnect.com.br",
+    "https://back-fedconnect-y46st.ondigitalocean.app",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -234,6 +235,4 @@ logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 
 API_CONSULTA_TIMEOUT = 600
 
-CONSULTA_API_URL = (
-   "https://back-fedconnect-y46st.ondigitalocean.app/consultas/realizar"
-)
+CONSULTA_API_URL = "https://back-fedconnect-y46st.ondigitalocean.app/consultas/realizar"
