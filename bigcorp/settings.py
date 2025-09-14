@@ -161,6 +161,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://front-fedconnect-98i8n.ondigitalocean.app",
     "https://fedconnect.com.br",
+    "https://back-fedconnect-y46st.ondigitalocean.app",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
