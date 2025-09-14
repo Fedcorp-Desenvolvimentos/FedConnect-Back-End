@@ -1,6 +1,6 @@
 from rest_framework.decorators import action
 from django.contrib.auth.decorators import login_required
-from users.authentication import JWTCookieAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets, permissions, generics, status
 from rest_framework.response import Response
@@ -14,12 +14,9 @@ from django.db.models import Q, Case, When, IntegerField
 from rest_framework.views import APIView
 import logging
 from django.conf import settings
-
 User = get_user_model()
-
 class UsuarioViewSet(viewsets.ModelViewSet):
     serializer_class = UsuarioSerializer
-
     def get_permissions(self):
         if self.action == "create":
             permission_classes = [AllowAny]
@@ -29,11 +26,11 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
 
+
     def get_authentication_classes(self):
         if self.action == "create":
             return []
-        return [JWTCookieAuthentication]
-
+        return [JWTAuthentication]
     def get_queryset(self):
         """
         Filtra o queryset baseado no nível de acesso do usuário
@@ -67,57 +64,38 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Cria um novo usuário."""
         serializer.save()
-
     def perform_update(self, serializer):
         """Atualiza um usuário."""
         serializer.save()
-
     def perform_destroy(self, instance):
         """Deleta um usuário."""
         instance.delete()
-
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
         """Endpoint para obter os dados do usuário atual."""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
-
-
 class CustomTokenObtainPairView(TokenObtainPairView):
-    # This view is now simplified as it doesn't handle cookies.
-    # It just returns the standard JWT response.
-    def post(self, request, *args, **kwargs):
-        # The parent class (TokenObtainPairView) already handles
-        # obtaining the tokens and returning them in the response body.
-        # The client-side (e.g., JavaScript) will then store these
-        # tokens in localStorage.
-        response = super().post(request, *args, **kwargs)
-        return response
-
+    # Não há necessidade de sobrescrever o método post
+    # O comportamento padrão já retorna os tokens no corpo da resposta
+    pass
+    
 class LogoutView(APIView):
     permission_classes = [AllowAny]
-
     def post(self, request):
-        # When using localStorage, the client is responsible for
-        # clearing the tokens. The backend just needs to confirm
-        # the logout.
-        # You might optionally blacklist the token here if you need
-        # to invalidate it immediately on the server side.
-        
+        # Com a autenticação via localStorage, não há cookies para deletar no backend.
+        # O logout é gerenciado inteiramente no frontend, limpando o localStorage.
         return Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
-
+    
 class PasswordView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request):
         user = request.user
         old_password = request.data.get('old_password')
         new_password = request.data.get('new_password')
-
         if not user.check_password(old_password):
             return Response({'detail': 'Senha antiga incorreta.'}, status=status.HTTP_400_BAD_REQUEST)
-
         user.set_password(new_password)
         user.save()
-
         return Response({'detail': 'Senha alterada com sucesso.'}, status=status.HTTP_200_OK)

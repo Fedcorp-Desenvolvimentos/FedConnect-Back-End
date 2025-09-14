@@ -10,7 +10,7 @@ from .serializers import (
     BulkCnpjRequestSerializer,
     ConsultaRequestSerializer,
 )  # Importe o novo serializador
-from users.authentication import JWTCookieAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.conf import settings
 import requests
 import os
@@ -68,7 +68,7 @@ def consulta_comercial(cnpj):
 
 
 class ConsultaComercialAPIView(APIView):
-    authentication_classes = [JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
@@ -194,7 +194,7 @@ def consulta_comercial_CPF(CPF):
 
 
 class ConsultaContatoComercialAPIView(APIView):
-    authentication_classes = [JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
@@ -279,7 +279,7 @@ def clean_doc_number(doc):
 
 
 class BulkConsultaComercialAPIView(APIView):
-    authentication_classes = [JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):

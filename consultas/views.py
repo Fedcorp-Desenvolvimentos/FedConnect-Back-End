@@ -3,7 +3,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from users.authentication import JWTCookieAuthentication
 import requests
 import json
 from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
@@ -18,7 +17,7 @@ from django.db.models.functions import Cast, Coalesce
 
 class RealizarConsultaView(APIView):
 
-    authentication_classes = [JWTAuthentication, JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication]
 
     permission_classes = [IsAuthenticated]
 
@@ -171,7 +170,7 @@ class HistoricoConsultaListView(generics.ListAPIView):
 
     serializer_class = HistoricoConsultaSerializer
     permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication, JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication]
 
     def get_queryset(self):
 
@@ -194,7 +193,7 @@ class HistoricoConsultaListView(generics.ListAPIView):
 class HistoricoConsultaDetailView(generics.RetrieveAPIView):
     queryset = HistoricoConsulta.objects.all()
     serializer_class = HistoricoConsultaSerializer
-    authentication_classes = [JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
@@ -220,7 +219,7 @@ class HistoricoConsultaDetailView(generics.RetrieveAPIView):
 # --- View para Listar o Histórico de Consultas de um Usuário Específico (Geralmente para Admins) ---
 class HistoricoConsultaUserListView(generics.ListAPIView):
     serializer_class = HistoricoConsultaSerializer
-    authentication_classes = [JWTAuthentication, JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication, JWTAuthentication]
     permission_classes = [
         IsAuthenticated
     ]  # Adicionado IsOwnerOrAdmin para restringir acesso

@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from users.authentication import JWTCookieAuthentication # Apenas JWTCookieAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication # Apenas JWTCookieAuthentication
 import requests
 import json
 from urllib.parse import urlencode 
@@ -19,7 +19,7 @@ class RealizarConsultaSeguradosView(APIView):
     Autentica o usuário, formata os parâmetros e salva o histórico da consulta.
     Inclui paginação.
     """
-    authentication_classes = [JWTCookieAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):

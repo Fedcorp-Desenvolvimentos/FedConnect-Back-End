@@ -6,7 +6,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from users.authentication import JWTCookieAuthentication 
 import requests
 import uuid
 import json 
@@ -42,7 +41,7 @@ def baixar_planilha_modelo_drf_cpf(request):
 
 
 class ProcessarPlanilhaCpfsView(APIView):
-    authentication_classes = [JWTCookieAuthentication, JWTAuthentication] 
+    authentication_classes = [JWTAuthentication] 
     permission_classes = [IsAuthenticated] # Garante que o usuário esteja autenticado
 
     cpf_column_defs = [

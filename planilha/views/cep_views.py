@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
-from users.authentication import JWTCookieAuthentication 
+
 from rest_framework_simplejwt.authentication import JWTAuthentication 
 
 import requests
@@ -46,7 +46,7 @@ def baixar_planilha_modelo_drf_cep(request):
 
 class ProcessarPlanilhaCepsView(APIView):
     
-    authentication_classes = [JWTCookieAuthentication,JWTAuthentication ] 
+    authentication_classes = [JWTAuthentication ] 
     permission_classes = [IsAuthenticated] # Garante que apenas usuários autenticados possam acessar esta view
 
     cep_column_defs = [
