@@ -8,21 +8,20 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
-
-from rest_framework_simplejwt.authentication import JWTAuthentication 
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 import requests
 import uuid
 
 # Você precisará criar ProcessamentoPlanilhaCepInputSerializer
-from ..serializers import ProcessamentoPlanilhaCepInputSerializer 
+from ..serializers import ProcessamentoPlanilhaCepInputSerializer
 from .base_views import _base_download_model_excel, _base_format_error_result
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
-from django.conf import settings # Importe settings para usar configurações do Django
+from django.conf import settings  # Importe settings para usar configurações do Django
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ YOUR_CONSULTA_API_URL = settings.CONSULTA_API_URL
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny]) # type: ignore
+@permission_classes([AllowAny])  # type: ignore
 def baixar_planilha_modelo_drf_cep(request):
     """
     View para gerar e baixar a planilha modelo de consulta de CEPs.
@@ -45,9 +44,11 @@ def baixar_planilha_modelo_drf_cep(request):
 
 
 class ProcessarPlanilhaCepsView(APIView):
-    
-    authentication_classes = [JWTAuthentication ] 
-    permission_classes = [IsAuthenticated] # Garante que apenas usuários autenticados possam acessar esta view
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [
+        IsAuthenticated
+    ]  # Garante que apenas usuários autenticados possam acessar esta view
 
     cep_column_defs = [
         {"header": "CEP (Entrada)", "key": "CEP (Entrada)", "width": 15},
@@ -77,9 +78,15 @@ class ProcessarPlanilhaCepsView(APIView):
             "STATUS CONSULTA": "SUCESSO",
             "ERRO_DETALHES": "",
             "CEP": api_cep_data.get("cep", ""),
-            "Logradouro": api_cep_data.get("street", ""), # <-- Verifique o nome real do campo
-            "Bairro": api_cep_data.get("neighborhood", ""), # <-- Verifique o nome real do campo
-            "Cidade": api_cep_data.get("city", ""), # <-- 'localidade' é comum, verifique sua API
+            "Logradouro": api_cep_data.get(
+                "street", ""
+            ),  # <-- Verifique o nome real do campo
+            "Bairro": api_cep_data.get(
+                "neighborhood", ""
+            ),  # <-- Verifique o nome real do campo
+            "Cidade": api_cep_data.get(
+                "city", ""
+            ),  # <-- 'localidade' é comum, verifique sua API
             "UF": api_cep_data.get("state", ""),
             "Complemento": api_cep_data.get("complement", ""),
         }
@@ -88,8 +95,9 @@ class ProcessarPlanilhaCepsView(APIView):
         """
         Formata os dados de erro para a linha da planilha de CEP, utilizando o helper base.
         """
-        return _base_format_error_result(cep_entrada, error_message, self.cep_result_keys)
-
+        return _base_format_error_result(
+            cep_entrada, error_message, self.cep_result_keys
+        )
 
     def post(self, request, *args, **kwargs):
         logger.info("Iniciando ProcessarPlanilhaCepsView.post")
@@ -107,7 +115,9 @@ class ProcessarPlanilhaCepsView(APIView):
         if not user_jwt_token:
             logger.error("Token JWT do usuário não encontrado na requisição.")
             return Response(
-                {"message": "Token JWT do usuário não encontrado na requisição. Verifique sua autenticação."},
+                {
+                    "message": "Token JWT do usuário não encontrado na requisição. Verifique sua autenticação."
+                },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -117,18 +127,18 @@ class ProcessarPlanilhaCepsView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         valid_data = serializer.validated_data
-        ceps_from_excel = valid_data.get("ceps", []) 
+        ceps_from_excel = valid_data.get("ceps", [])
         origem_consulta = valid_data.get("origem", "planilha")
 
         batch_id_para_planilha = None
         if origem_consulta == "planilha":
             batch_id_para_planilha = uuid.uuid4()
-            
+
         api_headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {user_jwt_token}", 
+            "Authorization": f"Bearer {user_jwt_token}",
         }
-        
+
         # --- Otimização de Memória e Desempenho ---
         # 1. Gerar workbook e sheet imediatamente
         workbook_resultado = openpyxl.Workbook()
@@ -136,7 +146,9 @@ class ProcessarPlanilhaCepsView(APIView):
         sheet_resultado.title = "Resultados da Consulta CEP"
 
         # 2. Adicionar e estilizar o cabeçalho imediatamente
-        headers_resultado = [col["header"] for col in self.cep_column_defs] # Use cep_column_defs
+        headers_resultado = [
+            col["header"] for col in self.cep_column_defs
+        ]  # Use cep_column_defs
         sheet_resultado.append(headers_resultado)
 
         for col_num, col_def in enumerate(self.cep_column_defs, 1):
@@ -156,39 +168,49 @@ class ProcessarPlanilhaCepsView(APIView):
             sheet_resultado.column_dimensions[get_column_letter(col_num)].width = (
                 col_def["width"]
             )
-        
-        logger.info(f"Processando {len(ceps_from_excel)} CEPs. Inserindo dados diretamente na planilha.")
+
+        logger.info(
+            f"Processando {len(ceps_from_excel)} CEPs. Inserindo dados diretamente na planilha."
+        )
 
         # 3. Processar e adicionar linhas à planilha item por item (evita lista 'resultados' grande)
-        for i, item in enumerate(ceps_from_excel): 
+        for i, item in enumerate(ceps_from_excel):
             cep_original = item.get("CEP")
-            row_data = {} # Dicionário para formatar a linha atual
+            row_data = {}  # Dicionário para formatar a linha atual
 
             if not cep_original:
-                logger.warning(f"CEP não fornecido na linha {i+1} da planilha. Registrando erro.")
-                row_data = self._format_error_result("", "CEP não fornecido na linha da planilha.")
+                logger.warning(
+                    f"CEP não fornecido na linha {i+1} da planilha. Registrando erro."
+                )
+                row_data = self._format_error_result(
+                    "", "CEP não fornecido na linha da planilha."
+                )
             else:
                 api_request_body = {
-                    "tipo_consulta": "endereco", # Ajuste para "endereco" ou o que você usa para consultas de CEP
+                    "tipo_consulta": "endereco",  # Ajuste para "endereco" ou o que você usa para consultas de CEP
                     "parametro_consulta": cep_original,
                     "origem": origem_consulta,
-                    "lote_id": str(batch_id_para_planilha) if batch_id_para_planilha else None
+                    "lote_id": (
+                        str(batch_id_para_planilha) if batch_id_para_planilha else None
+                    ),
                 }
-                
+
                 try:
                     response_api = requests.post(
                         YOUR_CONSULTA_API_URL,
                         json=api_request_body,
                         headers=api_headers,
-                        timeout=settings.API_CONSULTA_TIMEOUT, # Usar uma configuração de timeout
+                        timeout=settings.API_CONSULTA_TIMEOUT,
+                        verify=False,  # Usar uma configuração de timeout
                     )
-                    response_api.raise_for_status() 
+                    response_api.raise_for_status()
                     api_response_data = response_api.json()
-                    
+
                     cep_data_from_api = api_response_data.get("resultado_api")
 
                     if (
-                        api_response_data.get("mensagem") == "Consulta realizada com sucesso."
+                        api_response_data.get("mensagem")
+                        == "Consulta realizada com sucesso."
                         and cep_data_from_api
                     ):
                         row_data = self._format_success_result(
@@ -197,35 +219,41 @@ class ProcessarPlanilhaCepsView(APIView):
                         logger.debug(f"CEP {cep_original} consultado com sucesso.")
                     else:
                         error_msg = api_response_data.get(
-                            "mensagem", "Resposta da API de consulta de CEP incompleta ou inesperada."
+                            "mensagem",
+                            "Resposta da API de consulta de CEP incompleta ou inesperada.",
                         )
-                        row_data = self._format_error_result(cep_original, f"API: {error_msg}")
+                        row_data = self._format_error_result(
+                            cep_original, f"API: {error_msg}"
+                        )
                         logger.warning(f"CEP {cep_original} falhou: {error_msg}")
 
                 except requests.exceptions.RequestException as e:
                     row_data = self._format_error_result(
-                        cep_original, f"Erro na comunicação com a API de consulta: {str(e)}"
+                        cep_original,
+                        f"Erro na comunicação com a API de consulta: {str(e)}",
                     )
                     logger.error(f"Erro de comunicação para CEP {cep_original}: {e}")
                 except Exception as e:
                     row_data = self._format_error_result(
                         cep_original, f"Erro inesperado no processamento: {str(e)}"
                     )
-                    logger.critical(f"Erro inesperado para CEP {cep_original}: {e}", exc_info=True)
+                    logger.critical(
+                        f"Erro inesperado para CEP {cep_original}: {e}", exc_info=True
+                    )
 
             # Adiciona a linha formatada diretamente à planilha
             row_values = [row_data.get(col["key"], "") for col in self.cep_column_defs]
             sheet_resultado.append(row_values)
-            
+
         # Configura a resposta HTTP para download do arquivo Excel
         # Usamos BytesIO para salvar o workbook na memória e evitar escrever em disco
         output_buffer = BytesIO()
         workbook_resultado.save(output_buffer)
-        output_buffer.seek(0) # Volta ao início do buffer
+        output_buffer.seek(0)  # Volta ao início do buffer
 
         response = HttpResponse(
-            output_buffer.getvalue(), # Obtém os bytes do buffer
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            output_buffer.getvalue(),  # Obtém os bytes do buffer
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         response["Content-Disposition"] = (
             'attachment; filename="planilha-resultado-cep.xlsx"'
