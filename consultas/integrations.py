@@ -32,7 +32,7 @@ class ConsultaCEP:
         
         
         
-        url = "http://"+settings.ALT_CEP_URL+"/"+estado+"/"+cidade+"/"+logradouro+"/json"
+        url = settings.ALT_CEP_URL+"/"+estado+"/"+cidade+"/"+logradouro+"/json"
         print(url)
 
         try:
