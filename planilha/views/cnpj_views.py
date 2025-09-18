@@ -34,7 +34,7 @@ def baixar_planilha_modelo_drf_cnpj(request):
     return _base_download_model_excel(
         sheet_title="CNPJs para Consulta",
         header_name="CNPJ",
-        example_values=["33.647.553/0001-90", "33649575000199", "41.096.250/0001-54"],
+        example_values=["00.000.000/0001-00", "00000000000000", "12.345.678/9012-34"],
         column_width=25,
         filename="planilha-modelo-cnpj.xlsx",
     )

@@ -34,7 +34,7 @@ def baixar_planilha_modelo_drf_cpf(request):
     return _base_download_model_excel(
         sheet_title="CPFs para Consulta",
         header_name="CPF",
-        example_values=["169.752.227-03", "00103007750", "987.654.321-99"],
+        example_values=["000.000.000-00", "00000000000", "123.456.789-00"],
         column_width=20,
         filename="planilha-modelo-cpf.xlsx",
     )
