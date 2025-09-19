@@ -6,7 +6,7 @@ from .serializers import ReservaSerializer
 
 
 class ReservaViewSet(viewsets.ModelViewSet):
-    queryset = Reserva.objects.all()
+    queryset = Reserva.objects.all().order_by('data', 'horario')
     serializer_class = ReservaSerializer
     permission_classes = [
         IsAuthenticated
