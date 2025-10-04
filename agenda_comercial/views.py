@@ -25,15 +25,13 @@ class AgendamentoListCreateAPIView(generics.ListCreateAPIView):
                 mes = int(mes)
                 ano = int(ano)
                 # Filtra os agendamentos pelo ano e mês da data_visita
-                queryset = queryset.filter(
-                    data_visita__year=ano, data_visita__month=mes
-                )
+                queryset = queryset.filter(data__year=ano, data__month=mes)
             except (ValueError, TypeError):
                 # Se os parâmetros não forem números, retorna o queryset completo
                 # ou um vazio, dependendo da sua regra de negócio
                 pass
 
-        return queryset.order_by("data_visita")
+        return queryset.order_by("data")
 
     def perform_create(self, serializer):
         serializer.save(responsavel=self.request.user)
