@@ -23,10 +23,12 @@ def calcular_cotacao_incendio(request):
             comissao_administradora = premio_liquido * repasse
             assistencia_basica = 0.2
             taxa_seguradora = 0.00585 / 100
+
             if is_total * taxa_seguradora < 0.80:
                 premio_liquido_seguradora = 0.80
             else:
                 premio_liquido_seguradora = is_total * taxa_seguradora
+
             premio_bruto_seguradora = premio_liquido_seguradora * 1.0738
             repasse_seguradora_bruto = premio_liquido_seguradora * 57 / 100
             imposto = 20 / 100
@@ -36,6 +38,9 @@ def calcular_cotacao_incendio(request):
                 comissao_administradora + assistencia_basica + premio_bruto_seguradora
             )
             resultado = entradas - saidas
+
+            # Inicializa a variável percetual antes de usá-la
+            percetual = 0
             if premio_proposto:
                 percetual = resultado / premio_proposto
 
@@ -57,7 +62,7 @@ def calcular_cotacao_incendio(request):
                 "entradas": entradas,
                 "saidas": saidas,
                 "resultado": resultado,
-                "percentual": percetual | 0,
+                "percentual": percetual,
             }
 
             return JsonResponse(results)
