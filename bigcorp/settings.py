@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     "planilha",
     "empresas",
     "agenda",
-    "agenda_comercial"
+    "agenda_comercial",
+    "cotacao",
 ]
 
 MIDDLEWARE = [

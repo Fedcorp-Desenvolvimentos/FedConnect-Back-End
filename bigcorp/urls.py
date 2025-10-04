@@ -13,7 +13,7 @@ from consultas.faturas import RealizarConsultaFaturasView
 from agenda.views import ReservaViewSet
 from agenda_comercial.views import AgendamentoListCreateAPIView, AgendamentoRetrieveUpdateDestroyAPIView
 from django.urls import path
-
+from cotacao.views import calcular_cotacao_incendio
 
 
 
@@ -82,6 +82,7 @@ urlpatterns = [
     path('comercial/agenda/', AgendamentoListCreateAPIView.as_view(), name='agendamento_list'),
     path('comercial/agenda/<int:pk>/', AgendamentoRetrieveUpdateDestroyAPIView.as_view(), name='agendamento_detail'),
     
+    path('cotacao/incendio-conteudo/', calcular_cotacao_incendio, name='calcular_cotacao_incendio'),
     
    
     # Inclua as rotas geradas pelo Router (ViewSets) por último
