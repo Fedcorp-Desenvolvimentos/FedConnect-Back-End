@@ -57,7 +57,7 @@ def calcular_cotacao_incendio(request):
                 "entradas": entradas,
                 "saidas": saidas,
                 "resultado": resultado,
-                "percentual": percetual,
+                "percentual": percetual | 0,
             }
 
             return JsonResponse(results)
