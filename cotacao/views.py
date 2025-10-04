@@ -21,7 +21,7 @@ def calcular_cotacao_incendio(request):
             incendio_conteudo = float(data.get("incendio_conteudo", 0))
             perda_aluguel = float(data.get("perda_aluguel", 0))
             repasse_percentual = float(data.get("repasse_percentual", 0))
-            premio_proposto = float(data.get("premio_bruto", 0))
+            premio_proposto = float(data.get("premio_proposto", 0))
 
             # --- Lógica de Cálculo (mantida do seu código) ---
             is_total = incendio_conteudo + perda_aluguel
