@@ -11,12 +11,12 @@ def calcular_cotacao_incendio(request):
         try:
             # Recebe os dados JSON da requisição
             data = json.loads(request.body)
-            print(f"{request}")
+            print(f"{request.body}")
 
-            incendio_conteudo = float(data.get("incendio_conteudo", 0))
-            perda_aluguel = float(data.get("perda_aluguel", 0))
-            repasse_percentual = float(data.get("repasse_percentual", 0))
-            premio_proposto = float(data.get("premio_bruto", 0))
+            incendio_conteudo = float(data.get("incendio_conteudo"))
+            perda_aluguel = float(data.get("perda_aluguel"))
+            repasse_percentual = float(data.get("repasse_percentual"))
+            premio_proposto = float(data.get("premio_bruto"))
 
             is_total = incendio_conteudo + perda_aluguel
             premio_liquido = incendio_conteudo / 1.0738
