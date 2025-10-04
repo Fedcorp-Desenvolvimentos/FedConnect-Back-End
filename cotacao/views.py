@@ -11,6 +11,7 @@ def calcular_cotacao_incendio(request):
         try:
             # Recebe os dados JSON da requisição
             data = json.loads(request.body)
+            print(f"{request}")
 
             incendio_conteudo = float(data.get("incendio_conteudo", 0))
             perda_aluguel = float(data.get("perda_aluguel", 0))
