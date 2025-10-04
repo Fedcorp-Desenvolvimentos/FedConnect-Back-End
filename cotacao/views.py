@@ -36,7 +36,8 @@ def calcular_cotacao_incendio(request):
                 comissao_administradora + assistencia_basica + premio_bruto_seguradora
             )
             resultado = entradas - saidas
-            percetual = resultado / premio_proposto
+            if premio_proposto:
+                percetual = resultado / premio_proposto
 
             repasse_administradora = premio_proposto * repasse
 
