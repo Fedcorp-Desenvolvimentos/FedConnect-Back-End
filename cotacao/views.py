@@ -23,9 +23,8 @@ def calcular_cotacao_incendio(request):
             repasse_percentual = float(data.get("repasse_percentual", 0))
             premio_proposto = float(data.get("premio_proposto", 0))
 
-            # --- Lógica de Cálculo (mantida do seu código) ---
             is_total = incendio_conteudo + perda_aluguel
-            premio_liquido = incendio_conteudo / 1.0738
+            premio_liquido = premio_proposto / 1.0738
             repasse = repasse_percentual / 100
             comissao_administradora = premio_liquido * repasse
             assistencia_basica = 0.2
@@ -44,11 +43,9 @@ def calcular_cotacao_incendio(request):
             saidas = (
                 comissao_administradora + assistencia_basica + premio_bruto_seguradora
             )
-            resultado = entradas - saidas
 
-            percetual = 0
-            if premio_proposto and premio_proposto != 0:
-                percetual = resultado / premio_proposto
+            resultado = entradas - saidas
+            percetual = resultado / premio_proposto
 
             repasse_administradora = premio_proposto * repasse
             # --- Fim da Lógica de Cálculo ---
@@ -75,7 +72,6 @@ def calcular_cotacao_incendio(request):
                 percentual=percetual,
             )
 
-            # --- Criando a resposta a ser retornada ao cliente ---
             results = {
                 # Dados de entrada
                 "incendio_conteudo": cotacao.incendio_conteudo,
