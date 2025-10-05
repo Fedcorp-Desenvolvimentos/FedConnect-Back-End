@@ -51,25 +51,25 @@ def calcular_cotacao_incendio(request):
             # --- Fim da Lógica de Cálculo ---
 
             cotacao = CotacaoIncendio.objects.create(
-                incendio_conteudo=incendio_conteudo,
-                perda_aluguel=perda_aluguel,
-                repasse_percentual=repasse_percentual,
-                premio_proposto=premio_proposto,
-                is_total=is_total,
-                premio_liquido=premio_liquido,
-                repasse=repasse,
-                comissao_administradora=comissao_administradora,
-                assistencia_basica=assistencia_basica,
-                taxa_seguradora=taxa_seguradora,
-                premio_liquido_seguradora=premio_liquido_seguradora,
-                premio_bruto_seguradora=premio_bruto_seguradora,
-                repasse_seguradora_bruto=repasse_seguradora_bruto,
-                imposto=imposto,
-                repasse_liquido=repasse_liquido,
-                entradas=entradas,
-                saidas=saidas,
-                resultado=resultado,
-                percentual=percetual,
+                incendio_conteudo=incendio_conteudo.round(2),
+                perda_aluguel=perda_aluguel.round(2),
+                repasse_percentual=repasse_percentual.round(2),
+                premio_proposto=premio_proposto.round(2),
+                is_total=is_total.round(2),
+                premio_liquido=premio_liquido.round(2),
+                repasse=repasse.round(2),
+                comissao_administradora=comissao_administradora.round(2),
+                assistencia_basica=assistencia_basica.round(2),
+                taxa_seguradora=taxa_seguradora.round(2),
+                premio_liquido_seguradora=premio_liquido_seguradora.round(2),
+                premio_bruto_seguradora=premio_bruto_seguradora.round(2),
+                repasse_seguradora_bruto=repasse_seguradora_bruto.round(2),
+                imposto=imposto.round(2),
+                repasse_liquido=repasse_liquido.round(2),
+                entradas=entradas.round(2),
+                saidas=saidas.round(2),
+                resultado=resultado.round(2),
+                percentual=percetual.round(2),
             )
 
             results = {
@@ -96,11 +96,10 @@ def calcular_cotacao_incendio(request):
                 "data_cotacao": cotacao.data_cotacao.isoformat(),  # Formata a data para JSON
             }
 
-            return JsonResponse(results, status=201)
+            return JsonResponse(results, status=200)
 
         except (json.JSONDecodeError, ValueError, TypeError) as e:
-            # Em caso de erro, retorna uma resposta de erro
-            # TypeError pode ocorrer se um valor não for um número
+
             return JsonResponse(
                 {"error": f"Dados inválidos na requisição. Detalhe: {str(e)}"},
                 status=400,
