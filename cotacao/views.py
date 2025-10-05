@@ -69,7 +69,7 @@ def calcular_cotacao_incendio(request):
                 entradas=round(entradas, 2),
                 saidas=round(saidas, 2),
                 resultado=round(resultado, 2),
-                percentual=round(percetual, 2),
+                percentual=round(percetual, 2) * 100,
             )
 
             results = {
