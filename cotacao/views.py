@@ -69,7 +69,7 @@ def calcular_cotacao_incendio(request):
                 entradas=entradas.round(2),
                 saidas=saidas.round(2),
                 resultado=resultado.round(2),
-                percentual=percetual.round(2),
+                percentual=percetual.round(2) * 100,
             )
 
             results = {
@@ -92,7 +92,7 @@ def calcular_cotacao_incendio(request):
                 "entradas": cotacao.entradas,
                 "saidas": cotacao.saidas,
                 "resultado": cotacao.resultado,
-                "percentual": cotacao.percentual,
+                "percentual": f"{cotacao.percentual}%",
                 "data_cotacao": cotacao.data_cotacao.isoformat(),  # Formata a data para JSON
             }
 
