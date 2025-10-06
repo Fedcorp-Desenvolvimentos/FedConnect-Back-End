@@ -1,8 +1,16 @@
 from django.db import models
+from bigcorp import settings
 
 
 class CotacaoIncendio(models.Model):
     # Dados de entrada da cotação
+    responsavel = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="estudos_incendio",
+        default=None,
+        null=True,
+    )
     incendio_conteudo = models.FloatField(verbose_name="Incêndio Conteúdo")
     perda_aluguel = models.FloatField(verbose_name="Perda de Aluguel")
     repasse_percentual = models.FloatField(verbose_name="Repasse Percentual")

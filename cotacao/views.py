@@ -1,6 +1,8 @@
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from consultas.models import HistoricoConsulta
+from consultas.serializers import HistoricoConsultaSerializer
 
 # Importe o seu modelo
 from .models import CotacaoIncendio
@@ -22,13 +24,18 @@ def calcular_cotacao_incendio(request):
             perda_aluguel = float(data.get("perda_aluguel", 0))
             repasse_percentual = float(data.get("repasse_percentual", 0))
             premio_proposto = float(data.get("premio_proposto", 0))
+            tipo_imovel = data.get("tipo_imovel", "").lower()
+            assistencia = data.get("assistencia", "").lower()
 
             is_total = incendio_conteudo + perda_aluguel
             premio_liquido = premio_proposto / 1.0738
             repasse = repasse_percentual / 100
             comissao_administradora = premio_liquido * repasse
             assistencia_basica = 0.2
-            taxa_seguradora = 0.00585 / 100
+            if tipo_imovel == "comercial":
+                taxa_seguradora = 0.00585 / 100
+            elif tipo_imovel == "residencial":
+                taxa_seguradora = 0.00250 / 100
 
             if is_total * taxa_seguradora < 0.80:
                 premio_liquido_seguradora = 0.80
@@ -95,6 +102,17 @@ def calcular_cotacao_incendio(request):
                 "percentual": f"{cotacao.percentual}%",
                 "data_cotacao": cotacao.data_cotacao.isoformat(),  # Formata a data para JSON
             }
+            historico = HistoricoConsulta.objects.create(
+                usuario=request.user,  # O usuário logado que realizou a consulta.
+                tipo_consulta="estudo-incendio",  # Tipo de consulta, conforme definido no modelo.
+                parametro_consulta=request.body,  # O valor (string ou JSON string) a ser salvo.
+                resultado=results,  # O resultado JSON completo da API externa.
+                origem="manual",
+                lote_id=None,
+            )
+
+            # Serializa o objeto de histórico salvo para a resposta da API.
+            historico_serializer = HistoricoConsultaSerializer(historico)
 
             return JsonResponse(results, status=200)
 

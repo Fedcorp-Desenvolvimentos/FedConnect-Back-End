@@ -10,14 +10,15 @@ class HistoricoConsulta(models.Model):
         ("cpf", "Consulta de CPF"),
         ("cnpj", "Consulta de CNPJ"),
         ("endereco", "Consulta de Endereço"),
-        ("cpf_alternativa", "Consulta de CPF por Chaves Alternativas"), 
-        ("cnpj_razao_social", "Consulta de CNPJ por Razão Social"), 
-        ("cep_rua_cidade", "Consulta de CEP por Chaves Alternativas"), 
+        ("cpf_alternativa", "Consulta de CPF por Chaves Alternativas"),
+        ("cnpj_razao_social", "Consulta de CNPJ por Razão Social"),
+        ("cep_rua_cidade", "Consulta de CEP por Chaves Alternativas"),
         ("cnpj_comercial", "Consulta Comercial de CNPJ"),
         ("comercial", "Consulta contato Comercial"),
-        ("vida", "Consulta de segurados Vida"  ),
+        ("vida", "Consulta de segurados Vida"),
         ("incendio", "Consulta de segurados Incendio"),
-        ("faturas", "Consulta de faturas")
+        ("faturas", "Consulta de faturas"),
+        ("estudo-incendio", "Estudo de Cotação Incendio"),
     ]
 
     ORIGEM_CONSULTA_CHOICES = [
@@ -26,16 +27,16 @@ class HistoricoConsulta(models.Model):
     ]
 
     usuario = models.ForeignKey(
-        Usuario, 
-        on_delete=models.CASCADE, 
+        Usuario,
+        on_delete=models.CASCADE,
         related_name="historico_consultas",
-        null=True, 
+        null=True,
         blank=True,
     )
-    tipo_consulta = models.CharField(max_length=30, choices=TIPO_CONSULTA_CHOICES) 
-    
-    parametro_consulta = models.TextField() 
-    
+    tipo_consulta = models.CharField(max_length=30, choices=TIPO_CONSULTA_CHOICES)
+
+    parametro_consulta = models.TextField()
+
     origem = models.CharField(
         max_length=10,
         choices=ORIGEM_CONSULTA_CHOICES,
@@ -43,12 +44,12 @@ class HistoricoConsulta(models.Model):
         verbose_name=_("origem da consulta"),
     )
     data_consulta = models.DateTimeField(auto_now_add=True)
-    resultado = models.JSONField(null=True, blank=True) # Perfeito, já está JSONField
+    resultado = models.JSONField(null=True, blank=True)  # Perfeito, já está JSONField
 
     lote_id = models.UUIDField(
-        default=None, 
-        null=True, 
-        blank=True, 
+        default=None,
+        null=True,
+        blank=True,
         help_text="ID único para agrupar consultas de um mesmo upload de planilha.",
     )
 
