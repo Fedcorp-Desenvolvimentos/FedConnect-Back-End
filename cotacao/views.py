@@ -3,6 +3,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from consultas.models import HistoricoConsulta
 from consultas.serializers import HistoricoConsultaSerializer
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 # Importe o seu modelo
 from .models import CotacaoIncendio
@@ -12,6 +14,8 @@ from .models import CotacaoIncendio
 # mas para produção, use o CSRF token do Django para segurança.
 @csrf_exempt
 def calcular_cotacao_incendio(request):
+    authentication_classes = [JWTAuthentication]  # Adicione suas classes de autenticação aqui
+    permission_classes = [IsAuthenticated]
     if request.method == "POST":
         try:
             # Recebe os dados JSON da requisição
