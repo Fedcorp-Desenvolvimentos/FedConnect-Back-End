@@ -33,7 +33,7 @@ def calcular_cotacao_incendio(request):
             repasse_percentual = float(data.get("repasse_percentual", 0))
             premio_proposto = float(data.get("premio_proposto", 0))
             tipo_imovel = data.get("tipo_imovel", "").lower()
-            assistencia = data.get("assistencia", "").lower()
+            assistencia = data.get("assistencia_tipo", "").lower()
 
             is_total = incendio_conteudo + perda_aluguel
             premio_liquido = premio_proposto / 1.0738
@@ -49,7 +49,7 @@ def calcular_cotacao_incendio(request):
             
             if assistencia == "faz_tudo_lar":
                 assistencia_value = 1.5
-            if assistencia == "basica":
+            elif assistencia == "basica":
                 assistencia_value = 0.2
             
             # Adicionar um 'else' caso tipo_imovel não seja 'comercial' nem 'residencial'
