@@ -6,10 +6,9 @@ class CotacaoIncendio(models.Model):
     # Dados de entrada da cotação
     responsavel = models.ForeignKey(
         Usuario,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         related_name="estudos_incendio",
-        null=True,
-        blank=True,
+        default=1
     )
     incendio_conteudo = models.FloatField(verbose_name="Incêndio Conteúdo")
     perda_aluguel = models.FloatField(verbose_name="Perda de Aluguel")

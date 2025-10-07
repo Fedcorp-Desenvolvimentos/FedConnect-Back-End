@@ -30,8 +30,8 @@ class HistoricoConsulta(models.Model):
         Usuario,
         on_delete=models.CASCADE,
         related_name="historico_consultas",
-        null=True,
-        blank=True,
+
+       
     )
     tipo_consulta = models.CharField(max_length=30, choices=TIPO_CONSULTA_CHOICES)
 
