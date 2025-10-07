@@ -87,7 +87,7 @@ def calcular_cotacao_incendio(request):
                 premio_liquido=round(premio_liquido, 2),
                 repasse=round(repasse, 2),
                 comissao_administradora=round(comissao_administradora, 2),
-                assistencia_basica=round(assistencia_value, 2) * 100,
+                assistencia_basica=round(assistencia_value, 2),
                 taxa_seguradora=round(taxa_seguradora, 6), 
                 premio_liquido_seguradora=round(premio_liquido_seguradora, 2),
                 premio_bruto_seguradora=round(premio_bruto_seguradora, 2),
