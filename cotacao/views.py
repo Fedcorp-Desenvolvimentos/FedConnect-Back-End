@@ -1,29 +1,33 @@
 import json
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+# O decorador drf_api_view substitui o csrf_exempt para APIs
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 from consultas.models import HistoricoConsulta
 from consultas.serializers import HistoricoConsultaSerializer
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.permissions import IsAuthenticated
-
-# Importe o seu modelo
 from .models import CotacaoIncendio
+from django.db import IntegrityError # Importar para capturar erros de integridade (como o campo responsavel obrigatório)
 
 
-# A função csrf_exempt é usada para simplificar,
-# mas para produção, use o CSRF token do Django para segurança.
-@csrf_exempt
+# 1. Usamos os decoradores do DRF (api_view, authentication_classes, permission_classes)
+# para garantir que o request.user seja um usuário válido ANTES da lógica ser executada.
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def calcular_cotacao_incendio(request):
-    authentication_classes = [JWTAuthentication]  # Adicione suas classes de autenticação aqui
-    permission_classes = [IsAuthenticated]
+    # A autenticação e permissão são aplicadas ANTES de chegar aqui.
+    # Se o usuário não estiver logado, a função nem será executada e retornará 401.
     if request.method == "POST":
         try:
-            # Recebe os dados JSON da requisição
+            # Recebe os dados JSON da requisição (DRF já trata o request.data se estiver usando JSON)
+            # Como você usou json.loads(request.body) no código original, vamos manter a compatibilidade
+            # Mas, se for uma requisição DRF, você deve usar `data = request.data`
             data = json.loads(request.body)
-            print(f"{request.body}")
 
-            # O problema mais comum é se a chave não existe no dicionário.
-            # Use .get(key, 0) para garantir que sempre retorne um valor padrão.
+            # ... (Restante da lógica de cálculo é mantida) ...
+
             incendio_conteudo = float(data.get("incendio_conteudo", 0))
             perda_aluguel = float(data.get("perda_aluguel", 0))
             repasse_percentual = float(data.get("repasse_percentual", 0))
@@ -36,10 +40,18 @@ def calcular_cotacao_incendio(request):
             repasse = repasse_percentual / 100
             comissao_administradora = premio_liquido * repasse
             assistencia_basica = 0.2
+            taxa_seguradora = 0.00585 / 100 # Valor padrão para garantir que a variável existe
+            
             if tipo_imovel == "comercial":
                 taxa_seguradora = 0.00585 / 100
             elif tipo_imovel == "residencial":
                 taxa_seguradora = 0.00250 / 100
+            
+            # Adicionar um 'else' caso tipo_imovel não seja 'comercial' nem 'residencial'
+            # (opcional, mas recomendado)
+            # else:
+            #    raise ValueError("Tipo de imóvel inválido.")
+
 
             if is_total * taxa_seguradora < 0.80:
                 premio_liquido_seguradora = 0.80
@@ -58,10 +70,16 @@ def calcular_cotacao_incendio(request):
             resultado = entradas - saidas
             percetual = resultado / premio_proposto
 
-            repasse_administradora = premio_proposto * repasse
+            # repasse_administradora = premio_proposto * repasse # Variável não usada, pode remover.
             # --- Fim da Lógica de Cálculo ---
 
+            # 2. Agora, request.user é um usuário válido ('Usuario' ou seu AUTH_USER_MODEL)
             cotacao = CotacaoIncendio.objects.create(
+                # Adicionar o campo OBRIGATÓRIO (responsavel)
+                # O default=1 em seu modelo garante que, se não for passado, ele tente usar o 1.
+                # No entanto, aqui é mais seguro passar o usuário logado:
+                responsavel=request.user, 
+                
                 incendio_conteudo=round(incendio_conteudo, 2),
                 perda_aluguel=round(perda_aluguel, 2),
                 repasse_percentual=round(repasse_percentual, 2),
@@ -71,7 +89,8 @@ def calcular_cotacao_incendio(request):
                 repasse=round(repasse, 2) * 100,
                 comissao_administradora=round(comissao_administradora, 2),
                 assistencia_basica=round(assistencia_basica, 2) * 100,
-                taxa_seguradora=taxa_seguradora * 100,
+                # A taxa seguradora deve ser arredondada antes de multiplicar por 100 se for um campo float:
+                taxa_seguradora=round(taxa_seguradora, 6) * 100, 
                 premio_liquido_seguradora=round(premio_liquido_seguradora, 2),
                 premio_bruto_seguradora=round(premio_bruto_seguradora, 2),
                 repasse_seguradora_bruto=round(repasse_seguradora_bruto, 2),
@@ -83,8 +102,9 @@ def calcular_cotacao_incendio(request):
                 percentual=round(percetual, 2) * 100,
             )
 
+            # 3. Preparação dos resultados (mantida a sua estrutura)
             results = {
-                # Dados de entrada
+                # ... (resultado) ...
                 "incendio_conteudo": cotacao.incendio_conteudo,
                 "perda_aluguel": cotacao.perda_aluguel,
                 "repasse_percentual": cotacao.repasse_percentual,
@@ -104,28 +124,40 @@ def calcular_cotacao_incendio(request):
                 "saidas": cotacao.saidas,
                 "resultado": cotacao.resultado,
                 "percentual": f"{cotacao.percentual}%",
-                "data_cotacao": cotacao.data_cotacao.isoformat(),  # Formata a data para JSON
+                "data_cotacao": cotacao.data_cotacao.isoformat(),
             }
+            
+            # 4. Salvamento do Histórico de Consulta
+            # Note: Como o campo 'usuario' em HistoricoConsulta é OBRIGATÓRIO (NOT NULL),
+            # e a view está protegida, request.user é seguro.
             historico = HistoricoConsulta.objects.create(
-                usuario=request.user,  # O usuário logado que realizou a consulta.
-                tipo_consulta="estudo-incendio",  # Tipo de consulta, conforme definido no modelo.
-                parametro_consulta=request.body,  # O valor (string ou JSON string) a ser salvo.
-                resultado=results,  # O resultado JSON completo da API externa.
+                usuario=request.user,
+                tipo_consulta="estudo-incendio",
+                parametro_consulta=request.body, # Salva o payload completo
+                resultado=results,
                 origem="manual",
                 lote_id=None,
             )
 
-            # Serializa o objeto de histórico salvo para a resposta da API.
-            historico_serializer = HistoricoConsultaSerializer(historico)
+            # 5. O serializador do histórico não precisa ser retornado na resposta da cotação
+            # A linha abaixo é redundante se você só quer retornar 'results'.
+            # historico_serializer = HistoricoConsultaSerializer(historico)
 
             return JsonResponse(results, status=200)
 
+        # 6. Adicione exceção para erros de integridade (como faltar o responsavel se o IsAuthenticated falhar)
+        except IntegrityError as e:
+            return JsonResponse(
+                {"error": f"Erro de integridade do banco de dados. Verifique se todos os campos obrigatórios foram fornecidos. Detalhe: {str(e)}"},
+                status=400,
+            )
+            
         except (json.JSONDecodeError, ValueError, TypeError) as e:
-
             return JsonResponse(
                 {"error": f"Dados inválidos na requisição. Detalhe: {str(e)}"},
                 status=400,
             )
+            
     else:
-        # Se a requisição não for POST, retorna um erro
+        # Se a requisição não for POST, retorna um erro (o decorador @api_view já faz isso, mas é bom manter)
         return JsonResponse({"error": "Método não permitido."}, status=405)
