@@ -664,108 +664,112 @@ class BulkConsultaComercialAPIView(APIView):
 
 
 class ComercialRegiaoAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, *args, **kwargs):
-        user = self.request.user
-
-        if not user.is_authenticated:
-            return Response(
-                {"detail": "Você precisa estar autenticado para acessar esta consulta em massa."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
+        
+        # 1. CAPTURA E NORMALIZAÇÃO DOS DADOS DE ENTRADA
         try:
             uf = request.data.get('uf', '').upper()
             cidade = request.data.get('cidade', '').upper()
             bairro_filtro = request.data.get('bairro', '').upper()
-
+            
             if not uf or not cidade:
-                return Response(
+                 return Response(
                     {"detail": "UF e Cidade são obrigatórios para a pesquisa."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            cnaes = ['6821801', '6821802', '6822600']
-            todos_resultados = []
-
-            # 2. Função auxiliar para execução paralela
-            def buscar_dados_cnae(cnae):
-                try:
-                    url = f"https://minhareceita.org/?cnae={cnae}&uf={uf}"
-                    
-                    # === PONTO DE DEBUG 1: URL E STATUS ===
-                    print(f"\n[DEBUG] CNAE {cnae}: Requisição para -> {url}") 
-                    response = requests.get(url, timeout=30) 
-                    print(f"[DEBUG] CNAE {cnae}: Status Code -> {response.status_code}")
-                    # ======================================
-                    
-                    if response.status_code == 200:
-                        dados = response.json()
-                        
-                        # === PONTO DE DEBUG 2: TRATAMENTO DO RETORNO ===
-                        # ⚠️ Se o retorno JSON vier aninhado (ex: {"data": [...]}), corrija aqui
-                        if not isinstance(dados, list) and isinstance(dados, dict) and 'data' in dados:
-                             dados = dados.get('data', [])
-                             print(f"[DEBUG] CNAE {cnae}: Corrigido retorno aninhado. (Usando chave 'data')")
-                        
-                        if not isinstance(dados, list):
-                            print(f"[ERRO] CNAE {cnae}: Retorno JSON não é uma lista após correção. Abortando.")
-                            return []
-                        # ===============================================
-
-                        
-                        # FILTRAGEM: O filtro por Cidade e Bairro ocorre aqui
-                        filtrados = [
-                            empresa 
-                            for empresa in dados
-                            if empresa.get('municipio', '').upper() == cidade
-                            and (not bairro_filtro or empresa.get('bairro', '').upper() == bairro_filtro)
-                        ]
-                        
-                        # === PONTO DE DEBUG 3: RESULTADO DO FILTRO ===
-                        print(f"[DEBUG] CNAE {cnae}: Total ANTES do filtro: {len(dados)}")
-                        print(f"[DEBUG] CNAE {cnae}: Total DEPOIS do filtro: {len(filtrados)}")
-                        if len(dados) > 0 and len(filtrados) == 0:
-                            print("[DEBUG] ATENÇÃO: O filtro está rejeitando tudo. Verifique as chaves 'municipio' e 'bairro' no JSON de resposta da API.")
-                        # =============================================
-
-                        # PADRONIZAÇÃO DO RETORNO: 
-                        return [
-                            {
-                                "nome": emp.get("razao_social") or emp.get("nome_fantasia"),
-                                "tipo": (
-                                     "Imobiliária"
-                                     if cnae.startswith("6821")
-                                     else "Administradora"
-                                 ),
-                                "endereco": f"{emp.get('logradouro')}, {emp.get('numero')} - {emp.get('bairro')}, {emp.get('municipio')} - {emp.get('uf')}",
-                                "cep": emp.get("cep", "Sem CEP"),
-                                "telefone": emp.get("ddd_telefone_1", "Sem Telefone"), 
-                                "cnpj": emp.get("cnpj", "Não encontrado"),
-                                "mei": emp.get("opcao_pelo_mei", "false"),
-                                "porte": emp.get("porte", "Não informado"),
-                                "cnae": cnae,
-                            }
-                            for emp in filtrados
-                        ]
-                    return []
-                except Exception as erro_req:
-                    print(f"[ERRO] CNAE {cnae} para UF {uf}: {erro_req}")
-                    return []
-
-            # 3. Execução Paralela e Coleta dos Resultados
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                futures = [executor.submit(buscar_dados_cnae, cnae) for cnae in cnaes]
-                
-                for future in as_completed(futures):
-                    resultado = future.result()
-                    if resultado:
-                        todos_resultados.extend(resultado)
-
-            return Response(todos_resultados, status=status.HTTP_200_OK)
-
         except Exception as e:
-            print(f"Erro interno na View: {e}")
+            print(f"[ERRO] Falha na captura dos dados de entrada: {e}")
             return Response(
-                {'detail': 'Não foi possível realizar a consulta devido a um erro interno.'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {'detail': 'Dados de entrada inválidos.'},
+                status=status.HTTP_400_BAD_REQUEST
             )
+
+        cnaes = ["6821801", "6821802", "6822600"]
+        resultados = []
+    
+        # 2. LOOP SEQUENCIAL PARA REQUISIÇÃO E FILTRO
+        for cnae in cnaes:
+            try:
+                # Variáveis UF e CNAE agora estão definidas
+                url = f"https://minhareceita.org/?cnae={cnae}&uf={uf}"
+                print(f"\n[DEBUG] Buscando CNAE {cnae} na UF {uf}: {url}")
+    
+                response = requests.get(url, timeout=30)
+                print(f"[DEBUG] CNAE {cnae}: Status {response.status_code}")
+    
+                if response.status_code != 200:
+                    print(f"[ERRO] CNAE {cnae}: Resposta inválida -> {response.text[:300]}")
+                    continue
+                
+                try:
+                    dados = response.json()
+                except:
+                    print(f"[ERRO] CNAE {cnae}: JSON inválido -> {response.text[:300]}")
+                    continue
+                
+                # Normaliza: se for objeto único, vira lista
+                if isinstance(dados, dict):
+                    dados = [dados]
+    
+                if not isinstance(dados, list):
+                    print(f"[ERRO] Retorno inesperado CNAE {cnae}: {dados}")
+                    continue
+                
+                print(f"[DEBUG] CNAE {cnae}: Total bruto recebido: {len(dados)}")
+    
+                # ================================
+                # FILTRO MUNICÍPIO E BAIRRO
+                # ================================
+                filtrados = [
+                    emp for emp in dados
+                    if emp.get("municipio", "").upper() == cidade
+                    and (not bairro_filtro or emp.get("bairro", "").upper() == bairro_filtro)
+                ]
+    
+                print(f"[DEBUG] CNAE {cnae}: Após filtro -> {len(filtrados)}")
+    
+                for emp in filtrados:
+                
+                    # Classificação automática
+                    tipo = "Imobiliária" if cnae.startswith("6821") else "Administradora"
+    
+                    # Construção do endereço
+                    endereco = (
+                        f"{emp.get('descricao_tipo_de_logradouro', '')} "
+                        f"{emp.get('logradouro', '')}, "
+                        f"{emp.get('numero', '')} - "
+                        f"{emp.get('bairro', '')}, "
+                        f"{emp.get('municipio', '')} - "
+                        f"{emp.get('uf', '')}"
+                    ).replace("  ", " ").strip() # Corrigido: o 'replace' tinha tab/espaços
+    
+                    resultados.append({
+                        "nome": emp.get("razao_social") or emp.get("nome_fantasia") or "",
+                        "tipo": tipo,
+                        "endereco": endereco,
+                        "cep": emp.get("cep", ""),
+                        "telefone": emp.get("ddd_telefone_1", ""),
+                        "cnpj": emp.get("cnpj", ""),
+                        "porte": emp.get("porte", ""),
+                        "mei": emp.get("opcao_pelo_mei", False),
+                        # O CNAE da empresa (cnae_fiscal) pode ser diferente do buscado
+                        "cnae": emp.get("cnae_fiscal", ""), 
+    
+                        # Dados extras úteis:
+                        "nome_fantasia": emp.get("nome_fantasia") or "",
+                        "email": emp.get("email") or "",
+                        "qsa": emp.get("qsa", []),
+                        "situacao": emp.get("descricao_situacao_cadastral", ""),
+                        "inicio_atividade": emp.get("data_inicio_atividade", ""),
+                    })
+    
+            except Exception as e:
+                # Loga o erro, mas continua para o próximo CNAE
+                print(f"[ERRO] Falha ao consultar CNAE {cnae}: {e}")
+    
+        # 3. RETORNO FINAL
+        return Response(resultados, status=status.HTTP_200_OK)
