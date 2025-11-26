@@ -7,7 +7,7 @@ from planilha.views.cnpj_views import (baixar_planilha_modelo_drf_cnpj, Processa
 from planilha.views.cep_views import (baixar_planilha_modelo_drf_cep,ProcessarPlanilhaCepsView)
 from planilha.views.cpf_views import (baixar_planilha_modelo_drf_cpf, ProcessarPlanilhaCpfsView)
 from empresas.views import EmpresaViewSet
-from consultas.comercial import ConsultaComercialAPIView, ConsultaContatoComercialAPIView, BulkConsultaComercialAPIView
+from consultas.comercial import ConsultaComercialAPIView, ConsultaContatoComercialAPIView, BulkConsultaComercialAPIView, ComercialRegiaoAPIView
 from consultas.segurados import RealizarConsultaSeguradosView, buscarAdms
 from consultas.faturas import RealizarConsultaFaturasView
 from agenda.views import ReservaViewSet
@@ -74,6 +74,8 @@ urlpatterns = [
     path('consultas/comercial/', ConsultaComercialAPIView.as_view(), name='consulta-comercial'), 
     path('consultas/cont-comercial/', ConsultaContatoComercialAPIView.as_view(), name='consulta-contato-comercial'), 
     path('consulta-massa-comercial/', BulkConsultaComercialAPIView.as_view(), name='consulta-massa-comercial'),
+    path('consulta/comercial-regiao', ComercialRegiaoAPIView.as_view(), name='consulta-comercial-regiao'),
+   
    
     path('consultas/segurados/', RealizarConsultaSeguradosView.as_view(), name='realizar_consulta_segurados'),
     path('administradoras/', buscarAdms.as_view(), name='buscar_adms'),
@@ -83,6 +85,7 @@ urlpatterns = [
     path('comercial/agenda/<int:pk>/', AgendamentoRetrieveUpdateDestroyAPIView.as_view(), name='agendamento_detail'),
     
     path('cotacao/incendio-conteudo/', calcular_cotacao_incendio, name='calcular_cotacao_incendio'),
+    
     
    
     # Inclua as rotas geradas pelo Router (ViewSets) por último

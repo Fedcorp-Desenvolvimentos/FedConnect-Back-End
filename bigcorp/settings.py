@@ -187,6 +187,9 @@ CNPJ_URL = "https://brasilapi.com.br/api/cnpj/v1/"
 CPF_URL = "https://plataforma.bigdatacorp.com.br/pessoas"
 ALT_CNPJ_URL = "https://plataforma.bigdatacorp.com.br/empresas"
 ALT_CEP_URL = "https://viacep.com.br/ws"
+REGIAO_URL = "https://minhareceita.org/"
+
+
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
 SPECTACULAR_SETTINGS = {
