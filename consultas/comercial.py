@@ -664,72 +664,83 @@ class BulkConsultaComercialAPIView(APIView):
 
 
 class ComercialRegiaoAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
-
-    url = settings.REGIAO_URL
-
     def post(self, request, *args, **kwargs):
         user = self.request.user
 
         if not user.is_authenticated:
             return Response(
-                {
-                    "detail": "Você precisa estar autenticado para acessar esta consulta em massa."
-                },
+                {"detail": "Você precisa estar autenticado para acessar esta consulta em massa."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
         try:
-            uf = request.data.get("uf", "").upper()
-            cidade = request.data.get("cidade", "").upper()
-            bairro_filtro = request.data.get("bairro", "").upper()
+            uf = request.data.get('uf', '').upper()
+            cidade = request.data.get('cidade', '').upper()
+            bairro_filtro = request.data.get('bairro', '').upper()
 
             if not uf or not cidade:
                 return Response(
                     {"detail": "UF e Cidade são obrigatórios para a pesquisa."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Lista de CNAEs para buscar
-            cnaes = ["6821801", "6821802", "6822600"]
-
-            # Array final que receberá os dados
+            cnaes = ['6821801', '6821802', '6822600']
             todos_resultados = []
 
-            # Função auxiliar para ser executada em paralelo
+            # 2. Função auxiliar para execução paralela
             def buscar_dados_cnae(cnae):
                 try:
                     url = f"https://minhareceita.org/?cnae={cnae}&uf={uf}"
-
-                    response = requests.get(url, timeout=30)
-
+                    
+                    # === PONTO DE DEBUG 1: URL E STATUS ===
+                    print(f"\n[DEBUG] CNAE {cnae}: Requisição para -> {url}") 
+                    response = requests.get(url, timeout=30) 
+                    print(f"[DEBUG] CNAE {cnae}: Status Code -> {response.status_code}")
+                    # ======================================
+                    
                     if response.status_code == 200:
                         dados = response.json()
+                        
+                        # === PONTO DE DEBUG 2: TRATAMENTO DO RETORNO ===
+                        # ⚠️ Se o retorno JSON vier aninhado (ex: {"data": [...]}), corrija aqui
+                        if not isinstance(dados, list) and isinstance(dados, dict) and 'data' in dados:
+                             dados = dados.get('data', [])
+                             print(f"[DEBUG] CNAE {cnae}: Corrigido retorno aninhado. (Usando chave 'data')")
+                        
+                        if not isinstance(dados, list):
+                            print(f"[ERRO] CNAE {cnae}: Retorno JSON não é uma lista após correção. Abortando.")
+                            return []
+                        # ===============================================
 
+                        
+                        # FILTRAGEM: O filtro por Cidade e Bairro ocorre aqui
                         filtrados = [
-                            empresa
+                            empresa 
                             for empresa in dados
-                            if empresa.get("municipio", "").upper() == cidade
-                            and (
-                                not bairro_filtro
-                                or empresa.get("bairro", "").upper() == bairro_filtro
-                            )
+                            if empresa.get('municipio', '').upper() == cidade
+                            and (not bairro_filtro or empresa.get('bairro', '').upper() == bairro_filtro)
                         ]
+                        
+                        # === PONTO DE DEBUG 3: RESULTADO DO FILTRO ===
+                        print(f"[DEBUG] CNAE {cnae}: Total ANTES do filtro: {len(dados)}")
+                        print(f"[DEBUG] CNAE {cnae}: Total DEPOIS do filtro: {len(filtrados)}")
+                        if len(dados) > 0 and len(filtrados) == 0:
+                            print("[DEBUG] ATENÇÃO: O filtro está rejeitando tudo. Verifique as chaves 'municipio' e 'bairro' no JSON de resposta da API.")
+                        # =============================================
 
+                        # PADRONIZAÇÃO DO RETORNO: 
                         return [
                             {
-                                "nome": emp.get("razao_social")
-                                or emp.get("nome_fantasia"),
+                                "nome": emp.get("razao_social") or emp.get("nome_fantasia"),
                                 "tipo": (
-                                    "Imobiliária"
-                                    if cnae.startswith("6821")
-                                    else "Administradora"
-                                ),
+                                     "Imobiliária"
+                                     if cnae.startswith("6821")
+                                     else "Administradora"
+                                 ),
                                 "endereco": f"{emp.get('logradouro')}, {emp.get('numero')} - {emp.get('bairro')}, {emp.get('municipio')} - {emp.get('uf')}",
                                 "cep": emp.get("cep", "Sem CEP"),
-                                "telefone": emp.get("ddd_telefone_1", "Sem Telefone"),  # Ajustar conforme API
-                                "cnpj":emp.get("cnpj", "Não encontrado"),
+                                "telefone": emp.get("ddd_telefone_1", "Sem Telefone"), 
+                                "cnpj": emp.get("cnpj", "Não encontrado"),
                                 "mei": emp.get("opcao_pelo_mei", "false"),
                                 "porte": emp.get("porte", "Não informado"),
                                 "cnae": cnae,
@@ -738,12 +749,13 @@ class ComercialRegiaoAPIView(APIView):
                         ]
                     return []
                 except Exception as erro_req:
-                    print(f"Erro ao buscar CNAE {cnae}: {erro_req}")
+                    print(f"[ERRO] CNAE {cnae} para UF {uf}: {erro_req}")
                     return []
 
+            # 3. Execução Paralela e Coleta dos Resultados
             with ThreadPoolExecutor(max_workers=3) as executor:
                 futures = [executor.submit(buscar_dados_cnae, cnae) for cnae in cnaes]
-
+                
                 for future in as_completed(futures):
                     resultado = future.result()
                     if resultado:
@@ -752,9 +764,8 @@ class ComercialRegiaoAPIView(APIView):
             return Response(todos_resultados, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Logar o erro real no console para debug
             print(f"Erro interno na View: {e}")
             return Response(
-                {"detail": "Não foi possível realizar a consulta"},
-                status=status.HTTP_400_BAD_REQUEST,
+                {'detail': 'Não foi possível realizar a consulta devido a um erro interno.'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
