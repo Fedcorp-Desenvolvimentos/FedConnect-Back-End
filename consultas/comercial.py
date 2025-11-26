@@ -14,6 +14,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.conf import settings
 import requests
 import os
+import unicodedata
 import re
 from django.http import FileResponse
 from rest_framework.renderers import JSONRenderer
@@ -663,6 +664,17 @@ class BulkConsultaComercialAPIView(APIView):
         return response
 
 
+def normalizar_texto(texto):
+    """Remove acentos, transforma em maiúsculas e remove espaços extras."""
+    if not texto:
+        return ""
+    # Remove acentos
+    texto = unicodedata.normalize('NFD', texto).encode('ascii', 'ignore').decode('utf-8')
+    # Transforma em maiúsculas e remove espaços extras
+    return texto.strip().upper()
+
+# -----------------------------------------------------------------
+
 class ComercialRegiaoAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -672,8 +684,9 @@ class ComercialRegiaoAPIView(APIView):
         # 1. CAPTURA E NORMALIZAÇÃO DOS DADOS DE ENTRADA
         try:
             uf = request.data.get('uf', '').upper()
-            cidade = request.data.get('cidade', '').upper()
-            bairro_filtro = request.data.get('bairro', '').upper()
+            # 🟢 Normaliza as entradas de cidade e bairro
+            cidade = normalizar_texto(request.data.get('cidade', ''))
+            bairro_filtro = normalizar_texto(request.data.get('bairro', ''))
             
             if not uf or not cidade:
                  return Response(
@@ -682,6 +695,7 @@ class ComercialRegiaoAPIView(APIView):
                 )
 
         except Exception as e:
+            # Em caso de erro na entrada, retorna 400
             print(f"[ERRO] Falha na captura dos dados de entrada: {e}")
             return Response(
                 {'detail': 'Dados de entrada inválidos.'},
@@ -694,43 +708,48 @@ class ComercialRegiaoAPIView(APIView):
         # 2. LOOP SEQUENCIAL PARA REQUISIÇÃO E FILTRO
         for cnae in cnaes:
             try:
-                # Variáveis UF e CNAE agora estão definidas
                 url = f"https://minhareceita.org/?cnae={cnae}&uf={uf}"
-                print(f"\n[DEBUG] Buscando CNAE {cnae} na UF {uf}: {url}")
+                # Removido print(f"\n[DEBUG] Buscando CNAE {cnae} na UF {uf}: {url}")
     
                 response = requests.get(url, timeout=30)
-                print(f"[DEBUG] CNAE {cnae}: Status {response.status_code}")
+                # Removido print(f"[DEBUG] CNAE {cnae}: Status {response.status_code}")
     
                 if response.status_code != 200:
-                    print(f"[ERRO] CNAE {cnae}: Resposta inválida -> {response.text[:300]}")
+                    print(f"[ERRO] CNAE {cnae}: Resposta inválida (Status {response.status_code})")
                     continue
                 
                 try:
                     dados = response.json()
                 except:
-                    print(f"[ERRO] CNAE {cnae}: JSON inválido -> {response.text[:300]}")
+                    print(f"[ERRO] CNAE {cnae}: JSON inválido.")
                     continue
                 
-                # Normaliza: se for objeto único, vira lista
+                # 🟢 Normaliza e extrai a lista da chave 'data'
                 if isinstance(dados, dict):
-                    dados = [dados]
+                    if 'data' in dados and isinstance(dados['data'], list):
+                        dados = dados['data']
+                    else:
+                        # Se for um dicionário sem a lista de dados, pula este CNAE
+                        print(f"[ERRO] Retorno em formato de dicionário sem chave 'data'.")
+                        continue
     
                 if not isinstance(dados, list):
-                    print(f"[ERRO] Retorno inesperado CNAE {cnae}: {dados}")
+                    print(f"[ERRO] Retorno inesperado CNAE {cnae}.")
                     continue
                 
-                print(f"[DEBUG] CNAE {cnae}: Total bruto recebido: {len(dados)}")
+                # Removido print(f"[DEBUG] CNAE {cnae}: Total bruto recebido: {len(dados)}")
     
                 # ================================
                 # FILTRO MUNICÍPIO E BAIRRO
                 # ================================
                 filtrados = [
                     emp for emp in dados
-                    if emp.get("municipio", "").upper() == cidade
-                    and (not bairro_filtro or emp.get("bairro", "").upper() == bairro_filtro)
+                    # 🟢 APLICA NORMALIZAÇÃO nos dados da API antes de comparar
+                    if normalizar_texto(emp.get("municipio", "")) == cidade
+                    and (not bairro_filtro or normalizar_texto(emp.get("bairro", "")) == bairro_filtro)
                 ]
     
-                print(f"[DEBUG] CNAE {cnae}: Após filtro -> {len(filtrados)}")
+                # Removido print(f"[DEBUG] CNAE {cnae}: Após filtro -> {len(filtrados)}")
     
                 for emp in filtrados:
                 
@@ -745,7 +764,7 @@ class ComercialRegiaoAPIView(APIView):
                         f"{emp.get('bairro', '')}, "
                         f"{emp.get('municipio', '')} - "
                         f"{emp.get('uf', '')}"
-                    ).replace("  ", " ").strip() # Corrigido: o 'replace' tinha tab/espaços
+                    ).replace("  ", " ").strip()
     
                     resultados.append({
                         "nome": emp.get("razao_social") or emp.get("nome_fantasia") or "",
@@ -756,7 +775,6 @@ class ComercialRegiaoAPIView(APIView):
                         "cnpj": emp.get("cnpj", ""),
                         "porte": emp.get("porte", ""),
                         "mei": emp.get("opcao_pelo_mei", False),
-                        # O CNAE da empresa (cnae_fiscal) pode ser diferente do buscado
                         "cnae": emp.get("cnae_fiscal", ""), 
     
                         # Dados extras úteis:
