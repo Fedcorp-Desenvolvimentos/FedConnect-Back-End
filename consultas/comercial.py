@@ -681,13 +681,11 @@ class ComercialRegiaoAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 2. Configuração da Busca
-        # Montamos a string exata que funcionou no Insomnia
+       
         query_string = f"Administradoras e Imobiliárias em {bairro}, {municipio} - {uf}"
         
         url = "https://places.googleapis.com/v1/places:searchText"
-        
-        # A FieldMask exata que definimos (com nationalPhoneNumber)
+
         field_mask = (
             "places.displayName,"
             "places.formattedAddress,"
@@ -704,11 +702,10 @@ class ComercialRegiaoAPIView(APIView):
 
         payload = {
             "textQuery": query_string,
-            "includedType": "real_estate_agency", # Filtro para melhorar precisão
+            "includedType": "real_estate_agency",
             "languageCode": "pt-BR"
         }
-
-        # 3. Chamada à API do Google
+    
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
             response.raise_for_status() # Levanta erro se não for 200 OK
