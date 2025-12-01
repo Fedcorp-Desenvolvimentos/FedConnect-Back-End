@@ -191,6 +191,8 @@ REGIAO_URL = "https://minhareceita.org/"
 
 
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyCRSJTHKtG8_LmfYXzY9PhP8AzudBY42Z4")
+
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "API BigCorp",

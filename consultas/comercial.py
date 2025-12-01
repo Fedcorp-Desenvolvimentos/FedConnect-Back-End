@@ -664,157 +664,74 @@ class BulkConsultaComercialAPIView(APIView):
         return response
 
 
-def normalizar_texto(texto):
-    """Remove acentos, transforma em maiúsculas e remove espaços extras."""
-    if not texto:
-        return ""
-    # Remove acentos
-    texto = unicodedata.normalize('NFD', texto).encode('ascii', 'ignore').decode('utf-8')
-    # Transforma em maiúsculas e remove espaços extras
-    return texto.strip().upper()
-
-# -----------------------------------------------------------------
-
-# =================================================================
-# FUNÇÃO AUXILIAR 2: BUSCA DE UM ÚNICO CNAE COM PAGINAÇÃO (Concorrente)
-# =================================================================
-def buscar_cnae_concorrente(municipio_param, cnae, bairro_filtro):
-    """Realiza a busca completa (com paginação) para um único CNAE e aplica o filtro de bairro."""
-    
-    cursor = None
-    dados_brutos_totais = []
-    
-    # Loop de Paginação (While True)
-    while True:
-        try:
-            # CONSTRUÇÃO DA URL (Município ID e CNAE)
-            url = f"https://minhareceita.org/?municipio={municipio_param}&cnae_fiscal={cnae}"
-            
-            if cursor:
-                url += f"&cursor={cursor}"
-            
-            response = requests.get(url, timeout=30)
-
-            if response.status_code != 200:
-                print(f"[ERRO - {cnae}] Resposta inválida (Status {response.status_code})")
-                break 
-            
-            try:
-                dados_response = response.json()
-            except:
-                print(f"[ERRO - {cnae}] JSON inválido.")
-                break
-            
-            lista_empresas = dados_response.get('data', [])
-            novo_cursor = dados_response.get('cursor')
-            
-            if lista_empresas and isinstance(lista_empresas, list):
-                dados_brutos_totais.extend(lista_empresas)
-            
-            # Condição de parada: Se o novo cursor for None ou for o mesmo que o atual.
-            if not novo_cursor or novo_cursor == cursor:
-                break 
-            else:
-                cursor = novo_cursor
-                
-        except requests.exceptions.Timeout:
-            print(f"[ERRO - {cnae}] Timeout ao consultar página com cursor {cursor}.")
-            break
-        except Exception as e:
-            print(f"[ERRO - {cnae}] Falha ao consultar página com cursor {cursor}: {e}")
-            break
-    
-    # FILTRAGEM E FORMATAÇÃO
-    filtrados = [
-        emp for emp in dados_brutos_totais
-        # Filtro de bairro só é aplicado se bairro_filtro tiver valor.
-        if not bairro_filtro or normalizar_texto(emp.get("bairro", "")) == bairro_filtro
-    ]
-    
-    resultados_cnae = []
-    for emp in filtrados:
-        tipo = "Imobiliária" if cnae.startswith("6821") else "Administradora"
-
-        endereco = (
-            f"{emp.get('descricao_tipo_de_logradouro', '')} "
-            f"{emp.get('logradouro', '')}, "
-            f"{emp.get('numero', '')} - "
-            f"{emp.get('bairro', '')}, "
-            f"{emp.get('municipio', '')} - "
-            f"{emp.get('uf', '')}"
-        ).replace("  ", " ").strip()
-
-        resultados_cnae.append({
-            "nome": emp.get("razao_social") or emp.get("nome_fantasia") or "",
-            "tipo": tipo,
-            "endereco": endereco,
-            "cep": emp.get("cep", ""),
-            "telefone": emp.get("ddd_telefone_1", ""),
-            "cnpj": emp.get("cnpj", ""),
-            "porte": emp.get("porte", ""),
-            "mei": emp.get("opcao_pelo_mei", False),
-            "cnae": emp.get("cnae_fiscal", ""), 
-            "nome_fantasia": emp.get("nome_fantasia") or "",
-            "email": emp.get("email") or "",
-            "qsa": emp.get("qsa", []),
-            "situacao": emp.get("descricao_situacao_cadastral", ""),
-            "inicio_atividade": emp.get("data_inicio_atividade", ""),
-        })
-        
-    return resultados_cnae
-
-# -----------------------------------------------------------------
-
 class ComercialRegiaoAPIView(APIView):
-
+    
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request, *args, **kwargs):
-        
-        # 1. CAPTURA E VALIDAÇÃO DOS DADOS DE ENTRADA
-        try:
-            # 'cidade' deve conter o ID IBGE do município (ex: 3304557)
-            municipio_param = request.data.get('cidade', '') 
-            bairro_filtro = normalizar_texto(request.data.get('bairro', ''))
-            
-            if not municipio_param:
-                 return Response(
-                    {"detail": "O identificador de Município (cidade) é obrigatório para a pesquisa."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        # 1. Validação dos dados de entrada
+        uf = request.data.get('uf')
+        municipio = request.data.get('municipio')
+        bairro = request.data.get('bairro')
 
-        except Exception as e:
-            print(f"[ERRO] Falha na captura dos dados de entrada: {e}")
+        if not all([uf, municipio, bairro]):
             return Response(
-                {'detail': 'Dados de entrada inválidos.'},
+                {"detail": "Os campos 'uf', 'municipio' e 'bairro' são obrigatórios."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        cnaes = ["6821801", "6821802", "6822600"]
-        resultados_finais = []
+        # 2. Configuração da Busca
+        # Montamos a string exata que funcionou no Insomnia
+        query_string = f"Administradoras e Imobiliárias em {bairro}, {municipio} - {uf}"
         
-        # 2. EXECUÇÃO CONCORRENTE USANDO THREADS
-        # Threads são adequadas para tarefas limitadas a I/O (requisições HTTP).
-        # O número de workers é igual ao número de CNAEs a serem consultados.
-        with ThreadPoolExecutor(max_workers=len(cnaes)) as executor:
-            
-            # Submete a função de busca de CNAE para cada um dos CNAEs
-            future_to_cnae = {
-                executor.submit(buscar_cnae_concorrente, municipio_param, cnae, bairro_filtro): cnae
-                for cnae in cnaes
-            }
-            
-            # 3. AGUARDA E COLETA OS RESULTADOS DE FORMA NÃO BLOQUEANTE
-            for future in as_completed(future_to_cnae):
-                cnae_key = future_to_cnae[future]
-                try:
-                    data = future.result()
-                    if isinstance(data, list):
-                        # Anexa os resultados formatados que vieram da thread
-                        resultados_finais.extend(data)
-                    
-                except Exception as exc:
-                    print(f"[ERRO PRINCIPAL] A busca do CNAE {cnae_key} falhou: {exc}")
+        url = "https://places.googleapis.com/v1/places:searchText"
+        
+        # A FieldMask exata que definimos (com nationalPhoneNumber)
+        field_mask = (
+            "places.displayName,"
+            "places.formattedAddress,"
+            "places.nationalPhoneNumber,"
+            "places.websiteUri,"
+            "places.businessStatus"
+        )
 
-        # 4. RETORNO FINAL
-        return Response(resultados_finais, status=status.HTTP_200_OK)
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": settings.GOOGLE_PLACES_API_KEY,
+            "X-Goog-FieldMask": field_mask
+        }
+
+        payload = {
+            "textQuery": query_string,
+            "includedType": "real_estate_agency", # Filtro para melhorar precisão
+            "languageCode": "pt-BR"
+        }
+
+        # 3. Chamada à API do Google
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            response.raise_for_status() # Levanta erro se não for 200 OK
+            
+            data = response.json()
+            places = data.get('places', [])
+
+            # 4. Tratamento Opcional (Filtrar locais fechados permanentemente)
+            # Se quiser remover empresas que o Google diz que fecharam, descomente abaixo:
+            # places = [p for p in places if p.get('businessStatus') == 'OPERATIONAL']
+
+            return Response({"resultados": places}, status=status.HTTP_200_OK)
+
+        except requests.exceptions.HTTPError as e:
+            # Captura erros que o Google retornou (ex: API Key inválida, Cota excedida)
+            error_content = e.response.json() if e.response else str(e)
+            return Response(
+                {"detail": "Erro na API do Google Places", "google_error": error_content}, 
+                status=e.response.status_code
+            )
+        except Exception as e:
+            # Erros genéricos de conexão ou código
+            return Response(
+                {"detail": "Erro interno ao buscar imobiliárias.", "error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
