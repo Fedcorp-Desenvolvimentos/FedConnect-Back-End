@@ -74,7 +74,7 @@ urlpatterns = [
     path('consultas/comercial/', ConsultaComercialAPIView.as_view(), name='consulta-comercial'), 
     path('consultas/cont-comercial/', ConsultaContatoComercialAPIView.as_view(), name='consulta-contato-comercial'), 
     path('consulta-massa-comercial/', BulkConsultaComercialAPIView.as_view(), name='consulta-massa-comercial'),
-    path('consulta/comercial-regiao', ComercialRegiaoAPIView.as_view(), name='consulta-comercial-regiao'),
+    path('consulta/comercial-regiao/', ComercialRegiaoAPIView.as_view(), name='consulta-comercial-regiao'),
    
    
     path('consultas/segurados/', RealizarConsultaSeguradosView.as_view(), name='realizar_consulta_segurados'),
