@@ -25,6 +25,7 @@ ALLOWED_HOSTS = [
     ".render.com",
     "back-fedconnect-y46st.ondigitalocean.app",
     "fedconnect.com.br",
+    
 ]
 
 INSTALLED_APPS = [
@@ -168,7 +169,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
-
+CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
     "accept",
