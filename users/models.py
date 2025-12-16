@@ -40,7 +40,8 @@ class Usuario(AbstractUser):
         ("comercial", "Comercial"),
         ("moderador", "Moderador"),
         ("recepcionista", "Recepcionista"),
-        ("ti", "TI")
+        ("ti", "TI"),
+        ("faturista", "Faturista")
     ]
 
     username = None
