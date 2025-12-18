@@ -14,7 +14,7 @@ from agenda.views import ReservaViewSet
 from agenda_comercial.views import AgendamentoListCreateAPIView, AgendamentoRetrieveUpdateDestroyAPIView
 from django.urls import path
 from cotacao.views import calcular_cotacao_incendio
-from consultas.boletofedbnk import consultar_boletos_proxy
+from consultas.boletofedbnk import consultar_boletos_proxy, consultar_boleto
 
 
 # Importe para a documentação
@@ -87,7 +87,6 @@ urlpatterns = [
     path('cotacao/incendio-conteudo/', calcular_cotacao_incendio, name='calcular_cotacao_incendio'),
     
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
-   
-    # Inclua as rotas geradas pelo Router (ViewSets) por último
+    path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'),    # Inclua as rotas geradas pelo Router (ViewSets) por último
     path("", include(router.urls)),
 ]
