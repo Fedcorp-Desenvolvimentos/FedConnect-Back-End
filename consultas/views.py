@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 import requests
 import json
+
+from consultas.services.firebird_service import FirebirdService
 from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
 from .models import HistoricoConsulta
 from .integrations import ConsultaCEP, ConsultaCPF, ConsultaCNPJ
@@ -243,4 +245,64 @@ class HistoricoConsultaUserListView(generics.ListAPIView):
         # Retorna o histórico de consultas para o usuário alvo.
         return HistoricoConsulta.objects.filter(usuario=target_user).order_by(
             "-data_consulta"
+        )
+
+
+class BuscarFaturaPorNumero(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, numero_fatura: str, *args, **kwargs):
+        service = FirebirdService()
+        dados = service.buscar_fatura_por_numero(numero_fatura)
+
+        if not dados:
+            return Response(
+                {"sucesso": False, "erro": "Fatura não encontrada"},
+                status=404
+            )
+
+        return Response({
+            "sucesso": True,
+            "data": dados
+        })
+           
+class BuscarFaturaDinamicamente(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        service = FirebirdService()
+
+        filtros = {
+            "fatura": request.query_params.get("fatura"),
+            "administradora": request.query_params.get("administradora"),
+            "seguradora": request.query_params.get("seguradora"),
+            "status": request.query_params.get("status"),
+            "ramo": request.query_params.get("ramo"),
+            "data_ini": request.query_params.get("data_ini"),
+            "data_fim": request.query_params.get("data_fim"),
+            "valor_min": request.query_params.get("valor_min"),
+            "valor_max": request.query_params.get("valor_max"),
+            "limit": request.query_params.get("limit", 100),
+            "offset": request.query_params.get("offset", 0),
+        }
+
+        dados = service.buscar_fatura_dinamicamente(filtros)
+
+        if not dados:
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": "Nenhuma fatura encontrada com os filtros informados"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response(
+            {
+                "sucesso": True,
+                "resultado": dados
+            },
+            status=status.HTTP_200_OK
         )
