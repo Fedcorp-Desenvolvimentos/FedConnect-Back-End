@@ -1,3 +1,4 @@
+import logging
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -16,6 +17,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, TextField
 from django.db.models.functions import Cast, Coalesce
 
+logger = logging.getLogger(__name__)
 
 class RealizarConsultaView(APIView):
 
@@ -273,6 +275,8 @@ class BuscarFaturaDinamicamente(APIView):
 
     def get(self, request, *args, **kwargs):
         service = FirebirdService()
+        
+        logger.info(f"DADOS DA REQUISIÇÃO >>> {request}")
 
         filtros = {
             "fatura": request.query_params.get("fatura"),

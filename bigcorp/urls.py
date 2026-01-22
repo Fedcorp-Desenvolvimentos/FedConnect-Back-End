@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from users.views import UsuarioViewSet, LogoutView, CustomTokenObtainPairView, PasswordView
-from consultas.views import BuscarFaturaDinamicamente, BuscarFaturaPorNumero, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
+from consultas.views import BuscarFaturaPorNumero, BuscarFaturaDinamicamente, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
 from planilha.views.cnpj_views import (baixar_planilha_modelo_drf_cnpj, ProcessarPlanilhaCnpjsView)
 from planilha.views.cep_views import (baixar_planilha_modelo_drf_cep,ProcessarPlanilhaCepsView)
 from planilha.views.cpf_views import (baixar_planilha_modelo_drf_cpf, ProcessarPlanilhaCpfsView)
@@ -56,9 +56,7 @@ urlpatterns = [
     path('consultas/historico/', HistoricoConsultaListView.as_view(), name='historico-consultas'),
     path('consultas/historico/<int:pk>/', HistoricoConsultaDetailView.as_view(), name='historico-consulta-detail'),
     path('consultas/historico/usuario/<int:user_id>/', HistoricoConsultaUserListView.as_view(), name='historico-consultas-por-usuario'),
-    path('consultas/fatura/fatura-dinamica/', BuscarFaturaDinamicamente.as_view(), name='buscar-fatura-dinamicamente'),
-    path('consultas/fatura/<str:numero_fatura>/', BuscarFaturaPorNumero.as_view(), name='consulta-fatura-por-numero'),
-    
+ 
     # Rotas das planilhas #
     #CNPJ
     path('planilha-modelo-cnpj/', baixar_planilha_modelo_drf_cnpj, name='baixar-modelo-cnpj'),
@@ -81,7 +79,10 @@ urlpatterns = [
    
     path('consultas/segurados/', RealizarConsultaSeguradosView.as_view(), name='realizar_consulta_segurados'),
     path('administradoras/', buscarAdms.as_view(), name='buscar_adms'),
+    
     path('consultas/faturas/', RealizarConsultaFaturasView.as_view(), name='realizar-consulta-faturas'),
+    path('consultas/faturas/fatura-dinamica/', BuscarFaturaDinamicamente.as_view(), name='buscar-fatura-dinamicamente'),
+    path('consultas/faturas/<str:numero_fatura>/', BuscarFaturaPorNumero.as_view(), name='consulta-fatura-por-numero'),
     
     path('comercial/agenda/', AgendamentoListCreateAPIView.as_view(), name='agendamento_list'),
     path('comercial/agenda/<int:pk>/', AgendamentoRetrieveUpdateDestroyAPIView.as_view(), name='agendamento_detail'),

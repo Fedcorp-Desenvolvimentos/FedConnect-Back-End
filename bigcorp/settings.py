@@ -63,27 +63,27 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "bigcorp.urls"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "defaultdb",
-        "USER": "doadmin",
-        "PASSWORD": os.environ.get("password"),
-        "HOST": os.environ.get("host"),
-        "PORT": os.environ.get("port"),
-    }
-}
-
 # DATABASES = {
 #     "default": {
 #         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": config("NAME"),
-#         "USER": config("USER"),
-#         "PASSWORD": config("PASSWORD"),
-#         "HOST": config("HOST"),
-#         "PORT": config("PORT"),
+#         "NAME": "defaultdb",
+#         "USER": "doadmin",
+#         "PASSWORD": os.environ.get("password"),
+#         "HOST": os.environ.get("host"),
+#         "PORT": os.environ.get("port"),
 #     }
 # }
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("NAME"),
+        "USER": config("USER"),
+        "PASSWORD": config("PASSWORD"),
+        "HOST": config("HOST"),
+        "PORT": config("PORT"),
+    }
+}
 
 # DATABASES = {
 #     "default": {
