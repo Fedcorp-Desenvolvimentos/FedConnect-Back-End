@@ -58,7 +58,7 @@ class FirebirdService:
                 return None
 
             data = response.json()
-            print(f"DADOS DE RETORNO DA CONSULTA DINAMICA >>> {data}")
+            # print(f"DADOS DE RETORNO DA CONSULTA DINAMICA >>> {data}")
 
             if data.get("status") != "success":
                 return None
@@ -68,7 +68,38 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro comunicação Firebird dinâmica: {e}")
             return None
-    
+
+    def buscar_faturas_com_boletos(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Busca faturas com boletos associados (nova rota /faturas-com-boletos)
+        """
+        try:
+            # Remove filtros vazios
+            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
+
+            response = requests.get(
+                f"{self.base_url}/api/faturas/faturas-com-boletos",
+                params=params,
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Erro Firebird faturas-com-boletos {response.status_code} | {response.text}"
+                )
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data
+
+        except requests.RequestException as e:
+            logger.error(f"Erro comunicação Firebird faturas-com-boletos: {e}")
+            return None
+         
     async def buscar_todas_faturas(self, fatura_numero: str) -> Optional[List[Dict[str, Any]]]:
         """
         Busca dados da fatura no microsserviço Firebird (8090)

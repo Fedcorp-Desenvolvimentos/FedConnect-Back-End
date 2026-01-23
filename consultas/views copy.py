@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -227,39 +226,7 @@ class HistoricoConsultaDetailView(generics.RetrieveAPIView):
                 message="Você não tem permissão para acessar esta consulta.",
             )
 
-class BuscarTodasEmpresas(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        try:
-            service = FirebirdService()
-            dados = asyncio.run(service.buscar_todas_empresas())
-            
-            # logger.info(
-            #     "DADOS DA REQUISIÇÃO:\n%s",
-            #     json.dumps(dados, indent=2, ensure_ascii=False)
-            # )
-            
-            if not dados:
-                return Response({
-                    "status": "not_found",
-                    "message": "Empresa não encontrada",
-                    "timestamp": datetime.now().isoformat()
-                }, status=status.HTTP_404_NOT_FOUND)
-                            
-            return Response({
-                "status": "success",
-                "total_returned": len(dados),
-                "data": dados,
-                "timestamp": datetime.now().isoformat()
-            })
 
-            
-        except Exception as e:
-            logger.error(f"Erro ao buscar empresas: {str(e)}")
-            return Response({"detail": str(e)}, status=500)
-        
-        
 # --- View para Listar o Histórico de Consultas de um Usuário Específico (Geralmente para Admins) ---
 class HistoricoConsultaUserListView(generics.ListAPIView):
     serializer_class = HistoricoConsultaSerializer
@@ -438,11 +405,7 @@ class BuscarFaturasComBoletos(APIView):
             "status": request.query_params.get("status"),
             "data_ini": request.query_params.get("data_ini"),
             "data_fim": request.query_params.get("data_fim"),
-            
-            "page": request.query_params.get("page", 1),
-            "page_size": request.query_params.get("page_size", 10),
-            
-            "limit": request.query_params.get("limit", 500),
+            "limit": request.query_params.get("limit", 200),
             "offset": request.query_params.get("offset", 0),
         }
 
@@ -451,19 +414,9 @@ class BuscarFaturasComBoletos(APIView):
         logger.info(f"Filtros limpos para faturas com boletos: {filtros_limpos}")
 
         try:
-            # Calcular offset baseado na página (para compatibilidade)
-            page = int(filtros_limpos.get('page', 1))
-            page_size = int(filtros_limpos.get('page_size', 10))
-            offset = (page - 1) * page_size
-            
-            # Atualizar filtros com offset calculado
-            filtros_limpos['limit'] = page_size
-            filtros_limpos['offset'] = offset
-            
-            # Remover parâmetros de paginação do serviço (se não for compatível)
-            filtros_para_servico = filtros_limpos.copy()
-            
-            dados = service.buscar_faturas_com_boletos(filtros_para_servico)
+            # Aqui você precisa criar um novo método no FirebirdService
+            # ou usar o base_url diretamente para a nova rota
+            dados = service.buscar_faturas_com_boletos(filtros_limpos)
             logger.info(f"Dados retornados do serviço de faturas com boletos: {dados}")
 
             if dados.get("status") != "success":
@@ -475,34 +428,18 @@ class BuscarFaturasComBoletos(APIView):
                     },
                     status=status.HTTP_404_NOT_FOUND
                 )
-                
-            # Extrair dados importantes
-            data_list = dados.get("data", [])
-            total_registros = dados.get("total_registros", 0)
-            
-            # Calcular informações de paginação
-            total_pages = max(1, (total_registros + page_size - 1) // page_size) 
-            current_page = page
 
             return Response(
                 {
                     "sucesso": True,
                     "resultado": {
-                        "data": data_list,
-                        "pagination": {
-                            "current_page": current_page,
-                            "page_size": page_size,
-                            "total_records": total_registros,
-                            "total_pages": total_pages,
-                            "has_next": current_page < total_pages,
-                            "has_previous": current_page > 1,
-                            "next_page": current_page + 1 if current_page < total_pages else None,
-                            "previous_page": current_page - 1 if current_page > 1 else None,
-                            "offset": offset,
-                            "limit": page_size
-                        },
-                        "filters": dados.get("filters", {}),
-                        "total_registros": total_registros  
+                        "data": dados.get("data", []),
+                        "total": dados.get("total", 0),
+                        "total_registros": dados.get("total_registros", 0),
+                        "has_more": dados.get("has_more", False),
+                        "limit": dados.get("limit", 200),
+                        "offset": dados.get("offset", 0),
+                        "filters": dados.get("filters", {})
                     }
                 },
                 status=status.HTTP_200_OK
