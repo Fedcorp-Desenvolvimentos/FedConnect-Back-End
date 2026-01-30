@@ -22,7 +22,6 @@ SECRET_KEY = config(
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    ".render.com",
     "back-fedconnect-y46st.ondigitalocean.app",
     "fedconnect.com.br",
     
@@ -187,7 +186,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://back-fedconnect-y46st.ondigitalocean.app",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
