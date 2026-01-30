@@ -168,7 +168,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://back-fedconnect-y46st.ondigitalocean.app",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
