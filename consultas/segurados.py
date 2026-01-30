@@ -1,3 +1,5 @@
+import logging
+from consultas.services.firebird_service import FirebirdService
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -11,6 +13,8 @@ from .models import HistoricoConsulta
 from django.conf import settings
 
 FASTAPI_BASE_URL = settings.WEBHOOK_URL
+
+logger = logging.getLogger(__name__)
 
 class RealizarConsultaSeguradosView(APIView):
     """
@@ -182,4 +186,103 @@ class buscarAdms(APIView):
             return Response(
                 {"detail": "Ocorreu um erro interno ao buscar as administradoras."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+            
+class BuscaPorAdms(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        service = FirebirdService()
+        
+        logger.info(f"Parâmetros da requisição: {request.query_params}")
+
+        filtros = {
+            "fatura": request.query_params.get("fatura"),
+        }
+
+        # Remover filtros vazios
+        filtros_limpos = {k: v for k, v in filtros.items() if v not in [None, "", "null"]}
+        logger.info(f"Filtros limpos: {filtros_limpos}")
+
+        try:
+            dados = service.buscar_seguradoras(filtros_limpos)
+            logger.info(f"Dados retornados do Firebird: {dados}")
+
+            if not dados:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Nenhuma fatura encontrada com os filtros informados",
+                        "resultado": []
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Verificar estrutura dos dados retornados
+            if isinstance(dados, dict):
+                # Se for um dicionário, verificar se tem estrutura específica
+                if "status" in dados and dados["status"] == "success":
+                    resultado = dados.get("data", [])
+                    
+                    # Garantir que seja uma lista
+                    if not isinstance(resultado, list):
+                        resultado = [resultado] if resultado else []
+                        
+                    return Response(
+                        {
+                            "sucesso": True,
+                            "resultado": {
+                                "data": resultado,
+                                "total": len(resultado)
+                            }
+                        },
+                        status=status.HTTP_200_OK
+                    )
+                else:
+                    # Retornar lista vazia
+                    return Response(
+                        {
+                            "sucesso": True,
+                            "resultado": {
+                                "data": [],
+                                "total": 0
+                            }
+                        },
+                        status=status.HTTP_200_OK
+                    )
+            elif isinstance(dados, list):
+                # Já é uma lista
+                return Response(
+                    {
+                        "sucesso": True,
+                        "resultado": {
+                            "data": dados,
+                            "total": len(dados)
+                        }
+                    },
+                    status=status.HTTP_200_OK
+                )
+            else:
+                # Converter qualquer outro tipo para lista
+                return Response(
+                    {
+                        "sucesso": True,
+                        "resultado": {
+                            "data": [dados] if dados else [],
+                            "total": 1 if dados else 0
+                        }
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+        except Exception as e:
+            logger.error(f"Erro ao buscar fatura dinamicamente: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno ao processar consulta: {str(e)}",
+                    "resultado": []
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
