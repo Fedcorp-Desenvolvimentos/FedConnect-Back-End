@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from users.views import UsuarioViewSet, LogoutView, CustomTokenObtainPairView, PasswordView
-from consultas.views import BuscarFaturaPorNumero, BuscarFaturaDinamicamente, BuscarFaturasComBoletos, BuscarTodasEmpresas, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
+from consultas.views import BuscarAdministradorasPorCodigo, BuscarAdministradorasPorNome, BuscarFaturaPorNumero, BuscarFaturaDinamicamente, BuscarFaturasComBoletos, BuscarTodasEmpresas, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
 from planilha.views.cnpj_views import (baixar_planilha_modelo_drf_cnpj, ProcessarPlanilhaCnpjsView)
 from planilha.views.cep_views import (baixar_planilha_modelo_drf_cep,ProcessarPlanilhaCepsView)
 from planilha.views.cpf_views import (baixar_planilha_modelo_drf_cpf, ProcessarPlanilhaCpfsView)
