@@ -420,6 +420,45 @@ class BuscarFaturaDinamicamente(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
+class BuscarAdministradorasPorNome(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, nome: str, *args, **kwargs):
+        
+        service = FirebirdService()
+        dados = service.buscar_administradora_por_nome(nome)
+
+        if not dados:
+            return Response(
+                {"sucesso": False, "erro": "Administradora não encontrada"},
+                status=404
+            )
+
+        return Response({
+            "sucesso": True,
+            "data": dados
+        })
+
+class BuscarAdministradorasPorCodigo(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, codigo: str, *args, **kwargs):
+        service = FirebirdService()
+        dados = service.buscar_administradora_por_codigo(codigo)
+
+        if not dados:
+            return Response(
+                {"sucesso": False, "erro": "Administradora não encontrada"},
+                status=404
+            )
+
+        return Response({
+            "sucesso": True,
+            "data": dados
+        })
+
 # Buscar Fatura por parametros - QUERY NAS TABELAS 'FATURAS' + 'BOLETOS'
 class BuscarFaturasComBoletos(APIView):
     authentication_classes = [JWTAuthentication]

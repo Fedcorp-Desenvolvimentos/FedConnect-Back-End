@@ -175,3 +175,69 @@ class FirebirdService:
             return None
 
         return data.get("data")
+    
+    def buscar_administradora_por_nome(self, nome: str):
+            try:
+                response = requests.get(
+                    f"{self.base_url}/api/administradoras/por-nome/{nome}",
+                    timeout=30
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"Firebird erro {response.status_code}")
+                    return None
+
+                data = response.json()
+
+                if data.get("status") != "success":
+                    return None
+
+                return data.get("data")
+
+            except requests.RequestException as e:
+                logger.error(f"Erro ao chamar Firebird: {e}")
+                return None
+        
+    def buscar_administradora_por_codigo(self, codigo: str):
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/administradoras/por-codigo/{codigo}",
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Firebird erro {response.status_code}")
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data.get("data")
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar Firebird: {e}")
+            return None
+        
+    def buscar_administradora_por_codigo_com_postos_vida(self, codigo: str):
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/administradoras/posto/{codigo}",
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Firebird erro {response.status_code}")
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data.get("data")
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar Firebird: {e}")
+            return None

@@ -89,6 +89,9 @@ urlpatterns = [
     path("consultas/faturas/com-boletos/exportar-pdf/", ExportarFaturasComBoletosPDF.as_view()),
     path('consultas/faturas/<str:numero_fatura>/', BuscarFaturaPorNumero.as_view(), name='consulta-fatura-por-numero'),
     
+    path('consultas/administradora/por-nome/<str:nome>/', BuscarAdministradorasPorNome.as_view(), name='consulta-administradora-por-nome'),
+    path('consultas/administradora/por-codigo/<str:codigo>/', BuscarAdministradorasPorCodigo.as_view(), name='consulta-administradora-por-codigo'),
+    
     path('comercial/agenda/', AgendamentoListCreateAPIView.as_view(), name='agendamento_list'),
     path('comercial/agenda/<int:pk>/', AgendamentoRetrieveUpdateDestroyAPIView.as_view(), name='agendamento_detail'),
     
