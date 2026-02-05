@@ -71,7 +71,7 @@ class FirebirdService:
 
     def buscar_faturas_com_boletos(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        Busca faturas com boletos associados (nova rota /faturas-com-boletos)
+        Busca faturas com boletos associados
         """
         try:
             # Remove filtros vazios
@@ -100,6 +100,76 @@ class FirebirdService:
             logger.error(f"Erro comunicação Firebird faturas-com-boletos: {e}")
             return None
          
+    def buscar_faturas_dinamicamente_paginadas(
+        self,
+        filtros: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Busca faturas dinâmicas COM PAGINAÇÃO REAL
+        Rota: /api/faturas/faturas-dinamicas-paginadas
+        """
+        try:
+            # Remove filtros vazios / None
+            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
+
+            response = requests.get(
+                f"{self.base_url}/api/faturas/faturas-dinamicas-paginadas",
+                params=params,
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Erro Firebird faturas-dinamicas-paginadas {response.status_code} | {response.text}"
+                )
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data
+
+        except requests.RequestException as e:
+            logger.error(f"Erro comunicação Firebird faturas-dinamicas-paginadas: {e}")
+            return None
+
+    def buscar_faturas_com_boletos_paginadas(
+        self,
+        filtros: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Busca faturas com boletos COM PAGINAÇÃO REAL
+        Rota: /api/faturas/faturas-com-boletos-paginadas
+        """
+        try:
+            # Remove filtros vazios
+            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
+
+            response = requests.get(
+                f"{self.base_url}/api/faturas/faturas-com-boletos-paginadas",
+                params=params,
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Erro Firebird faturas-com-boletos-paginadas {response.status_code} | {response.text}"
+                )
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data
+
+        except requests.RequestException as e:
+            logger.error(f"Erro comunicação Firebird faturas-com-boletos-paginadas: {e}")
+            return None
+    
     async def buscar_todas_faturas(self, fatura_numero: str) -> Optional[List[Dict[str, Any]]]:
         """
         Busca dados da fatura no microsserviço Firebird (8090)

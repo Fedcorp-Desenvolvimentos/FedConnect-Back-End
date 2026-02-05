@@ -170,13 +170,11 @@ class RealizarConsultaView(APIView):
         # Se o serializer não for válido (erros de validação de entrada).
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 # --- View para Listar o Histórico de Consultas ---
 class StandardResultsPagination(PageNumberPagination):
     page_size = 10  # Deve ser o mesmo que intensPorPagina no frontend
     page_size_query_param = "page_size"
     max_page_size = 100
-
 
 class HistoricoConsultaListView(generics.ListAPIView):
 
@@ -199,7 +197,6 @@ class HistoricoConsultaListView(generics.ListAPIView):
         return (
             HistoricoConsulta.objects.none()
         )  # Retorna queryset vazia se não autenticado.
-
 
 # --- View para Detalhes de uma Consulta Específica no Histórico ---
 class HistoricoConsultaDetailView(generics.RetrieveAPIView):
@@ -258,8 +255,7 @@ class BuscarTodasEmpresas(APIView):
         except Exception as e:
             logger.error(f"Erro ao buscar empresas: {str(e)}")
             return Response({"detail": str(e)}, status=500)
-        
-        
+                
 # --- View para Listar o Histórico de Consultas de um Usuário Específico (Geralmente para Admins) ---
 class HistoricoConsultaUserListView(generics.ListAPIView):
     serializer_class = HistoricoConsultaSerializer
@@ -420,6 +416,121 @@ class BuscarFaturaDinamicamente(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
+class BuscarFaturasDinamicamentePaginadas(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        service = FirebirdService()
+        
+        logger.info(f"Parâmetros da requisição faturas dinâmicas paginadas: {request.query_params}")
+
+        # Coletar todos os parâmetros da rota paginada
+        filtros = {
+            "fatura": request.query_params.get("fatura"),
+            "apolice": request.query_params.get("apolice"),
+            "administradora": request.query_params.get("administradora"),
+            "seguradora": request.query_params.get("seguradora"),
+            "status": request.query_params.get("status"),
+            "ramo": request.query_params.get("ramo"),
+            "data_ini": request.query_params.get("data_ini"),
+            "data_fim": request.query_params.get("data_fim"),
+            "valor_min": request.query_params.get("valor_min"),
+            "valor_max": request.query_params.get("valor_max"),
+            "pagina": request.query_params.get("pagina", 1),
+            "por_pagina": request.query_params.get("por_pagina", 50),
+        }
+
+        # Remover filtros vazios
+        filtros_limpos = {k: v for k, v in filtros.items() if v not in [None, "", "null"]}
+        
+        # Converter tipos numéricos
+        try:
+            if filtros_limpos.get('fatura'):
+                filtros_limpos['fatura'] = int(filtros_limpos['fatura'])
+            if filtros_limpos.get('pagina'):
+                filtros_limpos['pagina'] = int(filtros_limpos['pagina'])
+            if filtros_limpos.get('por_pagina'):
+                filtros_limpos['por_pagina'] = int(filtros_limpos['por_pagina'])
+            if filtros_limpos.get('valor_min'):
+                filtros_limpos['valor_min'] = float(filtros_limpos['valor_min'])
+            if filtros_limpos.get('valor_max'):
+                filtros_limpos['valor_max'] = float(filtros_limpos['valor_max'])
+        except ValueError as e:
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro na conversão de parâmetros numéricos: {str(e)}"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        logger.info(f"Filtros limpos para faturas dinâmicas paginadas: {filtros_limpos}")
+
+        try:
+            # Chamar serviço paginado
+            dados = service.buscar_faturas_dinamicamente_paginadas(filtros_limpos)
+            
+            if not dados or dados.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": dados.get("message", "Nenhum resultado encontrado"),
+                        "resultado": []
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Extrair dados da resposta
+            data_list = dados.get("data", [])
+            total_registros = dados.get("total_registros", 0)
+            pagina_atual = dados.get("pagina_atual", 1)
+            por_pagina = dados.get("por_pagina", 50)
+            total_paginas = dados.get("total_paginas", 1)
+
+            return Response(
+                {
+                    "sucesso": True,
+                    "resultado": {
+                        "data": data_list,
+                        "pagination": {
+                            "current_page": pagina_atual,
+                            "page_size": por_pagina,
+                            "total_records": total_registros,
+                            "total_pages": total_paginas,
+                            "has_next": pagina_atual < total_paginas,
+                            "has_previous": pagina_atual > 1,
+                            "next_page": pagina_atual + 1 if pagina_atual < total_paginas else None,
+                            "previous_page": pagina_atual - 1 if pagina_atual > 1 else None
+                        },
+                        "filters": dados.get("filters", {}),
+                        "total_registros": total_registros
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except requests.RequestException as e:
+            logger.error(f"Erro de comunicação ao buscar faturas dinâmicas paginadas: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro de comunicação com o serviço de faturas: {str(e)}",
+                    "resultado": []
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar faturas dinâmicas paginadas: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno ao processar consulta: {str(e)}",
+                    "resultado": []
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class BuscarAdministradorasPorNome(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -568,6 +679,302 @@ class BuscarFaturasComBoletos(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
+class BuscarFaturasComBoletosPaginadas(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        service = FirebirdService()
+        
+        logger.info(f"Parâmetros da requisição faturas com boletos paginadas: {request.query_params}")
+
+        # Coletar parâmetros específicos da rota paginada
+        filtros = {
+            "fatura": request.query_params.get("fatura"),
+            "apolice": request.query_params.get("apolice"),
+            "administradora": request.query_params.get("administradora"),
+            "status": request.query_params.get("status"),
+            "data_ini": request.query_params.get("data_ini"),
+            "data_fim": request.query_params.get("data_fim"),
+            "pagina": request.query_params.get("pagina", 1),
+            "por_pagina": request.query_params.get("por_pagina", 50),
+        }
+
+        # Remover filtros vazios
+        filtros_limpos = {k: v for k, v in filtros.items() if v not in [None, "", "null"]}
+        
+        # Converter tipos numéricos
+        try:
+            if filtros_limpos.get('fatura'):
+                filtros_limpos['fatura'] = int(filtros_limpos['fatura'])
+            if filtros_limpos.get('pagina'):
+                filtros_limpos['pagina'] = int(filtros_limpos['pagina'])
+            if filtros_limpos.get('por_pagina'):
+                filtros_limpos['por_pagina'] = int(filtros_limpos['por_pagina'])
+        except ValueError as e:
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro na conversão de parâmetros numéricos: {str(e)}"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        logger.info(f"Filtros limpos para faturas com boletos paginadas: {filtros_limpos}")
+
+        try:
+            # Chamar serviço paginado específico para boletos
+            dados = service.buscar_faturas_com_boletos_paginadas(filtros_limpos)
+            
+            if not dados or dados.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": dados.get("message", "Nenhum resultado encontrado"),
+                        "resultado": []
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Extrair dados da resposta
+            data_list = dados.get("data", [])
+            total_registros = dados.get("total_registros", 0)
+            pagina_atual = dados.get("pagina_atual", 1)
+            por_pagina = dados.get("por_pagina", 50)
+            total_paginas = dados.get("total_paginas", 1)
+
+            return Response(
+                {
+                    "sucesso": True,
+                    "resultado": {
+                        "data": data_list,
+                        "pagination": {
+                            "current_page": pagina_atual,
+                            "page_size": por_pagina,
+                            "total_records": total_registros,
+                            "total_pages": total_paginas,
+                            "has_next": pagina_atual < total_paginas,
+                            "has_previous": pagina_atual > 1,
+                            "next_page": pagina_atual + 1 if pagina_atual < total_paginas else None,
+                            "previous_page": pagina_atual - 1 if pagina_atual > 1 else None
+                        },
+                        "filters": dados.get("filters", {}),
+                        "total_registros": total_registros
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except requests.RequestException as e:
+            logger.error(f"Erro de comunicação ao buscar faturas com boletos paginadas: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro de comunicação com o serviço de faturas: {str(e)}",
+                    "resultado": []
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar faturas com boletos paginadas: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno ao processar consulta: {str(e)}",
+                    "resultado": []
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class ExportarFaturasDinamicasPaginadasExcel(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [BinaryRenderer]
+
+    def get(self, request, *args, **kwargs):
+        service = FirebirdService()
+        
+        logger.info(f"Exportação Excel dinâmica paginada - Parâmetros: {request.query_params}")
+
+        # Coletar parâmetros (os mesmos da consulta)
+        filtros = {
+            "fatura": request.query_params.get("fatura"),
+            "apolice": request.query_params.get("apolice"),
+            "administradora": request.query_params.get("administradora"),
+            "seguradora": request.query_params.get("seguradora"),
+            "status": request.query_params.get("status"),
+            "ramo": request.query_params.get("ramo"),
+            "data_ini": request.query_params.get("data_ini"),
+            "data_fim": request.query_params.get("data_fim"),
+            "valor_min": request.query_params.get("valor_min"),
+            "valor_max": request.query_params.get("valor_max"),
+            "por_pagina": request.query_params.get("por_pagina", 1000),  # Para exportação, pegar mais registros
+        }
+
+        # Remover filtros vazios
+        filtros_limpos = {k: v for k, v in filtros.items() if v not in [None, "", "null"]}
+        
+        # Adicionar limite maior para exportação
+        filtros_limpos['pagina'] = 1
+        filtros_limpos['por_pagina'] = 5000  # Limite maior para exportação
+
+        try:
+            # Buscar dados do microsserviço
+            dados = service.buscar_faturas_dinamicamente_paginadas(filtros_limpos)
+            
+            if not dados or dados.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Nenhum dado encontrado para exportação"
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            data_list = dados.get("data", [])
+            
+            if not data_list:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Nenhum registro encontrado com os filtros informados"
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Criar DataFrame pandas
+            df = pd.DataFrame(data_list)
+            
+            # Selecionar e renomear colunas importantes para FATURAS
+            colunas_selecionadas = [
+                'fatura', 'apolice', 'administradora', 'seguradora', 'ramo',
+                'data_fat', 'vencimento', 'status', 'quitado',
+                'premio_bruto', 'premio_liq', 'premio_liquido',
+                'dt_ini_vig', 'dt_fim_vig', 'quant_parcelas',
+                'corretor', 'cod_corretor', 'numero_endosso'
+            ]
+            
+            # Manter apenas colunas que existem no DataFrame (em minúsculo)
+            colunas_disponiveis = [col for col in colunas_selecionadas if col in df.columns]
+            df = df[colunas_disponiveis]
+            
+            # Renomear colunas para nomes mais amigáveis
+            mapeamento_colunas = {
+                'fatura': 'Nº Fatura',
+                'apolice': 'Apólice',
+                'administradora': 'Administradora',
+                'seguradora': 'Seguradora',
+                'ramo': 'Ramo',
+                'data_fat': 'Data Fatura',
+                'vencimento': 'Vencimento',
+                'status': 'Status',
+                'quitado': 'Quitado',
+                'premio_bruto': 'Prêmio Bruto (R$)',
+                'premio_liq': 'Prêmio Líquido (R$)',
+                'premio_liquido': 'Prêmio Líquido (R$)',
+                'dt_ini_vig': 'Início Vigência',
+                'dt_fim_vig': 'Fim Vigência',
+                'quant_parcelas': 'Quantidade Parcelas',
+                'corretor': 'Corretor',
+                'cod_corretor': 'Código Corretor',
+                'numero_endosso': 'Nº Endosso'
+            }
+            
+            df.rename(columns=mapeamento_colunas, inplace=True)
+            
+            # Formatar valores monetários
+            colunas_monetarias = ['Prêmio Bruto (R$)', 'Prêmio Líquido (R$)']
+            
+            for col in colunas_monetarias:
+                if col in df.columns:
+                    # Converter para numérico e formatar
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                    df[col] = df[col].apply(
+                        lambda x: f'R$ {x:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.') 
+                        if pd.notnull(x) else ''
+                    )
+            
+            # Formatar datas
+            colunas_datas = ['Data Fatura', 'Vencimento', 'Início Vigência', 'Fim Vigência']
+            
+            for col in colunas_datas:
+                if col in df.columns:
+                    # Converter para datetime
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
+                    df[col] = df[col].dt.strftime('%d/%m/%Y')
+            
+            # Ordenar por data da fatura (mais recente primeiro)
+            if 'Data Fatura' in df.columns:
+                df = df.sort_values('Data Fatura', ascending=False)
+            
+            # Criar arquivo Excel em memória
+            output = BytesIO()
+            
+            # Criar Excel writer com openpyxl
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                # Escrever dados principais
+                df.to_excel(writer, sheet_name='Faturas Dinâmicas', index=False)
+                
+                # Ajustar largura das colunas
+                worksheet = writer.sheets['Faturas Dinâmicas']
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    
+                    adjusted_width = min(max_length + 2, 50)
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
+                
+                # Adicionar uma sheet com informações do relatório
+                info_df = pd.DataFrame({
+                    'Parâmetro': ['Data Exportação', 'Total Registros', 'Filtros Aplicados'],
+                    'Valor': [
+                        datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
+                        len(data_list),
+                        ', '.join([f'{k}: {v}' for k, v in filtros_limpos.items() if k not in ['pagina', 'por_pagina']]) or 'Nenhum'
+                    ]
+                })
+                
+                info_df.to_excel(writer, sheet_name='Informações', index=False)
+                
+                # Formatar sheet de informações
+                info_worksheet = writer.sheets['Informações']
+                for column in info_worksheet.columns:
+                    column_letter = column[0].column_letter
+                    info_worksheet.column_dimensions[column_letter].width = 30
+            
+            output.seek(0)
+            
+            # Criar nome do arquivo
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'faturas_dinamicas_{timestamp}.xlsx'
+            
+            # Retornar arquivo Excel como resposta
+            response = HttpResponse(
+                output.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+            
+            return response
+
+        except Exception as e:
+            logger.error(f"Erro ao exportar para Excel: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro ao gerar arquivo Excel: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class ExportarFaturasComBoletosExcel(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
