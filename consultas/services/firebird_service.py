@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        # self.base_url = "http://localhost:8090"
-        self.base_url = "https://steeply-outlandish-reese.ngrok-free.dev"
+        self.base_url = "http://localhost:8090"
+        # self.base_url = "https://steeply-outlandish-reese.ngrok-free.dev"
 
     def buscar_fatura_por_numero(self, numero_fatura: str):
         try:
@@ -79,6 +79,37 @@ class FirebirdService:
 
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-com-boletos",
+                params=params,
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Erro Firebird faturas-com-boletos {response.status_code} | {response.text}"
+                )
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data
+
+        except requests.RequestException as e:
+            logger.error(f"Erro comunicação Firebird faturas-com-boletos: {e}")
+            return None
+        
+    def buscar_faturas_com_boletos_e_segurados(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Busca faturas com boletos associados
+        """
+        try:
+            # Remove filtros vazios
+            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
+
+            response = requests.get(
+                f"{self.base_url}/api/faturas/faturas-com-boletos-e-segurados",
                 params=params,
                 timeout=30
             )
