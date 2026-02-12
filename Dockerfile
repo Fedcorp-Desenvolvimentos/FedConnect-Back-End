@@ -3,28 +3,34 @@ FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
-# Instala as dependências (inclui gunicorn e outras libs)
+# Instala dependências de compilação necessárias para o psycopg2 (se não usar o binary)
+RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalamos as dependências em um diretório específico para facilitar a cópia
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# Copia o código da sua aplicação
+# Copia o código
 COPY . .
-
-# Executa o collectstatic
-RUN python manage.py collectstatic --noinput
 
 # Estágio 2: Imagem final para execução (produção)
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# Copia o ambiente virtual completo do estágio de build
-COPY --from=builder /usr/local /usr/local
+# Instala a libpq, que é necessária em runtime para o postgres
+RUN apt-get update && apt-get install -y libpq-dev && rm -rf /var/lib/apt/lists/*
 
-# Copia o código da sua aplicação
+# Copia as bibliotecas instaladas do estágio anterior
+COPY --from=builder /install /usr/local
+
+# Copia o código da aplicação
 COPY --from=builder /app .
 
-# Comando para rodar a aplicação em produção
-# A sua aplicação principal deve ser o nome da pasta que contém o settings.py
-# Ex: se o seu projeto é 'bigcorp', a linha deve ser:
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "bigcorp.wsgi:application"]
+# Executa o collectstatic aqui (agora que as libs estão no PATH)
+# Lembre-se de ter os 'defaults' no settings.py como conversamos
+RUN python manage.py collectstatic --noinput
+
+# Comando para rodar a aplicação
+# Usamos o caminho completo para evitar erro de PATH
+CMD ["/usr/local/bin/gunicorn", "--bind", "0.0.0.0:8000", "bigcorp.wsgi:application"]
