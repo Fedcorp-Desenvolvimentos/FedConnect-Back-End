@@ -25,6 +25,7 @@ ALLOWED_HOSTS = [
     "back-fedconnect-y46st.ondigitalocean.app",
     "goldfish-app-nk5x6.ondigitalocean.app",
     "fedconnect.com.br",
+    "front-fedconnect-ebhjt.ondigitalocean.app"
     
 ]
 
@@ -179,6 +180,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://front-fedconnect-98i8n.ondigitalocean.app",
     "https://fedconnect.com.br",
     "https://goldfish-app-nk5x6.ondigitalocean.app",
+    "https://front-fedconnect-ebhjt.ondigitalocean.app"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
