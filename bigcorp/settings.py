@@ -66,8 +66,8 @@ ROOT_URLCONF = "bigcorp.urls"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": 'defaultdb',
-        "USER": 'doadmin',
+        "NAME": config('DB_DATABASE'),
+        "USER": config('DB_USERNAME'),
         "PASSWORD": config("DB_PASSWORD"),
         "HOST": config("DB_HOST"),
         "PORT": config("DB_PORT"),
