@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from datetime import timedelta
-from decouple import config  # type: ignore
+from decouple import config
 from dotenv import load_dotenv
 import logging
 
@@ -65,11 +65,11 @@ ROOT_URLCONF = "bigcorp.urls"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "defaultdb",
-        "USER": "doadmin",
-        "PASSWORD": os.environ.get("password"),
-        "HOST": os.environ.get("host"),
-        "PORT": os.environ.get("port"),
+        "NAME": config("DB_DATABASE"),
+        "USER": config("DB_USERNAME"),
+        "PASSWORD": config("DB_PASSWORD"),
+        "HOST": config("DB_HOST"),
+        "PORT": config("DB_PORT"),
         'OPTIONS': {'sslmode': 'require'} 
     }
 }
