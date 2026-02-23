@@ -22,7 +22,7 @@ SECRET_KEY = config(
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "fedconnect-back-end-fedcorp-s3ho5.ondigitalocean.app",
+    "fedconnect-backend-d6kgr.ondigitalocean.app",
     "fedconnect.com.br",
     "front-fedconnect-ebhjt.ondigitalocean.app"
     
@@ -180,6 +180,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://fedconnect.com.br",
     "https://front-fedconnect-ebhjt.ondigitalocean.app",
 ]
+
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
