@@ -201,7 +201,7 @@ class ProcessarPlanilhaCepsView(APIView):
                         json=api_request_body,
                         headers=api_headers,
                         timeout=settings.API_CONSULTA_TIMEOUT,
-                        verify=False,  # Usar uma configuração de timeout
+                        verify=True,  # Usar uma configuração de timeout
                     )
                     response_api.raise_for_status()
                     api_response_data = response_api.json()

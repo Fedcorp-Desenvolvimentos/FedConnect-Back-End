@@ -165,10 +165,10 @@ class ProcessarPlanilhaCnpjsView(APIView):
         
         logger.info(f"Processando {len(cnpjs_from_excel)} CNPJs. Inserindo dados diretamente na planilha.")
 
-        # 3. Processar e adicionar linhas à planilha item por item (evita lista 'resultados' grande)
+        # 3. Processar e adicionar linhas à planilha item por item
         for i, item in enumerate(cnpjs_from_excel):
             cnpj_original = item.get("CNPJ")
-            row_data = {} # Dicionário para formatar a linha atual
+            row_data = {} 
 
             if not cnpj_original:
                 logger.warning(f"CNPJ não fornecido na linha {i+1}. Registrando erro.")
@@ -181,24 +181,16 @@ class ProcessarPlanilhaCnpjsView(APIView):
                     "lote_id": str(batch_id_para_planilha) if batch_id_para_planilha else None
                 }
                 try:
-                    # Usar um Session do requests para reutilizar conexões (pequena otimização)
-                    # No entanto, a criação da sessão pode ter um custo inicial.
-                    # Para muitos CNPJs, vale a pena. Para poucos, o overhead pode ser maior.
-                    # Mantenha requests.post direto se preferir simplicidade ou se os lotes forem pequenos.
-                    
-                    # Se você decidir usar requests.Session, crie-o FORA do loop e feche-o no finally
-                    
                     response_api = requests.post(
                         YOUR_CONSULTA_API_URL,
                         json=api_request_body,
                         headers=api_headers,
                         timeout=settings.API_CONSULTA_TIMEOUT,
-                        verify=False# Usar uma configuração de timeout
+                        verify=True  # ALTERADO: Sempre validar SSL em produção
                     )
                     response_api.raise_for_status()
                     
                     api_response_data = response_api.json()
-                    
                     cnpj_data_from_api = api_response_data.get("resultado_api")
 
                     if (
@@ -229,7 +221,7 @@ class ProcessarPlanilhaCnpjsView(APIView):
 
             row_values = [row_data.get(col["key"], "") for col in self.cnpj_column_defs]
             sheet_resultado.append(row_values)
-           
+            
         
         from io import BytesIO
         output_buffer = BytesIO()
