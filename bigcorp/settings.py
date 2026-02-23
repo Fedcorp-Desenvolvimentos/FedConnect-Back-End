@@ -178,9 +178,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://front-fedconnect-98i8n.ondigitalocean.app",
     "https://fedconnect.com.br",
-    "https://goldfish-app-nk5x6.ondigitalocean.app",
     "https://front-fedconnect-ebhjt.ondigitalocean.app",
-    "https://fedconnect-back-end-fedcorp-s3ho5.ondigitalocean.app"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
