@@ -22,8 +22,7 @@ SECRET_KEY = config(
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "back-fedconnect-y46st.ondigitalocean.app",
-    "goldfish-app-nk5x6.ondigitalocean.app",
+    "fedconnect-back-end-fedcorp-s3ho5.ondigitalocean.app",
     "fedconnect.com.br",
     "front-fedconnect-ebhjt.ondigitalocean.app"
     
@@ -180,7 +179,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://front-fedconnect-98i8n.ondigitalocean.app",
     "https://fedconnect.com.br",
     "https://goldfish-app-nk5x6.ondigitalocean.app",
-    "https://front-fedconnect-ebhjt.ondigitalocean.app"
+    "https://front-fedconnect-ebhjt.ondigitalocean.app",
+    "https://fedconnect-back-end-fedcorp-s3ho5.ondigitalocean.app"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
