@@ -4,6 +4,7 @@ from datetime import timedelta
 from decouple import config
 from dotenv import load_dotenv
 import logging
+from corsheaders.defaults import default_headers
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -24,8 +25,8 @@ ALLOWED_HOSTS = [
     "localhost",
     "fedconnect-backend-d6kgr.ondigitalocean.app",
     "fedconnect.com.br",
-    "front-fedconnect-ebhjt.ondigitalocean.app"
-    
+    "front-fedconnect-ebhjt.ondigitalocean.app",
+    "fedconnect-hml.vercel.app",
 ]
 
 INSTALLED_APPS = [
@@ -52,7 +53,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -118,9 +118,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = "static/"
-
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "users.Usuario"
@@ -128,7 +125,7 @@ AUTH_USER_MODEL = "users.Usuario"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        # "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -137,6 +134,7 @@ REST_FRAMEWORK = {
     "MAX_PAGE_SIZE": 200,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=120),
@@ -174,9 +172,7 @@ CORS_ALLOWED_ORIGINS = [
 
     "https://goldfish-app-nk5x6.ondigitalocean.app",
     "https://front-fedconnect-ebhjt.ondigitalocean.app",
-    "https://fedconnect-hml.vercel.app"
-
-    "https://front-fedconnect-ebhjt.ondigitalocean.app",
+    "https://fedconnect-hml.vercel.app",
 
 ]
 
@@ -184,17 +180,20 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "dnt",
-    "origin",
-    "user-agent",
-    "x-requested-with",
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
 
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "authorization",
+]
+
+CORS_PREFLIGHT_MAX_AGE = 86400
 
 CEP_URL = "https://brasilapi.com.br/api/cep/v1/"
 CNPJ_URL = "https://brasilapi.com.br/api/cnpj/v1/"
