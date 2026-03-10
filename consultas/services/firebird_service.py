@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        self.base_url = "http://localhost:8090"
-        # self.base_url = "https://steeply-outlandish-reese.ngrok-free.dev"
+        # self.base_url = "http://localhost:8090"
+        self.base_url = "https://steeply-outlandish-reese.ngrok-free.dev"
 
     def buscar_fatura_por_numero(self, numero_fatura: str):
         try:

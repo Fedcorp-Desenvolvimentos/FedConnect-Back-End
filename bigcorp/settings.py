@@ -72,20 +72,11 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='placeholder_pass'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
+        'OPTIONS': {
+            'sslmode': config('SSLMODE', default='require')
+        }
     }
 }
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": config("DB_DATABASE"),
-#         "USER": config("DB_USERNAME"),
-#         "PASSWORD": config("DB_PASSWORD"),
-#         "HOST": config("DB_HOST"),
-#         "PORT": config("DB_PORT"),
-#         # 'OPTIONS': {'DB_SSL_MODE': 'require'} 
-#     }
-# }
 
 TEMPLATES = [
     {
@@ -176,11 +167,14 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
     "https://front-fedconnect-98i8n.ondigitalocean.app",
     "https://fedconnect.com.br",
     "https://goldfish-app-nk5x6.ondigitalocean.app",
-    "https://front-fedconnect-ebhjt.ondigitalocean.app"
+    "https://front-fedconnect-ebhjt.ondigitalocean.app",
+    "https://fedconnect-hml.vercel.app"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
