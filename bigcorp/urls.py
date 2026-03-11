@@ -102,5 +102,8 @@ urlpatterns = [
     
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
     path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'),    # Inclua as rotas geradas pelo Router (ViewSets) por último
+    
+    
+    
     path("", include(router.urls)),
 ]

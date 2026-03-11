@@ -14,11 +14,31 @@ logger.info(f"DEBUG está definido como: {DEBUG}")
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
+# Configurações de Email
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@seusite.com')
+EMAIL_FROM_NAME = os.getenv('EMAIL_FROM_NAME', 'Sistema')
+
+# Configurações do Site
+SITE_NAME = os.getenv('SITE_NAME', 'Grupo FedCorp')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'suporte@fedcorp.com')
+LOGO_URL = os.getenv('LOGO_URL', f'{FRONTEND_URL}/logo.png')
+
+# Configurações de Recuperação de Senha
+PASSWORD_RESET_TIMEOUT = 3600  # 1 hora em segundos
+
+##### Configurações de Segurança
+
 SECRET_KEY = config(
     "DJANGO_SECRET_KEY",
     default="59189659c050c968f50c01d04d3634bced76415cce6738402d9e101478129efa",
 )
-
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
