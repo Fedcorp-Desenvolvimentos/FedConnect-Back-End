@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "agenda",
     "agenda_comercial",
     "cotacao",
+    "bank"
 ]
 
 MIDDLEWARE = [
