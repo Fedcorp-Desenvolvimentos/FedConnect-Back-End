@@ -4,7 +4,7 @@ import json
 
 @csrf_exempt # Use isso para facilitar testes externos (Postman/Insomnia) sem CSRF token
 def webhook_receiver(request):
-    if request.method == 'POST':
+    if request.method == 'POST' or 'GET':
         # Opcional: capturar os dados enviados
         try:
             data = json.loads(request.body)
