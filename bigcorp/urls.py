@@ -103,7 +103,7 @@ urlpatterns = [
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
     path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'),    # Inclua as rotas geradas pelo Router (ViewSets) por último
     
-    path('/api/santander/webhook/', webhook_receiver, name="santander receiver"),
+    path('api/santander/webhook/', webhook_receiver, name="santander receiver"),
     
     path("", include(router.urls)),
 ]
