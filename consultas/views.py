@@ -679,7 +679,148 @@ class BuscarFaturasComBoletos(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
+# consultas/views.py - Classe BuscarFaturamento
+
+class BuscarFaturamento(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        service = FirebirdService()
+        
+        logger.info(f"Parâmetros da requisição de faturamento: {request.query_params}")
+
+        # Coletar todos os parâmetros possíveis
+        filtros = {
+            "fatura": request.query_params.get("fatura"),
+            "apolice": request.query_params.get("apolice"),
+            "administradora": request.query_params.get("administradora"),
+            "status": request.query_params.get("status"),
+            "data_ini": request.query_params.get("data_ini"),
+            "data_fim": request.query_params.get("data_fim"),
+            "page": request.query_params.get("page", 1),
+            "page_size": request.query_params.get("page_size", 10),
+        }
+
+        # Remover filtros vazios
+        filtros_limpos = {k: v for k, v in filtros.items() if v not in [None, "", "null"]}
+        logger.info(f"Filtros limpos para faturamento: {filtros_limpos}")
+
+        try:
+            # Chamar o serviço que consulta o FedHub
+            dados = service.buscar_faturamento(filtros_limpos)
             
+            if not dados:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao consultar serviço de faturas",
+                        "resultado": {
+                            "data": [],
+                            "pagination": {
+                                "current_page": int(filtros_limpos.get('page', 1)),
+                                "page_size": int(filtros_limpos.get('page_size', 10)),
+                                "total_records": 0,
+                                "total_pages": 1,
+                                "has_next": False,
+                                "has_previous": False
+                            }
+                        }
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            if dados.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": dados.get("message", "Erro ao buscar faturas"),
+                        "resultado": {
+                            "data": [],
+                            "pagination": {
+                                "current_page": int(filtros_limpos.get('page', 1)),
+                                "page_size": int(filtros_limpos.get('page_size', 10)),
+                                "total_records": 0,
+                                "total_pages": 1,
+                                "has_next": False,
+                                "has_previous": False
+                            }
+                        }
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Extrair dados da resposta do FedHub
+            data_list = dados.get("data", [])
+            total_registros = dados.get("total_registros", 0)
+            pagina_atual = dados.get("pagina_atual", int(filtros_limpos.get('page', 1)))
+            total_paginas = dados.get("total_paginas", 1)
+            tem_proxima = dados.get("tem_proxima", False)
+            tem_anterior = dados.get("tem_anterior", False)
+            
+            # Log para debug
+            logger.info(f"Retornando {len(data_list)} registros de {total_registros} total")
+
+            # IMPORTANTE: O frontend espera a estrutura com "resultado.data"
+            return Response(
+                {
+                    "sucesso": True,
+                    "resultado": {
+                        "data": data_list,
+                        "pagination": {
+                            "current_page": pagina_atual,
+                            "page_size": int(filtros_limpos.get('page_size', 10)),
+                            "total_records": total_registros,
+                            "total_pages": total_paginas,
+                            "has_next": tem_proxima,
+                            "has_previous": tem_anterior
+                        }
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except requests.RequestException as e:
+            logger.error(f"Erro de comunicação ao buscar faturamento: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro de comunicação com o serviço de faturas: {str(e)}",
+                    "resultado": {
+                        "data": [],
+                        "pagination": {
+                            "current_page": int(filtros_limpos.get('page', 1)),
+                            "page_size": int(filtros_limpos.get('page_size', 10)),
+                            "total_records": 0,
+                            "total_pages": 1,
+                            "has_next": False,
+                            "has_previous": False
+                        }
+                    }
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar faturamento: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno ao processar consulta: {str(e)}",
+                    "resultado": {
+                        "data": [],
+                        "pagination": {
+                            "current_page": int(filtros_limpos.get('page', 1)),
+                            "page_size": int(filtros_limpos.get('page_size', 10)),
+                            "total_records": 0,
+                            "total_pages": 1,
+                            "has_next": False,
+                            "has_previous": False
+                        }
+                    }
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )         
+
 class BuscarFaturasComBoletosESegurados(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]

@@ -24,6 +24,8 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@seusite.com')
 EMAIL_FROM_NAME = os.getenv('EMAIL_FROM_NAME', 'Sistema')
 
+# FEDHUB_X_API_KEY = os.getenv('FEDHUB_X_API_KEY', '')
+
 # Configurações do Site
 SITE_NAME = os.getenv('SITE_NAME', 'Grupo FedCorp')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
@@ -224,7 +226,7 @@ ALT_CEP_URL = "https://viacep.com.br/ws"
 REGIAO_URL = "https://minhareceita.org/"
 
 
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyCRSJTHKtG8_LmfYXzY9PhP8AzudBY42Z4")
 
 
@@ -245,6 +247,7 @@ SPECTACULAR_SETTINGS = {
         "HistoricoConsultaTipoConsultaEnum": "TipoConsultaEnum",
     },
 }
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -271,6 +274,7 @@ LOGGING = {
         },
     },
 }
+
 logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 
 

@@ -5,17 +5,20 @@ import httpx
 import requests
 import logging
 
+from consultas.utils.get_headers import get_headers
+
 logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        # self.base_url = "http://localhost:8090"
-        self.base_url = "https://steeply-outlandish-reese.ngrok-free.dev"
+        self.base_url = "http://localhost:8090"
+        # self.base_url = "https://steeply-outlandish-reese.ngrok-free.dev"
 
     def buscar_fatura_por_numero(self, numero_fatura: str):
         try:
             response = requests.get(
                 f"{self.base_url}/api/faturas/fatura/{numero_fatura}",
+                # headers=get_headers(),
                 timeout=30
             )
 
@@ -48,6 +51,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/fatura-dinamica",
                 params=params,
+                # headers=get_headers(),
                 timeout=30
             )
 
@@ -69,6 +73,47 @@ class FirebirdService:
             logger.error(f"Erro comunicação Firebird dinâmica: {e}")
             return None
 
+    def buscar_faturamento(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Busca faturas com boletos associados - usa a rota /faturamento do FedHub
+        """
+        try:
+            # Remove filtros vazios
+            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
+            
+            # IMPORTANTE: Garantir que page e page_size sejam inteiros
+            if 'page' in params:
+                params['page'] = int(params['page'])
+            if 'page_size' in params:
+                params['page_size'] = int(params['page_size'])
+
+            logger.info(f"Chamando FedHub - faturamento com params: {params}")
+            
+            response = requests.get(
+                f"{self.base_url}/api/faturas/faturamento",
+                params=params,
+                # headers=get_headers(),
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Erro ao consultar FedHub - FATURAMENTO - {response.status_code} | {response.text}"
+                )
+                return None
+
+            data = response.json()
+            logger.info(f"Resposta do FedHub: {data.get('status')}")
+
+            if data.get("status") != "success":
+                return None
+
+            return data
+
+        except requests.RequestException as e:
+            logger.error(f"Erro comunicação com o FedHub - FATURAMENTO: {e}")
+            return None
+        
     def buscar_faturas_com_boletos(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Busca faturas com boletos associados
@@ -80,6 +125,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-com-boletos",
                 params=params,
+                # headers=get_headers(),
                 timeout=30
             )
 
@@ -111,6 +157,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-com-boletos-e-segurados",
                 params=params,
+                # headers=get_headers(),
                 timeout=30
             )
 
@@ -146,6 +193,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-dinamicas-paginadas",
                 params=params,
+                # headers=get_headers(),
                 timeout=30
             )
 
@@ -181,6 +229,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-com-boletos-paginadas",
                 params=params,
+                # headers=get_headers(),
                 timeout=30
             )
 
@@ -263,7 +312,8 @@ class FirebirdService:
     async def buscar_todas_empresas(self):
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
-                f"{self.base_url}/api/empresas/todas-empresas"
+                f"{self.base_url}/api/empresas/",
+                # headers=get_headers(),
             )
 
         if response.status_code != 200:
@@ -281,7 +331,8 @@ class FirebirdService:
             try:
                 response = requests.get(
                     f"{self.base_url}/api/administradoras/por-nome/{nome}",
-                    timeout=30
+                    timeout=30,
+                    headers=get_headers()
                 )
 
                 if response.status_code != 200:
@@ -303,6 +354,7 @@ class FirebirdService:
         try:
             response = requests.get(
                 f"{self.base_url}/api/administradoras/por-codigo/{codigo}",
+                # headers=get_headers(),
                 timeout=30
             )
 
@@ -325,6 +377,7 @@ class FirebirdService:
         try:
             response = requests.get(
                 f"{self.base_url}/api/administradoras/posto/{codigo}",
+                # headers=get_headers(),
                 timeout=30
             )
 

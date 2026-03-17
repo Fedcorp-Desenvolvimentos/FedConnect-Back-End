@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from users.views import UsuarioViewSet, LogoutView, CustomTokenObtainPairView, PasswordView
-from consultas.views import BuscarAdministradorasPorCodigo, BuscarAdministradorasPorNome, BuscarFaturaPorNumero, BuscarFaturaDinamicamente, BuscarFaturasComBoletos, BuscarFaturasComBoletosESegurados, BuscarFaturasComBoletosPaginadas, BuscarFaturasDinamicamentePaginadas, BuscarTodasEmpresas, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
+from consultas.views import BuscarAdministradorasPorCodigo, BuscarAdministradorasPorNome, BuscarFaturaPorNumero, BuscarFaturaDinamicamente, BuscarFaturasComBoletos, BuscarFaturamento, BuscarFaturasComBoletosESegurados, BuscarFaturasComBoletosPaginadas, BuscarFaturasDinamicamentePaginadas, BuscarTodasEmpresas, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
 from planilha.views.cnpj_views import (baixar_planilha_modelo_drf_cnpj, ProcessarPlanilhaCnpjsView)
 from planilha.views.cep_views import (baixar_planilha_modelo_drf_cep,ProcessarPlanilhaCepsView)
 from planilha.views.cpf_views import (baixar_planilha_modelo_drf_cpf, ProcessarPlanilhaCpfsView)
@@ -51,7 +51,7 @@ urlpatterns = [
     path("users/me/", UsuarioViewSet.as_view({"get": "me"}), name="usuario-me"),
     path("users/password/", PasswordView.as_view(), name="usuario-password"),
     
-    path("empresas/todas", BuscarTodasEmpresas.as_view(), name="consultar-todas-empresas"),
+    path("empresas/", BuscarTodasEmpresas.as_view(), name="consultar-todas-empresas"),
     
     # Rotas de Consultas#
     path('consultas/realizar/', RealizarConsultaView.as_view(), name='realizar-consulta'),
@@ -85,6 +85,7 @@ urlpatterns = [
     path('consultas/faturas/', RealizarConsultaFaturasView.as_view(), name='realizar-consulta-faturas'),
     path('consultas/faturas/fatura-dinamica/', BuscarFaturaDinamicamente.as_view(), name='buscar-fatura-dinamicamente'),
     path('consultas/faturas/fatura-dinamica-paginada/', BuscarFaturasDinamicamentePaginadas.as_view(), name='buscar-fatura-dinamica-paginada'),
+    path('consultas/faturamento/', BuscarFaturamento.as_view(), name='buscar-faturamento'),
     path('consultas/faturas/com-boletos/', BuscarFaturasComBoletos.as_view(), name='buscar-faturas-com-boletos'),
     path('consultas/faturas/com-boletos-e-segurados/', BuscarFaturasComBoletosESegurados.as_view(), name='buscar-faturas-com-boletos-e-segurados'),
     path('consultas/faturas/faturas-com-boletos-paginada/', BuscarFaturasComBoletosPaginadas.as_view(), name='buscar-faturas-com-boletos-paginadas'),
@@ -101,7 +102,7 @@ urlpatterns = [
     path('cotacao/incendio-conteudo/', calcular_cotacao_incendio, name='calcular_cotacao_incendio'),
     
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
-    path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'),    # Inclua as rotas geradas pelo Router (ViewSets) por último
+    path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
     
     path('api/santander/webhook/', webhook_receiver, name="santander receiver"),
     

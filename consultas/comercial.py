@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 from io import BytesIO
 from rest_framework.views import APIView
@@ -21,6 +23,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.parsers import JSONParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+logger = logging.getLogger(__name__)
 
 def consulta_comercial(cnpj):
 
@@ -683,6 +686,7 @@ class ComercialRegiaoAPIView(APIView):
 
        
         query_string = f"Administradoras e Imobiliárias em {bairro}, {municipio} - {uf}"
+        logger.info(f"Consulta Google Places: {query_string}")
         
         url = "https://places.googleapis.com/v1/places:searchText"
 
@@ -721,9 +725,10 @@ class ComercialRegiaoAPIView(APIView):
 
         except requests.exceptions.HTTPError as e:
             # Captura erros que o Google retornou (ex: API Key inválida, Cota excedida)
-            error_content = e.response.json() if e.response else str(e)
+            logger.info("Erro HTTP na API do Google Places CÓDIGO: %s", e.response.status_code)
+            logger.info("Erro HTTP na API do Google Places CORPO: %s", e.response.text)
             return Response(
-                {"detail": "Erro na API do Google Places", "google_error": error_content}, 
+                {"detail": "Erro na API do Google Places", "google_error": e.response.text}, 
                 status=e.response.status_code
             )
         except Exception as e:
