@@ -725,8 +725,6 @@ class ComercialRegiaoAPIView(APIView):
 
         except requests.exceptions.HTTPError as e:
             # Captura erros que o Google retornou (ex: API Key inválida, Cota excedida)
-            logger.info("Erro HTTP na API do Google Places CÓDIGO: %s", e.response.status_code)
-            logger.info("Erro HTTP na API do Google Places CORPO: %s", e.response.text)
             return Response(
                 {"detail": "Erro na API do Google Places", "google_error": e.response.text}, 
                 status=e.response.status_code

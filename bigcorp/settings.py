@@ -227,7 +227,7 @@ REGIAO_URL = "https://minhareceita.org/"
 
 
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
-GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyCRSJTHKtG8_LmfYXzY9PhP8AzudBY42Z4")
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyCmVm2yu5jo-9793-4CSs78e4L9c-U6kNQ")
 
 
 SPECTACULAR_SETTINGS = {
