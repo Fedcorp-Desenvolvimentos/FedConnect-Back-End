@@ -15,4 +15,5 @@ class SantanderWebhookView(APIView):
     def post(self, request):
         data = request.data
         logger.info(f"Webhook recebido: {data}")
+        print("Webhook recebido:", data)
         return Response(status=200)
