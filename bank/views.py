@@ -1,35 +1,18 @@
-import json
 import logging
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
+
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
 
-@csrf_exempt
-def santander_webhook(request):
-    # aceita GET (teste manual)
-    if request.method == "GET":
-        return JsonResponse({"status": "ok", "message": "webhook ativo"}, status=200)
+class SantanderWebhookView(APIView):
+    permission_classes = [AllowAny]
 
-    if request.method == "POST":
-        try:
-            body = request.body.decode("utf-8") if request.body else ""
-        except Exception:
-            body = ""
+    def get(self, request):
+        return Response({"status": "ok", "message": "webhook ativo"})
 
-        data = {}
-
-        # tenta parsear JSON (mas nunca quebra)
-        if body:
-            try:
-                data = json.loads(body)
-            except Exception:
-                data = {}
-
-        # loga (ou salva depois, sem travar resposta)
+    def post(self, request):
+        data = request.data
         logger.info(f"Webhook recebido: {data}")
-
-        # 🔥 IMPORTANTE: responder 200 SEMPRE e RÁPIDO
-        return JsonResponse({"received": True}, status=200)
-
-    return JsonResponse({"error": "method not allowed"}, status=405)
+        return Response({"received": True})

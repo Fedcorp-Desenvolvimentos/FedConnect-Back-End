@@ -15,7 +15,7 @@ from agenda_comercial.views import AgendamentoListCreateAPIView, AgendamentoRetr
 from django.urls import path
 from cotacao.views import calcular_cotacao_incendio
 from consultas.boletofedbnk import consultar_boletos_proxy, consultar_boleto
-from bank.views import santander_webhook
+from bank.views import SantanderWebhookView
 
 # Importe para a documentação
 from drf_spectacular.views import (
@@ -104,7 +104,7 @@ urlpatterns = [
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
     path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
     
-    path('api/santander/webhook/', santander_webhook, name="santander receiver"),
+    path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
     
     path("", include(router.urls)),
 ]
