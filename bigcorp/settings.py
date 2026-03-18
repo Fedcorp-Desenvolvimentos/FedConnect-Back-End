@@ -49,7 +49,11 @@ ALLOWED_HOSTS = [
     "fedconnect.com.br",
     "front-fedconnect-ebhjt.ondigitalocean.app",
     "fedconnect-hml.vercel.app",
+    "fedcorp-pay.com.br"
 ]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 
 INSTALLED_APPS = [
     "django.contrib.admin",

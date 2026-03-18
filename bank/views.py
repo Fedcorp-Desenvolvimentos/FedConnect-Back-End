@@ -1,35 +1,35 @@
 import json
-import requests  # Certifique-se de ter 'requests' instalado
-from django.http import JsonResponse
+import logging
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
+logger = logging.getLogger(__name__)
+
 @csrf_exempt
-def webhook_receiver(request):
-    if request.method in ['POST', 'GET']:
-        # Se for GET, pegamos os parâmetros da URL. Se for POST, o JSON do body.
-        if request.method == 'GET':
-            data = request.GET.dict()
-        else:
+def santander_webhook(request):
+    # aceita GET (teste manual)
+    if request.method == "GET":
+        return JsonResponse({"status": "ok", "message": "webhook ativo"}, status=200)
+
+    if request.method == "POST":
+        try:
+            body = request.body.decode("utf-8") if request.body else ""
+        except Exception:
+            body = ""
+
+        data = {}
+
+        # tenta parsear JSON (mas nunca quebra)
+        if body:
             try:
-                data = json.loads(request.body) if request.body else {}
-            except json.JSONDecodeError:
+                data = json.loads(body)
+            except Exception:
                 data = {}
 
-        target_url = "https://steeply-outlandish-reese.ngrok-free.dev/santander/webhook/"
+        # loga (ou salva depois, sem travar resposta)
+        logger.info(f"Webhook recebido: {data}")
 
-        try:
-            # Repassamos os dados. Se for GET no original, talvez você queira 
-            # decidir se envia como POST para o ngrok ou mantém o método.
-            response = requests.post(
-                target_url,
-                json=data,
-                headers={'ngrok-skip-browser-warning': '1'},
-                timeout=10
-            )
-            target_status = response.status_code
-        except requests.exceptions.RequestException as e:
-            return JsonResponse({"status": "erro", "detalhes": str(e)}, status=502)
+        # 🔥 IMPORTANTE: responder 200 SEMPRE e RÁPIDO
+        return JsonResponse({"received": True}, status=200)
 
-        return JsonResponse({"status": "sucesso", "ngrok_status": target_status}, status=200)
-    
-    return JsonResponse({"erro": "Método não permitido"}, status=405)
+    return JsonResponse({"error": "method not allowed"}, status=405)
