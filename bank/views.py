@@ -10,9 +10,9 @@ class SantanderWebhookView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({"status": "ok", "message": "webhook ativo"})
+        return Response(status=200)
 
     def post(self, request):
         data = request.data
         logger.info(f"Webhook recebido: {data}")
-        return Response({"received": True})
+        return Response(status=200)
