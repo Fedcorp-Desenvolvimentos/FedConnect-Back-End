@@ -18,7 +18,7 @@ class FirebirdService:
         try:
             response = requests.get(
                 f"{self.base_url}/api/faturas/fatura/{numero_fatura}",
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -51,7 +51,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/fatura-dinamica",
                 params=params,
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -92,7 +92,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturamento",
                 params=params,
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -125,7 +125,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-com-boletos",
                 params=params,
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -157,7 +157,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-com-boletos-e-segurados",
                 params=params,
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -193,7 +193,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-dinamicas-paginadas",
                 params=params,
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -229,7 +229,7 @@ class FirebirdService:
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturas-com-boletos-paginadas",
                 params=params,
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -313,7 +313,7 @@ class FirebirdService:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.base_url}/api/empresas/",
-                # headers=get_headers(),
+                headers=get_headers(),
             )
 
         if response.status_code != 200:
@@ -354,7 +354,7 @@ class FirebirdService:
         try:
             response = requests.get(
                 f"{self.base_url}/api/administradoras/por-codigo/{codigo}",
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
@@ -377,7 +377,7 @@ class FirebirdService:
         try:
             response = requests.get(
                 f"{self.base_url}/api/administradoras/posto/{codigo}",
-                # headers=get_headers(),
+                headers=get_headers(),
                 timeout=30
             )
 
