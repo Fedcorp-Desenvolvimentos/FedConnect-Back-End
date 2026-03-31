@@ -677,15 +677,17 @@ class ComercialRegiaoAPIView(APIView):
         uf = request.data.get('uf')
         municipio = request.data.get('municipio')
         bairro = request.data.get('bairro')
-
-        if not all([uf, municipio, bairro]):
+        max_resultados = request.data.get('max_resultados', 20)
+        page_token = request.data.get('page_token', None)
+        
+        if not all([uf, municipio]):
             return Response(
-                {"detail": "Os campos 'uf', 'municipio' e 'bairro' são obrigatórios."}, 
+                {"detail": "Os campos 'uf' e 'municipio' são obrigatórios."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-       
-        query_string = f"Administradoras e Imobiliárias em {bairro}, {municipio} - {uf}"
+        # 2. Construir query string
+        query_string = f"Administradoras e Imobiliárias em {bairro}, {municipio} - {uf}" if bairro else f"Administradoras e Imobiliárias em {municipio} - {uf}"
         logger.info(f"Consulta Google Places: {query_string}")
         
         url = "https://places.googleapis.com/v1/places:searchText"
@@ -695,7 +697,8 @@ class ComercialRegiaoAPIView(APIView):
             "places.formattedAddress,"
             "places.nationalPhoneNumber,"
             "places.websiteUri,"
-            "places.businessStatus"
+            "places.businessStatus,"
+            "places.id"  # Adicionei ID para referência
         )
 
         headers = {
@@ -707,30 +710,37 @@ class ComercialRegiaoAPIView(APIView):
         payload = {
             "textQuery": query_string,
             "includedType": "real_estate_agency",
-            "languageCode": "pt-BR"
+            "languageCode": "pt-BR",
+            "maxResultCount": min(max_resultados, 20)  # Máximo permitido é 20
         }
+        
+        # Adicionar token de paginação se existir
+        if page_token:
+            payload["pageToken"] = page_token
     
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
-            response.raise_for_status() # Levanta erro se não for 200 OK
+            response.raise_for_status()
             
             data = response.json()
             places = data.get('places', [])
+            next_page_token = data.get('nextPageToken', None)  # Token para próxima página
+            
+            # Filtrar locais operacionais
+            places = [p for p in places if p.get('businessStatus') == 'OPERATIONAL']
 
-            # 4. Tratamento Opcional (Filtrar locais fechados permanentemente)
-            # Se quiser remover empresas que o Google diz que fecharam, descomente abaixo:
-            # places = [p for p in places if p.get('businessStatus') == 'OPERATIONAL']
-
-            return Response({"resultados": places}, status=status.HTTP_200_OK)
+            return Response({
+                "resultados": places,
+                "next_page_token": next_page_token,  # Envia token para o frontend
+                "total_retornados": len(places)
+            }, status=status.HTTP_200_OK)
 
         except requests.exceptions.HTTPError as e:
-            # Captura erros que o Google retornou (ex: API Key inválida, Cota excedida)
             return Response(
                 {"detail": "Erro na API do Google Places", "google_error": e.response.text}, 
                 status=e.response.status_code
             )
         except Exception as e:
-            # Erros genéricos de conexão ou código
             return Response(
                 {"detail": "Erro interno ao buscar imobiliárias.", "error": str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

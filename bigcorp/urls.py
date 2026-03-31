@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from users.views import UsuarioViewSet, LogoutView, CustomTokenObtainPairView, PasswordView
-from consultas.views import BuscarAdministradorasPorCodigo, BuscarAdministradorasPorNome, BuscarFaturaPorNumero, BuscarFaturaDinamicamente, BuscarFaturasComBoletos, BuscarFaturamento, BuscarFaturasComBoletosESegurados, BuscarFaturasComBoletosPaginadas, BuscarFaturasDinamicamentePaginadas, BuscarTodasEmpresas, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
+from consultas.views import BuscarAdministradorasPorCodigo, BuscarAdministradorasPorNome, BuscarCorretores, BuscarFaturaPorNumero, BuscarFaturaDinamicamente, BuscarFaturasComBoletos, BuscarFaturamento, BuscarFaturasComBoletosESegurados, BuscarFaturasComBoletosPaginadas, BuscarFaturasDinamicamentePaginadas, BuscarTodasEmpresas, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF, RealizarConsultaView, HistoricoConsultaListView, HistoricoConsultaDetailView, HistoricoConsultaUserListView
 from planilha.views.cnpj_views import (baixar_planilha_modelo_drf_cnpj, ProcessarPlanilhaCnpjsView)
 from planilha.views.cep_views import (baixar_planilha_modelo_drf_cep,ProcessarPlanilhaCepsView)
 from planilha.views.cpf_views import (baixar_planilha_modelo_drf_cpf, ProcessarPlanilhaCpfsView)
@@ -95,6 +95,8 @@ urlpatterns = [
     
     path('consultas/administradora/por-nome/<str:nome>/', BuscarAdministradorasPorNome.as_view(), name='consulta-administradora-por-nome'),
     path('consultas/administradora/por-codigo/<str:codigo>/', BuscarAdministradorasPorCodigo.as_view(), name='consulta-administradora-por-codigo'),
+    
+    path('consultas/corretores/<str:codigo>/', BuscarCorretores.as_view(), name='consulta-corretor-por-codigo'),
     
     path('comercial/agenda/', AgendamentoListCreateAPIView.as_view(), name='agendamento_list'),
     path('comercial/agenda/<int:pk>/', AgendamentoRetrieveUpdateDestroyAPIView.as_view(), name='agendamento_detail'),

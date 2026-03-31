@@ -680,7 +680,6 @@ class BuscarFaturasComBoletos(APIView):
             )
             
 # consultas/views.py - Classe BuscarFaturamento
-
 class BuscarFaturamento(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -821,6 +820,39 @@ class BuscarFaturamento(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )         
 
+class BuscarCorretores(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, codigo, *args, **kwargs):
+        try:
+            service = FirebirdService()
+
+            corretor = service.buscar_corretor_por_codigo(codigo)
+            
+            logger.info(f"Corretor encontrado: {corretor}")
+
+            if not corretor:
+                return Response(
+                    {"status": "error", "message": "Corretor não encontrado."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            return Response(
+                {
+                    "status": "success",
+                    "data": corretor
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            logger.error(f"Erro ao buscar corretor: {str(e)}")
+            return Response(
+                {"status": "error", "message": "Erro interno ao buscar corretor."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+                     
 class BuscarFaturasComBoletosESegurados(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
