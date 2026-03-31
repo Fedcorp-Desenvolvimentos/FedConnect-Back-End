@@ -13,7 +13,7 @@ class FirebirdService:
     def __init__(self):
         self.base_url = "https://fedhub-api-local.ngrok.app"
         # self.base_url = "http://localhost:8090"
-    
+
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
         try:
@@ -37,7 +37,7 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar Firebird: {e}")
             return None
-        
+
     def buscar_fatura_dinamicamente(
         self,
         filtros: Dict[str, Any]
@@ -81,7 +81,7 @@ class FirebirdService:
         try:
             # Remove filtros vazios
             params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
-            
+
             # IMPORTANTE: Garantir que page e page_size sejam inteiros
             if 'page' in params:
                 params['page'] = int(params['page'])
@@ -89,14 +89,14 @@ class FirebirdService:
                 params['page_size'] = int(params['page_size'])
 
             logger.info(f"Chamando FedHub - faturamento com params: {params}")
-            
+
             response = requests.get(
                 f"{self.base_url}/api/faturas/faturamento",
                 params=params,
                 headers=get_headers(),
                 timeout=30
             )
-            
+
             if response.status_code != 200:
                 logger.error(
                     f"Erro ao consultar FedHub - FATURAMENTO - {response.status_code} | {response.text}"
@@ -104,8 +104,10 @@ class FirebirdService:
                 return None
 
             data = response.json()
-            logger.info(f"Resposta do FedHub DADOS COMPLETOS - FATURAMENTO: {data}")
-            logger.info(f"Resposta do FedHub: {data.get('status')}")
+            # logger.info(f"Resposta do FedHub DADOS COMPLETOS - FATURAMENTO: {data}")
+            # logger.info(f"Resposta do FedHub: {data.get('status')}")
+            
+            logger.info(f"Quantidade de faturas retornadas: {len(data.get('data', [])) if data.get('status') == 'success' else 'N/A'}")
 
             if data.get("status") != "success":
                 return None
@@ -115,7 +117,7 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro comunicação com o FedHub - FATURAMENTO: {e}")
             return None
-        
+
     def buscar_faturas_com_boletos(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Busca faturas com boletos associados
@@ -147,7 +149,7 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro comunicação Firebird faturas-com-boletos: {e}")
             return None
-        
+
     def buscar_faturas_com_boletos_e_segurados(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Busca faturas com boletos associados
@@ -179,7 +181,7 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro comunicação Firebird faturas-com-boletos: {e}")
             return None
-         
+
     def buscar_faturas_dinamicamente_paginadas(
         self,
         filtros: Dict[str, Any]
@@ -251,7 +253,7 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro comunicação Firebird faturas-com-boletos-paginadas: {e}")
             return None
-    
+
     async def buscar_fatura_por_nosso_numero(self, nosso_numero: str):
         try:
             async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
@@ -270,7 +272,7 @@ class FirebirdService:
         except httpx.RequestError as e:
             logger.error(f"Erro ao chamar Fedhub: {e}")
             return None
-    
+
     async def buscar_todas_faturas(self, fatura_numero: str) -> Optional[List[Dict[str, Any]]]:
         """
         Busca dados da fatura no microsserviço Firebird (8090)
@@ -284,7 +286,7 @@ class FirebirdService:
 
                 if response.status_code == 200:
                     data = response.json()
-                    
+
                     if data.get("status") == "success":
                         return data.get("data", [])
                     else:
@@ -293,7 +295,7 @@ class FirebirdService:
                 else:
                     logger.error(f"Erro HTTP {response.status_code} ao buscar fatura {fatura_numero}")
                     return None
-                    
+
         except httpx.TimeoutException:
             logger.error(f"Timeout ao buscar fatura {fatura_numero}")
             return None
@@ -310,7 +312,7 @@ class FirebirdService:
         try:
             # Limpar CNPJ
             cnpj_limpo = ''.join(filter(str.isdigit, cnpj))
-            
+
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
                     f"{self.base_url}/api/empresas/{cnpj_limpo}"
@@ -318,7 +320,7 @@ class FirebirdService:
 
                 if response.status_code == 200:
                     data = response.json()
-                    
+
                     if data.get("status") == "success":
                         return data.get("data", [])
                     else:
@@ -327,7 +329,7 @@ class FirebirdService:
                 else:
                     logger.error(f"Erro HTTP {response.status_code} ao buscar empresa {cnpj}")
                     return None
-                    
+
         except Exception as e:
             logger.error(f"Erro ao buscar empresa {cnpj}: {str(e)}")
             return None
@@ -349,7 +351,7 @@ class FirebirdService:
             return None
 
         return data.get("data")
-        
+
 
     # Administradoras
     def buscar_administradora_por_nome(self, nome: str):
@@ -374,7 +376,7 @@ class FirebirdService:
             except requests.RequestException as e:
                 logger.error(f"Erro ao chamar Firebird: {e}")
                 return None
-        
+
     def buscar_administradora_por_codigo(self, codigo: str):
         try:
             response = requests.get(
@@ -397,7 +399,7 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar Firebird: {e}")
             return None
-        
+
     def buscar_administradora_por_codigo_com_postos_vida(self, codigo: str):
         try:
             response = requests.get(
@@ -421,7 +423,7 @@ class FirebirdService:
             logger.error(f"Erro ao chamar Firebird: {e}")
             return None
 
-    
+
     # Corretores
     def buscar_corretor_por_codigo(self, codigo: str):
         try:
@@ -445,8 +447,8 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar Firebird: {e}")
             return None
-       
-            
+
+
     # Processamento de pagamento de boleto via webhook do Santander
     async def processar_pagamento_boleto(self, documento: str, fatura: str, dados_pagamento: dict):
         try:
