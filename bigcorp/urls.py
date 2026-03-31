@@ -103,6 +103,8 @@ urlpatterns = [
     
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
     path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
+    path('cancelar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
+    
     
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
     
