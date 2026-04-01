@@ -7,31 +7,44 @@ from .models import Usuario
 class UsuarioSerializer(serializers.ModelSerializer):
     """Serializer para o modelo de usuário."""
     
-    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    password = serializers.CharField(write_only=True, required=True)
     
+    empresa_nome = serializers.CharField(write_only=True)
+    empresa_cnpj = serializers.CharField(write_only=True)
+
     class Meta:
         model = Usuario
-        fields = ['id', 'email','password' ,'nome_completo', 'nivel_acesso', 'is_active', 'data_criacao', 'data_atualizacao', 'empresa', 'is_fed', 'cpf']
+        fields = [
+            'id', 'email', 'password', 'nome_completo',
+            'nivel_acesso', 'is_active',
+            'data_criacao', 'data_atualizacao',
+            'empresa',
+            'empresa_nome',
+            'empresa_cnpj',
+            'is_fed', 'cpf'
+        ]
         read_only_fields = ['id', 'data_criacao', 'data_atualizacao']
-        extra_kwargs = {
-            'password': {'write_only': True}
-        }
     
     def create(self, validated_data):
-        """Cria um novo usuário com senha criptografada."""
         password = validated_data.pop('password')
-        codigo = validated_data.pop('empresa')
-        
-        empresa = Empresa.objects.filter(codigo_externo=codigo).first()
-        
-        if not empresa:
-            raise serializers.ValidationError({
-                "empresa": f"Código {codigo} não existe no Django"
-            })
-        
+
+        nome = validated_data.pop('empresa_nome')
+        cnpj = validated_data.pop('empresa_cnpj')
+
+        empresa, created = Empresa.objects.get_or_create(
+            cnpj=cnpj,
+            defaults={
+                "nome": nome,
+                "ativa": True
+            }
+        )
+
+        if not created and empresa.nome != nome:
+            empresa.nome = nome
+            empresa.save()
+
         validated_data['empresa'] = empresa
 
-        password = validated_data.pop('password')
         user = Usuario(**validated_data)
         user.set_password(password)
         user.save()
