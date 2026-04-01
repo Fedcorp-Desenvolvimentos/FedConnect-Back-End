@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from empresas.models import Empresa
 from .models import Usuario
 
 
@@ -18,9 +20,22 @@ class UsuarioSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Cria um novo usuário com senha criptografada."""
         password = validated_data.pop('password')
+        codigo = validated_data.pop('empresa')
+        
+        empresa = Empresa.objects.filter(codigo_externo=codigo).first()
+        
+        if not empresa:
+            raise serializers.ValidationError({
+                "empresa": f"Código {codigo} não existe no Django"
+            })
+        
+        validated_data['empresa'] = empresa
+
+        password = validated_data.pop('password')
         user = Usuario(**validated_data)
         user.set_password(password)
         user.save()
+
         return user
     
     def update(self, instance, validated_data):
