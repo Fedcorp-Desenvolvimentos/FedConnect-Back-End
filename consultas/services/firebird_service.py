@@ -1,9 +1,18 @@
 # consultas/services/firebird.py
 
+from datetime import timedelta
+from datetime import timedelta
+import secrets
+from django.utils import timezone
 from typing import Any, Dict, List, Optional
 import httpx
 import requests
 import logging
+
+from rest_framework import settings
+
+from django.conf import settings
+from django.template.loader import render_to_string
 
 from consultas.utils.get_headers import get_headers
 
@@ -423,7 +432,6 @@ class FirebirdService:
             logger.error(f"Erro ao chamar Firebird: {e}")
             return None
 
-
     # Corretores
     def buscar_corretor_por_codigo(self, codigo: str):
         try:
@@ -528,6 +536,63 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar serviços: {e}")
             return None
+    
+    
+    def enviar_email_recuperacao_senha(self, email: str, user: Any) -> bool:
+        try:
+            with httpx.Client() as client:
+                
+                # 🔐 Gerar NOVO token (sobrescreve o anterior)
+                reset_token = secrets.token_urlsafe(32)
+                expires_at = timezone.now() + timedelta(hours=24)
+                
+                # SOBRESCREVE o token anterior (se existir)
+                user.reset_password_token = reset_token
+                user.reset_password_token_created_at = timezone.now()
+                user.reset_password_token_expires_at = expires_at
+                # Não precisa limpar antes, apenas sobrescreve
+                user.save(update_fields=[
+                    'reset_password_token', 
+                    'reset_password_token_created_at', 
+                    'reset_password_token_expires_at'
+                ])
+                
+                logger.info(f"Novo token gerado (sobrescreveu anterior) para: {user.email}")
+                logger.info(f"Token expira em: {expires_at}")
+                
+                frontend_url = settings.FRONTEND_URL
+                
+                # Construir link de reset
+                reset_url = f"{frontend_url}/resetar-senha/{reset_token}"
+                
+                logger.info(f"Link de reset gerado: {reset_url}")
+                
+                html_body = render_to_string('email/resetar_senha.html', {
+                    'nome_usuario': user.nome_completo or user.email,
+                    'reset_url': reset_url,
+                })
+                
+                response = client.post(
+                    f"{self.base_url}/api/email/send/gmail",
+                    json={
+                        "to_email": email,
+                        "subject": "Redefinição de Senha - FedConnect",
+                        "body": html_body,
+                        "is_html": True
+                    },
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"Email enviado com sucesso via Gateway para: {email}")
+                else:
+                    logger.error(f"Gateway retornou erro {response.status_code}: {response.text}")
+
+            return True
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar serviço de email: {e}")
+            return False
     
     # Processamento de pagamento de boleto via webhook do Santander
     async def processar_pagamento_boleto(self, documento: str, fatura: str, dados_pagamento: dict):

@@ -13,6 +13,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Case, When, IntegerField
 from rest_framework.views import APIView
 
+from consultas.services.firebird_service import FirebirdService
+
 import httpx
 import secrets
 import logging
@@ -129,6 +131,7 @@ class PasswordView(APIView):
             {"detail": "Senha alterada com sucesso."}, status=status.HTTP_200_OK
         )
 
+
 class SolicitarResetSenhaView(APIView):
     permission_classes = [AllowAny]
     
@@ -153,129 +156,20 @@ class SolicitarResetSenhaView(APIView):
                 status=status.HTTP_200_OK
             )
         
-        # 🔐 Gerar NOVO token (sobrescreve o anterior)
-        reset_token = secrets.token_urlsafe(32)
-        expires_at = timezone.now() + timedelta(hours=24)
-        
-        # SOBRESCREVE o token anterior (se existir)
-        user.reset_password_token = reset_token
-        user.reset_password_token_created_at = timezone.now()
-        user.reset_password_token_expires_at = expires_at
-        # Não precisa limpar antes, apenas sobrescreve
-        user.save(update_fields=[
-            'reset_password_token', 
-            'reset_password_token_created_at', 
-            'reset_password_token_expires_at'
-        ])
-        
-        logger.info(f"Novo token gerado (sobrescreveu anterior) para: {user.email}")
-        logger.info(f"Token expira em: {expires_at}")
-        
-        # Construir link de reset
-        reset_url = f"{settings.FRONTEND_URL}/resetar-senha/{reset_token}"
-        
-        logger.info(f"Link de reset gerado: {reset_url}")
-        
-        # Template HTML
-        html_body = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <style>
-                    body {{
-                        font-family: Arial, sans-serif;
-                        background-color: #f4f4f4;
-                        margin: 0;
-                        padding: 0;
-                    }}
-                    .container {{
-                        max-width: 600px;
-                        margin: 20px auto;
-                        background: white;
-                        border-radius: 10px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    }}
-                    .header {{
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 30px;
-                        text-align: center;
-                        border-radius: 10px 10px 0 0;
-                    }}
-                    .content {{
-                        padding: 30px;
-                    }}
-                    .button {{
-                        display: inline-block;
-                        padding: 12px 24px;
-                        background: #764ba2;
-                        color: white;
-                        text-decoration: none;
-                        border-radius: 5px;
-                        margin: 20px 0;
-                    }}
-                    .footer {{
-                        text-align: center;
-                        padding: 20px;
-                        color: #666;
-                        font-size: 12px;
-                        border-top: 1px solid #eee;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h2>Redefinição de Senha</h2>
-                    </div>
-                    <div class="content">
-                        <p>Olá, <strong>{user.nome_completo or user.email}</strong>!</p>
-                        
-                        <p>Recebemos uma solicitação para redefinir a senha da sua conta no <strong>FedConnect</strong>.</p>
-                        
-                        <p>Clique no botão abaixo para criar uma nova senha:</p>
-                        
-                        <div style="text-align: center;">
-                            <a href="{reset_url}" class="button" style="color: white;">Redefinir Senha</a>
-                        </div>
-                        
-                        <p>Ou copie o link abaixo:</p>
-                        <p style="background: #f0f0f0; padding: 10px; border-radius: 5px; word-break: break-all;">
-                            {reset_url}
-                        </p>
-                        
-                        <p><strong>⚠️ Importante:</strong> Este link é válido por 24 horas.</p>
-                        
-                        <p>Se você não solicitou essa alteração, ignore este e-mail.</p>
-                    </div>
-                    <div class="footer">
-                        <p>FedConnect - Sua plataforma de consultas</p>
-                        <p>Este é um e-mail automático, por favor não responda.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        """
-        
         # Enviar email via Gateway
         try:
-            with httpx.Client() as client:
-                response = client.post(
-                    f"{settings.GATEWAY_URL}/api/email/send/gmail",
-                    json={
-                        "to_email": email,
-                        "subject": "Redefinição de Senha - FedConnect",
-                        "body": html_body,
-                        "is_html": True
-                    },
-                    timeout=30.0
-                )
-                
-                if response.status_code == 200:
-                    logger.info(f"Email enviado com sucesso via Gateway para: {email}")
-                else:
-                    logger.error(f"Gateway retornou erro {response.status_code}: {response.text}")
+            
+            service = FirebirdService()
+            
+            email_enviado = service.enviar_email_recuperacao_senha(
+                email=user.email,
+                user=user
+            )
+            
+            if email_enviado:
+                logger.info(f"E-mail de recuperação enviado com sucesso para: {user.email}")
+            else:
+                logger.error(f"Falha ao enviar e-mail de recuperação para: {user.email}")
                     
         except Exception as e:
             logger.error(f"Erro ao chamar Gateway: {str(e)}")
