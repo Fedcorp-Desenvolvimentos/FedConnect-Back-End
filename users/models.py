@@ -1,3 +1,5 @@
+# users/models.py - Adicione estes campos
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
@@ -58,12 +60,44 @@ class Usuario(AbstractUser):
     data_atualizacao = models.DateTimeField(auto_now=True)
     empresa = models.ForeignKey(
         Empresa,
-        on_delete=models.SET_NULL,  # Define como NULL se a empresa for deletada
-        null=True,  # Permite que o campo seja NULL no banco de dados
-        blank=True,  # Permite que o campo seja em branco no formulário
-        related_name="usuarios",  # Permite acessar 'empresa.usuarios.all()'
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="usuarios",
     )
     is_fed = models.BooleanField(default=True)
+    
+    # 🔐 Campos para recuperação de senha
+    reset_password_token = models.CharField(
+        _("token de recuperação"),
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="Token gerado para recuperação de senha"
+    )
+    reset_password_token_created_at = models.DateTimeField(
+        _("data de criação do token"),
+        null=True,
+        blank=True,
+        help_text="Data e hora em que o token de recuperação foi gerado"
+    )
+    reset_password_token_expires_at = models.DateTimeField(
+        _("data de expiração do token"),
+        null=True,
+        blank=True,
+        help_text="Data e hora em que o token de recuperação expira"
+    )
+    last_password_reset = models.DateTimeField(
+        _("última redefinição de senha"),
+        null=True,
+        blank=True,
+        help_text="Data da última vez que a senha foi redefinida"
+    )
+    password_reset_count = models.IntegerField(
+        _("contador de redefinições"),
+        default=0,
+        help_text="Número de vezes que a senha foi redefinida"
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -81,3 +115,26 @@ class Usuario(AbstractUser):
     def is_admin(self):
         """Verifica se o usuário é administrador."""
         return self.nivel_acesso == "admin"
+    
+    def is_reset_token_valid(self, token):
+        """Verifica se o token de recuperação é válido."""
+        from django.utils import timezone
+        
+        if not self.reset_password_token or not self.reset_password_token_expires_at:
+            return False
+        
+        return (
+            self.reset_password_token == token and 
+            self.reset_password_token_expires_at > timezone.now()
+        )
+    
+    def clear_reset_token(self):
+        """Limpa o token de recuperação após uso."""
+        self.reset_password_token = None
+        self.reset_password_token_created_at = None
+        self.reset_password_token_expires_at = None
+        self.save(update_fields=[
+            'reset_password_token', 
+            'reset_password_token_created_at', 
+            'reset_password_token_expires_at'
+        ])

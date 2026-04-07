@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from users.views import UsuarioViewSet, LogoutView, CustomTokenObtainPairView, PasswordView
+from users.views import ResetarSenhaView, SolicitarResetSenhaView, UsuarioViewSet, LogoutView, CustomTokenObtainPairView, PasswordView, ValidarTokenResetView
 from consultas.views import (
     BuscarAdministradorasPorCodigo, 
     BuscarAdministradorasPorNome, 
@@ -67,6 +67,7 @@ urlpatterns = [
     #path("login/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("logout/", LogoutView.as_view(), name="logout"),
     # Rota para o endpoint "me" do usuário
+    
     path("users/me/", UsuarioViewSet.as_view({"get": "me"}), name="usuario-me"),
     path("users/password/", PasswordView.as_view(), name="usuario-password"),
     
@@ -128,8 +129,12 @@ urlpatterns = [
     path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
     path('cancelar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
     
-    
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
     
+    # Recuperação de senha
+    path("solicitar-reset-senha/", SolicitarResetSenhaView.as_view(), name="solicitar-reset-senha"),
+    path("validar-token-reset/<str:token>/", ValidarTokenResetView.as_view(), name="validar-token-reset"),
+    path("resetar-senha/", ResetarSenhaView.as_view(), name="resetar-senha"),
+
     path("", include(router.urls)),
 ]

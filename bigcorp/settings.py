@@ -29,6 +29,7 @@ EMAIL_FROM_NAME = os.getenv('EMAIL_FROM_NAME', 'Sistema')
 # Configurações do Site
 SITE_NAME = os.getenv('SITE_NAME', 'Grupo FedCorp')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+GATEWAY_URL = os.getenv('GATEWAY_URL', 'http://localhost:8090')
 SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'suporte@fedcorp.com')
 LOGO_URL = os.getenv('LOGO_URL', f'{FRONTEND_URL}/logo.png')
 
@@ -80,8 +81,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -107,10 +108,11 @@ DATABASES = {
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "bigcorp" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
+                "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
@@ -118,7 +120,6 @@ TEMPLATES = [
         },
     },
 ]
-
 WSGI_APPLICATION = "bigcorp.wsgi.application"
 
 
@@ -205,6 +206,7 @@ CORS_ALLOWED_ORIGINS = [
 
 
 CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
@@ -216,9 +218,7 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "authorization",
-]
+CORS_ALLOW_HEADERS = list(default_headers)
 
 CORS_PREFLIGHT_MAX_AGE = 86400
 
@@ -253,37 +253,33 @@ SPECTACULAR_SETTINGS = {
 }
 
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
+    'version': 1,
+    'disable_existing_loggers': False,
 
-    "formatters": {
-        "default": {
-            "format": "[%(asctime)s] %(levelname)s [%(name)s] %(message)s",
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {name} :: {message}',
+            'style': '{',
         },
     },
 
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "default",
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
     },
 
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
 
-    "loggers": {
-        "django": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "django.db.backends": {
-            "level": "WARNING",
-            "handlers": ["console"],
-            "propagate": False,
+    'loggers': {
+        'nfse': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }

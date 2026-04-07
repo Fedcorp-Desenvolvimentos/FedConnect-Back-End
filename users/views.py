@@ -2,7 +2,7 @@ from rest_framework.decorators import action
 from django.contrib.auth.decorators import login_required
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework import viewsets, permissions, generics, status
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.db.models import Q  # Importe Q para operações OR em QuerySets
@@ -12,11 +12,18 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Case, When, IntegerField
 from rest_framework.views import APIView
+
+import httpx
+import secrets
 import logging
+from datetime import timedelta
 from django.conf import settings
+from django.utils import timezone
 
 User = get_user_model()
 
+import logging
+logger = logging.getLogger(__name__)
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     serializer_class = UsuarioSerializer
@@ -120,4 +127,269 @@ class PasswordView(APIView):
         user.save()
         return Response(
             {"detail": "Senha alterada com sucesso."}, status=status.HTTP_200_OK
+        )
+
+class SolicitarResetSenhaView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        email = request.data.get("email")
+        
+        logger.info(f"Solicitação de reset de senha para email: {email}")
+        
+        if not email:
+            return Response(
+                {"detail": "E-mail é obrigatório."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(email=email)
+            logger.info(f"Usuário encontrado: {user.email}")
+        except User.DoesNotExist:
+            logger.warning(f"Usuário não encontrado para o email: {email}")
+            return Response(
+                {"detail": "Se o e-mail estiver cadastrado, você receberá as instruções."},
+                status=status.HTTP_200_OK
+            )
+        
+        # 🔐 Gerar NOVO token (sobrescreve o anterior)
+        reset_token = secrets.token_urlsafe(32)
+        expires_at = timezone.now() + timedelta(hours=24)
+        
+        # SOBRESCREVE o token anterior (se existir)
+        user.reset_password_token = reset_token
+        user.reset_password_token_created_at = timezone.now()
+        user.reset_password_token_expires_at = expires_at
+        # Não precisa limpar antes, apenas sobrescreve
+        user.save(update_fields=[
+            'reset_password_token', 
+            'reset_password_token_created_at', 
+            'reset_password_token_expires_at'
+        ])
+        
+        logger.info(f"Novo token gerado (sobrescreveu anterior) para: {user.email}")
+        logger.info(f"Token expira em: {expires_at}")
+        
+        # Construir link de reset
+        reset_url = f"{settings.FRONTEND_URL}/resetar-senha/{reset_token}"
+        
+        logger.info(f"Link de reset gerado: {reset_url}")
+        
+        # Template HTML
+        html_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background-color: #f4f4f4;
+                        margin: 0;
+                        padding: 0;
+                    }}
+                    .container {{
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background: white;
+                        border-radius: 10px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    }}
+                    .header {{
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 30px;
+                        text-align: center;
+                        border-radius: 10px 10px 0 0;
+                    }}
+                    .content {{
+                        padding: 30px;
+                    }}
+                    .button {{
+                        display: inline-block;
+                        padding: 12px 24px;
+                        background: #764ba2;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        margin: 20px 0;
+                    }}
+                    .footer {{
+                        text-align: center;
+                        padding: 20px;
+                        color: #666;
+                        font-size: 12px;
+                        border-top: 1px solid #eee;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h2>Redefinição de Senha</h2>
+                    </div>
+                    <div class="content">
+                        <p>Olá, <strong>{user.nome_completo or user.email}</strong>!</p>
+                        
+                        <p>Recebemos uma solicitação para redefinir a senha da sua conta no <strong>FedConnect</strong>.</p>
+                        
+                        <p>Clique no botão abaixo para criar uma nova senha:</p>
+                        
+                        <div style="text-align: center;">
+                            <a href="{reset_url}" class="button" style="color: white;">Redefinir Senha</a>
+                        </div>
+                        
+                        <p>Ou copie o link abaixo:</p>
+                        <p style="background: #f0f0f0; padding: 10px; border-radius: 5px; word-break: break-all;">
+                            {reset_url}
+                        </p>
+                        
+                        <p><strong>⚠️ Importante:</strong> Este link é válido por 24 horas.</p>
+                        
+                        <p>Se você não solicitou essa alteração, ignore este e-mail.</p>
+                    </div>
+                    <div class="footer">
+                        <p>FedConnect - Sua plataforma de consultas</p>
+                        <p>Este é um e-mail automático, por favor não responda.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        """
+        
+        # Enviar email via Gateway
+        try:
+            with httpx.Client() as client:
+                response = client.post(
+                    f"{settings.GATEWAY_URL}/api/email/send/gmail",
+                    json={
+                        "to_email": email,
+                        "subject": "Redefinição de Senha - FedConnect",
+                        "body": html_body,
+                        "is_html": True
+                    },
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"Email enviado com sucesso via Gateway para: {email}")
+                else:
+                    logger.error(f"Gateway retornou erro {response.status_code}: {response.text}")
+                    
+        except Exception as e:
+            logger.error(f"Erro ao chamar Gateway: {str(e)}")
+        
+        return Response(
+            {"detail": "Se o e-mail estiver cadastrado, você receberá as instruções."},
+            status=status.HTTP_200_OK
+        )
+
+class ValidarTokenResetView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request, token):
+        """Valida se o token de reset é válido (busca pelo token diretamente)"""
+        logger.info(f"Validando token de reset: {token[:20]}...")
+        
+        # Buscar usuário pelo token
+        try:
+            user = User.objects.get(reset_password_token=token)
+        except User.DoesNotExist:
+            logger.warning(f"Token não encontrado: {token[:20]}...")
+            return Response(
+                {"valid": False, "detail": "Link inválido ou expirado."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar se o token não expirou
+        if not user.reset_password_token_expires_at:
+            logger.warning(f"Token sem data de expiração para usuário: {user.email}")
+            return Response(
+                {"valid": False, "detail": "Link inválido."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if user.reset_password_token_expires_at < timezone.now():
+            logger.warning(f"Token expirado para usuário: {user.email}")
+            return Response(
+                {"valid": False, "detail": "Link expirado. Solicite um novo."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        logger.info(f"Token válido para usuário: {user.email}")
+        return Response(
+            {"valid": True, "detail": "Token válido.", "user_id": user.id},
+            status=status.HTTP_200_OK
+        )
+
+class ResetarSenhaView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        token = request.data.get("token")
+        nova_senha = request.data.get("nova_senha")
+        
+        logger.info(f"Solicitação de reset de senha para token: {token[:20] if token else 'None'}...")
+        
+        if not token or not nova_senha:
+            return Response(
+                {"detail": "Dados incompletos."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(nova_senha) < 6:
+            return Response(
+                {"detail": "A senha deve ter no mínimo 6 caracteres."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Buscar usuário pelo token
+        try:
+            user = User.objects.get(reset_password_token=token)
+        except User.DoesNotExist:
+            logger.warning(f"Token não encontrado: {token[:20]}...")
+            return Response(
+                {"detail": "Link inválido ou expirado."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar expiração
+        if not user.reset_password_token_expires_at:
+            logger.warning(f"Token sem data de expiração para usuário: {user.email}")
+            return Response(
+                {"detail": "Link inválido."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if user.reset_password_token_expires_at < timezone.now():
+            logger.warning(f"Token expirado para usuário: {user.email}")
+            return Response(
+                {"detail": "Link expirado. Solicite um novo."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Redefinir a senha
+        user.set_password(nova_senha)
+        user.last_password_reset = timezone.now()
+        user.password_reset_count += 1
+        
+        # Limpar o token após uso (IMPORTANTE: não pode reusar)
+        user.reset_password_token = None
+        user.reset_password_token_created_at = None
+        user.reset_password_token_expires_at = None
+        user.save(update_fields=[
+            'reset_password_token',
+            'reset_password_token_created_at',
+            'reset_password_token_expires_at',
+            'password',
+            'last_password_reset',
+            'password_reset_count'
+        ])
+        
+        logger.info(f"Senha redefinida com sucesso para usuário: {user.email}")
+        
+        return Response(
+            {"detail": "Senha redefinida com sucesso."},
+            status=status.HTTP_200_OK
         )
