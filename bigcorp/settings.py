@@ -29,9 +29,9 @@ EMAIL_FROM_NAME = os.getenv('EMAIL_FROM_NAME', 'Sistema')
 # Configurações do Site
 SITE_NAME = os.getenv('SITE_NAME', 'Grupo FedCorp')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-GATEWAY_URL = os.getenv('GATEWAY_URL', 'http://localhost:8090')
+FEDHUB_URL = os.getenv('FEDHUB_URL', 'http://localhost:8090')
 SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'suporte@fedcorp.com')
-LOGO_URL = os.getenv('LOGO_URL', f'{FRONTEND_URL}/logo.png')
+LOGO_URL = os.getenv('LOGO_URL', 'https://i.postimg.cc/SsPmTvDM/logo-fedcorp.png')
 
 # Configurações de Recuperação de Senha
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hora em segundos

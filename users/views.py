@@ -170,14 +170,25 @@ class SolicitarResetSenhaView(APIView):
                 logger.info(f"E-mail de recuperação enviado com sucesso para: {user.email}")
             else:
                 logger.error(f"Falha ao enviar e-mail de recuperação para: {user.email}")
+                
+            return Response(
+                {
+                    "status": "success",
+                    "message": "Em breve você receberá um e-mail com as instruções para resetar sua senha. Cheque sua caixa de entrada e também a caixa de spam.",
+                    "email_enviado": email_enviado
+                }
+            )
                     
         except Exception as e:
             logger.error(f"Erro ao chamar Gateway: {str(e)}")
-        
-        return Response(
-            {"detail": "Se o e-mail estiver cadastrado, você receberá as instruções."},
-            status=status.HTTP_200_OK
-        )
+            return Response(
+                {
+                    "status": "error",
+                    "message": "Falha ao processar a solicitação. Tente novamente mais tarde.",
+                    "email_enviado": email_enviado
+                }
+            )
+                
 
 class ValidarTokenResetView(APIView):
     permission_classes = [AllowAny]
