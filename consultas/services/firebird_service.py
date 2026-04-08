@@ -569,7 +569,7 @@ class FirebirdService:
                 
                 html_body = render_to_string('email/resetar_senha.html', {
                     'nome_usuario': user.nome_completo or user.email,
-                    'reset_url': reset_url,
+                    'reset_url': reset_url
                 })
                 
                 response = client.post(
