@@ -14,13 +14,17 @@ from .serializers import (
     HistoricoConsultaSerializer,
     BulkCnpjRequestSerializer,
     ConsultaRequestSerializer,
-)
+)  # Importe o novo serializador
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.conf import settings
 import requests
 import os
+import unicodedata
 import re
 from django.http import FileResponse
+from rest_framework.renderers import JSONRenderer
+from rest_framework.parsers import JSONParser
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -697,7 +701,7 @@ class ComercialRegiaoAPIView2(APIView):
             "places.nationalPhoneNumber,"
             "places.websiteUri,"
             "places.businessStatus,"
-            "places.id" 
+            "places.id"  # Adicionei ID para referência
         )
 
         headers = {
@@ -707,9 +711,10 @@ class ComercialRegiaoAPIView2(APIView):
         }
 
         payload = {
-            "textQuery": f"imobiliárias e condomínios em {bairro}, {municipio} - {uf}",
+            "textQuery": query_string,
             "includedType": "real_estate_agency",
-            "maxResultCount": 20
+            "languageCode": "pt-BR",
+            "maxResultCount": min(max_resultados, 20)  # Máximo permitido é 20
         }
         
         # Adicionar token de paginação se existir
@@ -767,9 +772,8 @@ class ComercialRegiaoAPIView(APIView):
         uf = request.data.get('uf')
         municipio = request.data.get('municipio')
         bairro = request.data.get('bairro')
-        # query_search = request.data.get('query_search', None) 
         
-        grid_spacing = request.data.get('grid_spacing', 800)
+        grid_spacing = request.data.get('grid_spacing', 500)
         radius = request.data.get('radius', 500)
         
         if not all([uf, municipio]):
@@ -793,6 +797,7 @@ class ComercialRegiaoAPIView(APIView):
             
             # 3. Configurar tipos de negócio
             business_types = None
+            keyword = None
                 
             # 1. Limites MÍNIMOS e MÁXIMOS para evitar abusos
             MIN_GRID_SPACING = 200  # metros
@@ -823,23 +828,24 @@ class ComercialRegiaoAPIView(APIView):
             
             # 4. Buscar estabelecimentos usando grade
             places_service = GooglePlacesGridService()
-
-            # Use tipos específicos em vez de keyword
-            business_types = ["real_estate_agency"]  # Tipo correto para imobiliárias
-
+            
+            keyword = "imobiliária|condomínio"
+            
             resultados = places_service.search_all_businesses(
                 bounds=location_data['viewport'],
-                business_types=business_types, 
+                business_types=business_types,
+                keyword=keyword,
                 radius=radius,
                 grid_spacing=grid_spacing,
                 max_results_per_point=60
             )
-
-            # Já vem filtrado pela API, não precisa filtrar novamente
-            resultados_filtrados = resultados.get('places', [])
-
-            logger.info(f"Busca concluída: {len(resultados_filtrados)} estabelecimentos encontrados")
-
+            
+            resultados_filtrados = []
+            for place in resultados['places']:
+                nome = place.get('displayName', {}).get('text', '').lower()
+                if 'imobiliária' in nome or 'condomínio' in nome:
+                    resultados_filtrados.append(place)
+            
             # 5. Construir resposta
             response_data = {
                 "localizacao": {

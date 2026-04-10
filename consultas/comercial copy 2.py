@@ -6,21 +6,22 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-
-from consultas.services.google_geocoding import GoogleGeocodingService
-from consultas.services.google_places_grid import GooglePlacesGridService
 from .models import HistoricoConsulta
 from .serializers import (
     HistoricoConsultaSerializer,
     BulkCnpjRequestSerializer,
     ConsultaRequestSerializer,
-)
+)  # Importe o novo serializador
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.conf import settings
 import requests
 import os
+import unicodedata
 import re
 from django.http import FileResponse
+from rest_framework.renderers import JSONRenderer
+from rest_framework.parsers import JSONParser
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -666,7 +667,7 @@ class BulkConsultaComercialAPIView(APIView):
         return response
 
 
-class ComercialRegiaoAPIView2(APIView):
+class ComercialRegiaoAPIView(APIView):
     
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -697,7 +698,7 @@ class ComercialRegiaoAPIView2(APIView):
             "places.nationalPhoneNumber,"
             "places.websiteUri,"
             "places.businessStatus,"
-            "places.id" 
+            "places.id"  # Adicionei ID para referência
         )
 
         headers = {
@@ -707,9 +708,10 @@ class ComercialRegiaoAPIView2(APIView):
         }
 
         payload = {
-            "textQuery": f"imobiliárias e condomínios em {bairro}, {municipio} - {uf}",
+            "textQuery": query_string,
             "includedType": "real_estate_agency",
-            "maxResultCount": 20
+            "languageCode": "pt-BR",
+            "maxResultCount": min(max_resultados, 20)  # Máximo permitido é 20
         }
         
         # Adicionar token de paginação se existir
@@ -741,137 +743,5 @@ class ComercialRegiaoAPIView2(APIView):
         except Exception as e:
             return Response(
                 {"detail": "Erro interno ao buscar imobiliárias.", "error": str(e)}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
-
-class ComercialRegiaoAPIView(APIView):
-    
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request, *args, **kwargs):
-        """
-        Endpoint para buscar imobiliárias e administradoras em uma região
-        
-        Body esperado:
-        {
-            "uf": "RJ",
-            "municipio": "Rio de Janeiro",
-            "bairro": "Copacabana",  // Opcional
-            "grid_spacing": 500,  // Opcional - espaçamento da grade em metros
-            "radius": 500  // Opcional - raio de busca em metros
-        }
-        """
-        # 1. Validação dos dados de entrada
-        uf = request.data.get('uf')
-        municipio = request.data.get('municipio')
-        bairro = request.data.get('bairro')
-        # query_search = request.data.get('query_search', None) 
-        
-        grid_spacing = request.data.get('grid_spacing', 800)
-        radius = request.data.get('radius', 500)
-        
-        if not all([uf, municipio]):
-            return Response(
-                {"detail": "Os campos 'uf' e 'municipio' são obrigatórios."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            # 2. Obter coordenadas e viewport via Geocoding
-            logger.info(f"Geocodificando: {bairro}, {municipio} - {uf}")
-            
-            location_data = GoogleGeocodingService.get_location_data(
-                uf=uf,
-                municipio=municipio,
-                bairro=bairro
-            )
-            
-            logger.info(f"Localização encontrada: {location_data['formatted_address']}")
-            logger.info(f"Coordenadas: {location_data['lat']}, {location_data['lng']}")
-            
-            # 3. Configurar tipos de negócio
-            business_types = None
-                
-            # 1. Limites MÍNIMOS e MÁXIMOS para evitar abusos
-            MIN_GRID_SPACING = 200  # metros
-            MAX_GRID_SPACING = 2000 # metros
-            MAX_RADIUS = 1000       # metros
-
-            grid_spacing = max(MIN_GRID_SPACING, min(grid_spacing, MAX_GRID_SPACING))
-            radius = min(radius, MAX_RADIUS)
-
-            # 2. Estimar custo e limitar número de pontos
-            from consultas.utils.gerador_grid_points_places import estimate_grid_cost
-
-            custo_estimado = estimate_grid_cost(location_data['viewport'], grid_spacing)
-
-            if custo_estimado['total_grid_points'] > 500: # Limite arbitrário, ajuste conforme seu orçamento
-                return Response(
-                    {"detail": f"Área muito grande para busca. Número estimado de pontos de grade: {custo_estimado['total_grid_points']}. Reduza o grid_spacing ou refine a localização (bairro)."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            if custo_estimado['estimated_cost_usd'] > 10: # Limite de custo por requisição
-                logger.warning(f"Custo estimado alto: ${custo_estimado['estimated_cost_usd']} para grade com {custo_estimado['total_grid_points']} pontos.")
-                # Ou retorna erro, ou pede confirmação. Para MVP, retornar erro é mais seguro.
-                return Response(
-                    {"detail": f"Custo estimado da busca (${custo_estimado['estimated_cost_usd']}) excede o limite. Refine sua busca."},
-                    status=status.HTTP_400_BAD_REQUEST
-            )
-            
-            # 4. Buscar estabelecimentos usando grade
-            places_service = GooglePlacesGridService()
-
-            # Use tipos específicos em vez de keyword
-            business_types = ["real_estate_agency"]  # Tipo correto para imobiliárias
-
-            resultados = places_service.search_all_businesses(
-                bounds=location_data['viewport'],
-                business_types=business_types, 
-                radius=radius,
-                grid_spacing=grid_spacing,
-                max_results_per_point=60
-            )
-
-            # Já vem filtrado pela API, não precisa filtrar novamente
-            resultados_filtrados = resultados.get('places', [])
-
-            logger.info(f"Busca concluída: {len(resultados_filtrados)} estabelecimentos encontrados")
-
-            # 5. Construir resposta
-            response_data = {
-                "localizacao": {
-                    "endereco_formatado": location_data['formatted_address'],
-                    "latitude": location_data['lat'],
-                    "longitude": location_data['lng'],
-                    "place_id": location_data['place_id']
-                },
-                "parametros_busca": {
-                    "uf": uf,
-                    "municipio": municipio,
-                    "bairro": bairro,
-                    "grid_spacing": grid_spacing,
-                    "radius": radius
-                },
-                "estatisticas": resultados['stats'],
-                "resultados": resultados_filtrados,
-                "total_encontrado": len(resultados_filtrados)
-            }
-            
-            logger.info(f"Busca concluída: {len(resultados_filtrados)} estabelecimentos encontrados")
-            
-            return Response(response_data, status=status.HTTP_200_OK)
-            
-        except ValueError as e:
-            return Response(
-                {"detail": str(e)}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except Exception as e:
-            logger.error(f"Erro na busca: {str(e)}")
-            return Response(
-                {"detail": "Erro interno ao processar a solicitação.", "error": str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
