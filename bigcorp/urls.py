@@ -1,18 +1,21 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from users.views import ResetarSenhaView, SolicitarResetSenhaView, UsuarioViewSet, LogoutView, CustomTokenObtainPairView, PasswordView, ValidarTokenResetView
+from users.views import (
+    ResetarSenhaView, 
+    SolicitarResetSenhaView, 
+    UsuarioViewSet, 
+    LogoutView, 
+    CustomTokenObtainPairView, 
+    PasswordView, 
+    ValidarTokenResetView
+)
 from consultas.views import (
     BuscarAdministradorasPorCodigo, 
     BuscarAdministradorasPorNome, 
     BuscarCorretores, 
     BuscarFaturaPorNumero, 
-    BuscarFaturaDinamicamente, 
-    BuscarFaturasComBoletos, 
     BuscarFaturamento, 
-    BuscarFaturasComBoletosESegurados, 
-    BuscarFaturasComBoletosPaginadas, 
-    BuscarFaturasDinamicamentePaginadas, 
     BuscarNFSEPorBoleto, 
     BuscarTodasEmpresas, 
     ExportarFaturasComBoletosExcel, 
@@ -103,12 +106,9 @@ urlpatterns = [
     path('administradoras/', buscarAdms.as_view(), name='buscar_adms'),
     
     path('consultas/faturas/', RealizarConsultaFaturasView.as_view(), name='realizar-consulta-faturas'),
-    path('consultas/faturas/fatura-dinamica/', BuscarFaturaDinamicamente.as_view(), name='buscar-fatura-dinamicamente'),
-    path('consultas/faturas/fatura-dinamica-paginada/', BuscarFaturasDinamicamentePaginadas.as_view(), name='buscar-fatura-dinamica-paginada'),
+    
     path('consultas/faturamento/', BuscarFaturamento.as_view(), name='buscar-faturamento'),
-    path('consultas/faturas/com-boletos/', BuscarFaturasComBoletos.as_view(), name='buscar-faturas-com-boletos'),
-    path('consultas/faturas/com-boletos-e-segurados/', BuscarFaturasComBoletosESegurados.as_view(), name='buscar-faturas-com-boletos-e-segurados'),
-    path('consultas/faturas/faturas-com-boletos-paginada/', BuscarFaturasComBoletosPaginadas.as_view(), name='buscar-faturas-com-boletos-paginadas'),
+
     path('consultas/faturas/com-boletos/exportar-excel/', ExportarFaturasComBoletosExcel.as_view(), name='exportar-faturas-excel'),
     path("consultas/faturas/com-boletos/exportar-pdf/", ExportarFaturasComBoletosPDF.as_view()),
     path('consultas/faturas/<str:numero_fatura>/', BuscarFaturaPorNumero.as_view(), name='consulta-fatura-por-numero'),

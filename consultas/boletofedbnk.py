@@ -55,8 +55,7 @@ def consultar_boleto(request):
     except requests.exceptions.RequestException as e:
         return JsonResponse({'erro': 'Serviço de boletos indisponível'}, status=503)
     
-    
-    
+       
 def cancelar_boleto(request):
     # 1. Pegar o parâmetro 'numero' que veio na requisição para o Django
     method = request.GET.get('method')

@@ -47,42 +47,6 @@ class FirebirdService:
             logger.error(f"Erro ao chamar Firebird: {e}")
             return None
 
-    def buscar_fatura_dinamicamente(
-        self,
-        filtros: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Encaminha filtros dinâmicos para o microsserviço Firebird
-        """
-        try:
-            # Remove filtros vazios / None
-            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
-
-            response = requests.get(
-                f"{self.base_url}/api/faturas/fatura-dinamica",
-                params=params,
-                headers=get_headers(),
-                timeout=30
-            )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"Erro Firebird dinâmica {response.status_code} | {response.text}"
-                )
-                return None
-
-            data = response.json()
-            # print(f"DADOS DE RETORNO DA CONSULTA DINAMICA >>> {data}")
-
-            if data.get("status") != "success":
-                return None
-
-            return data
-
-        except requests.RequestException as e:
-            logger.error(f"Erro comunicação Firebird dinâmica: {e}")
-            return None
-
     def buscar_faturamento(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Busca faturas com boletos associados - usa a rota /faturamento do FedHub
@@ -125,142 +89,6 @@ class FirebirdService:
 
         except requests.RequestException as e:
             logger.error(f"Erro comunicação com o FedHub - FATURAMENTO: {e}")
-            return None
-
-    def buscar_faturas_com_boletos(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Busca faturas com boletos associados
-        """
-        try:
-            # Remove filtros vazios
-            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
-
-            response = requests.get(
-                f"{self.base_url}/api/faturas/faturas-com-boletos",
-                params=params,
-                headers=get_headers(),
-                timeout=30
-            )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"Erro Firebird faturas-com-boletos {response.status_code} | {response.text}"
-                )
-                return None
-
-            data = response.json()
-
-            if data.get("status") != "success":
-                return None
-
-            return data
-
-        except requests.RequestException as e:
-            logger.error(f"Erro comunicação Firebird faturas-com-boletos: {e}")
-            return None
-
-    def buscar_faturas_com_boletos_e_segurados(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Busca faturas com boletos associados
-        """
-        try:
-            # Remove filtros vazios
-            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
-
-            response = requests.get(
-                f"{self.base_url}/api/faturas/faturas-com-boletos-e-segurados",
-                params=params,
-                headers=get_headers(),
-                timeout=30
-            )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"Erro Firebird faturas-com-boletos {response.status_code} | {response.text}"
-                )
-                return None
-
-            data = response.json()
-
-            if data.get("status") != "success":
-                return None
-
-            return data
-
-        except requests.RequestException as e:
-            logger.error(f"Erro comunicação Firebird faturas-com-boletos: {e}")
-            return None
-
-    def buscar_faturas_dinamicamente_paginadas(
-        self,
-        filtros: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Busca faturas dinâmicas COM PAGINAÇÃO REAL
-        Rota: /api/faturas/faturas-dinamicas-paginadas
-        """
-        try:
-            # Remove filtros vazios / None
-            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
-
-            response = requests.get(
-                f"{self.base_url}/api/faturas/faturas-dinamicas-paginadas",
-                params=params,
-                headers=get_headers(),
-                timeout=30
-            )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"Erro Firebird faturas-dinamicas-paginadas {response.status_code} | {response.text}"
-                )
-                return None
-
-            data = response.json()
-
-            if data.get("status") != "success":
-                return None
-
-            return data
-
-        except requests.RequestException as e:
-            logger.error(f"Erro comunicação Firebird faturas-dinamicas-paginadas: {e}")
-            return None
-
-    def buscar_faturas_com_boletos_paginadas(
-        self,
-        filtros: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Busca faturas com boletos COM PAGINAÇÃO REAL
-        Rota: /api/faturas/faturas-com-boletos-paginadas
-        """
-        try:
-            # Remove filtros vazios
-            params = {k: v for k, v in filtros.items() if v not in [None, "", []]}
-
-            response = requests.get(
-                f"{self.base_url}/api/faturas/faturas-com-boletos-paginadas",
-                params=params,
-                headers=get_headers(),
-                timeout=30
-            )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"Erro Firebird faturas-com-boletos-paginadas {response.status_code} | {response.text}"
-                )
-                return None
-
-            data = response.json()
-
-            if data.get("status") != "success":
-                return None
-
-            return data
-
-        except requests.RequestException as e:
-            logger.error(f"Erro comunicação Firebird faturas-com-boletos-paginadas: {e}")
             return None
 
     async def buscar_fatura_por_nosso_numero(self, nosso_numero: str):
@@ -537,7 +365,7 @@ class FirebirdService:
             logger.error(f"Erro ao chamar serviços: {e}")
             return None
     
-    
+    # Email
     def enviar_email_recuperacao_senha(self, email: str, user: Any) -> bool:
         try:
             with httpx.Client() as client:
