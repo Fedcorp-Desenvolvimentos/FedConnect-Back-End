@@ -8,6 +8,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 import requests
 import json
 
+from consultas.cache.cidade_cache import buscar_cidades_autocomplete_sync
+from consultas.services.buscar_cidades import buscar_cidade, buscar_cidades_autocomplete
 from consultas.services.firebird_service import FirebirdService
 from consultas.utils.renderers import BinaryRenderer
 from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
@@ -1551,3 +1553,34 @@ class ExportarFaturasComBoletosPDF(APIView):
         c.save()
 
         return response
+
+class BuscarCidadesAutocomplete(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            termo = request.query_params.get("termo", "").strip()
+            uf = request.query_params.get("uf", "RJ").upper().strip()
+            
+            if not termo or len(termo) < 2:
+                return Response({
+                    "status": "success",
+                    "data": []
+                })
+            
+            # AGORA É SÍNCRONO E NÃO USA BANCO DE DADOS!
+            cidades = buscar_cidades_autocomplete_sync(termo, uf)
+            
+            return Response({
+                "status": "success",
+                "data": cidades
+            })
+            
+        except Exception as e:
+            logger.error(f"Erro no autocomplete: {str(e)}")
+            return Response({
+                "status": "error",
+                "message": "Erro ao buscar cidades",
+                "data": []
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

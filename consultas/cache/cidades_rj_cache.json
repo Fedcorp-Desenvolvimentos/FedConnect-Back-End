@@ -1,0 +1,554 @@
+[
+  {
+    "codigo": "3300100",
+    "descricao": "Angra dos Reis",
+    "estado": "RJ",
+    "nome_normalizado": "ANGRA DOS REIS"
+  },
+  {
+    "codigo": "3300159",
+    "descricao": "Aperibé",
+    "estado": "RJ",
+    "nome_normalizado": "APERIBE"
+  },
+  {
+    "codigo": "3300209",
+    "descricao": "Araruama",
+    "estado": "RJ",
+    "nome_normalizado": "ARARUAMA"
+  },
+  {
+    "codigo": "3300225",
+    "descricao": "Areal",
+    "estado": "RJ",
+    "nome_normalizado": "AREAL"
+  },
+  {
+    "codigo": "3300233",
+    "descricao": "Armação dos Búzios",
+    "estado": "RJ",
+    "nome_normalizado": "ARMACAO DOS BUZIOS"
+  },
+  {
+    "codigo": "3300258",
+    "descricao": "Arraial do Cabo",
+    "estado": "RJ",
+    "nome_normalizado": "ARRAIAL DO CABO"
+  },
+  {
+    "codigo": "3300308",
+    "descricao": "Barra do Piraí",
+    "estado": "RJ",
+    "nome_normalizado": "BARRA DO PIRAI"
+  },
+  {
+    "codigo": "3300407",
+    "descricao": "Barra Mansa",
+    "estado": "RJ",
+    "nome_normalizado": "BARRA MANSA"
+  },
+  {
+    "codigo": "3300456",
+    "descricao": "Belford Roxo",
+    "estado": "RJ",
+    "nome_normalizado": "BELFORD ROXO"
+  },
+  {
+    "codigo": "3300506",
+    "descricao": "Bom Jardim",
+    "estado": "RJ",
+    "nome_normalizado": "BOM JARDIM"
+  },
+  {
+    "codigo": "3300605",
+    "descricao": "Bom Jesus do Itabapoana",
+    "estado": "RJ",
+    "nome_normalizado": "BOM JESUS DO ITABAPOANA"
+  },
+  {
+    "codigo": "3300704",
+    "descricao": "Cabo Frio",
+    "estado": "RJ",
+    "nome_normalizado": "CABO FRIO"
+  },
+  {
+    "codigo": "3300803",
+    "descricao": "Cachoeiras de Macacu",
+    "estado": "RJ",
+    "nome_normalizado": "CACHOEIRAS DE MACACU"
+  },
+  {
+    "codigo": "3300902",
+    "descricao": "Cambuci",
+    "estado": "RJ",
+    "nome_normalizado": "CAMBUCI"
+  },
+  {
+    "codigo": "3300936",
+    "descricao": "Carapebus",
+    "estado": "RJ",
+    "nome_normalizado": "CARAPEBUS"
+  },
+  {
+    "codigo": "3300951",
+    "descricao": "Comendador Levy Gasparian",
+    "estado": "RJ",
+    "nome_normalizado": "COMENDADOR LEVY GASPARIAN"
+  },
+  {
+    "codigo": "3301009",
+    "descricao": "Campos dos Goytacazes",
+    "estado": "RJ",
+    "nome_normalizado": "CAMPOS DOS GOYTACAZES"
+  },
+  {
+    "codigo": "3301108",
+    "descricao": "Cantagalo",
+    "estado": "RJ",
+    "nome_normalizado": "CANTAGALO"
+  },
+  {
+    "codigo": "3301157",
+    "descricao": "Cardoso Moreira",
+    "estado": "RJ",
+    "nome_normalizado": "CARDOSO MOREIRA"
+  },
+  {
+    "codigo": "3301207",
+    "descricao": "Carmo",
+    "estado": "RJ",
+    "nome_normalizado": "CARMO"
+  },
+  {
+    "codigo": "3301306",
+    "descricao": "Casimiro de Abreu",
+    "estado": "RJ",
+    "nome_normalizado": "CASIMIRO DE ABREU"
+  },
+  {
+    "codigo": "3301405",
+    "descricao": "Conceição de Macabu",
+    "estado": "RJ",
+    "nome_normalizado": "CONCEICAO DE MACABU"
+  },
+  {
+    "codigo": "3301504",
+    "descricao": "Cordeiro",
+    "estado": "RJ",
+    "nome_normalizado": "CORDEIRO"
+  },
+  {
+    "codigo": "3301603",
+    "descricao": "Duas Barras",
+    "estado": "RJ",
+    "nome_normalizado": "DUAS BARRAS"
+  },
+  {
+    "codigo": "3301702",
+    "descricao": "Duque de Caxias",
+    "estado": "RJ",
+    "nome_normalizado": "DUQUE DE CAXIAS"
+  },
+  {
+    "codigo": "3301801",
+    "descricao": "Engenheiro Paulo de Frontin",
+    "estado": "RJ",
+    "nome_normalizado": "ENGENHEIRO PAULO DE FRONTIN"
+  },
+  {
+    "codigo": "3301850",
+    "descricao": "Guapimirim",
+    "estado": "RJ",
+    "nome_normalizado": "GUAPIMIRIM"
+  },
+  {
+    "codigo": "3301876",
+    "descricao": "Iguaba Grande",
+    "estado": "RJ",
+    "nome_normalizado": "IGUABA GRANDE"
+  },
+  {
+    "codigo": "3301900",
+    "descricao": "Itaboraí",
+    "estado": "RJ",
+    "nome_normalizado": "ITABORAI"
+  },
+  {
+    "codigo": "3302007",
+    "descricao": "Itaguaí",
+    "estado": "RJ",
+    "nome_normalizado": "ITAGUAI"
+  },
+  {
+    "codigo": "3302056",
+    "descricao": "Italva",
+    "estado": "RJ",
+    "nome_normalizado": "ITALVA"
+  },
+  {
+    "codigo": "3302106",
+    "descricao": "Itaocara",
+    "estado": "RJ",
+    "nome_normalizado": "ITAOCARA"
+  },
+  {
+    "codigo": "3302205",
+    "descricao": "Itaperuna",
+    "estado": "RJ",
+    "nome_normalizado": "ITAPERUNA"
+  },
+  {
+    "codigo": "3302254",
+    "descricao": "Itatiaia",
+    "estado": "RJ",
+    "nome_normalizado": "ITATIAIA"
+  },
+  {
+    "codigo": "3302270",
+    "descricao": "Japeri",
+    "estado": "RJ",
+    "nome_normalizado": "JAPERI"
+  },
+  {
+    "codigo": "3302304",
+    "descricao": "Laje do Muriaé",
+    "estado": "RJ",
+    "nome_normalizado": "LAJE DO MURIAE"
+  },
+  {
+    "codigo": "3302403",
+    "descricao": "Macaé",
+    "estado": "RJ",
+    "nome_normalizado": "MACAE"
+  },
+  {
+    "codigo": "3302452",
+    "descricao": "Macuco",
+    "estado": "RJ",
+    "nome_normalizado": "MACUCO"
+  },
+  {
+    "codigo": "3302502",
+    "descricao": "Magé",
+    "estado": "RJ",
+    "nome_normalizado": "MAGE"
+  },
+  {
+    "codigo": "3302601",
+    "descricao": "Mangaratiba",
+    "estado": "RJ",
+    "nome_normalizado": "MANGARATIBA"
+  },
+  {
+    "codigo": "3302700",
+    "descricao": "Maricá",
+    "estado": "RJ",
+    "nome_normalizado": "MARICA"
+  },
+  {
+    "codigo": "3302809",
+    "descricao": "Mendes",
+    "estado": "RJ",
+    "nome_normalizado": "MENDES"
+  },
+  {
+    "codigo": "3302858",
+    "descricao": "Mesquita",
+    "estado": "RJ",
+    "nome_normalizado": "MESQUITA"
+  },
+  {
+    "codigo": "3302908",
+    "descricao": "Miguel Pereira",
+    "estado": "RJ",
+    "nome_normalizado": "MIGUEL PEREIRA"
+  },
+  {
+    "codigo": "3303005",
+    "descricao": "Miracema",
+    "estado": "RJ",
+    "nome_normalizado": "MIRACEMA"
+  },
+  {
+    "codigo": "3303104",
+    "descricao": "Natividade",
+    "estado": "RJ",
+    "nome_normalizado": "NATIVIDADE"
+  },
+  {
+    "codigo": "3303203",
+    "descricao": "Nilópolis",
+    "estado": "RJ",
+    "nome_normalizado": "NILOPOLIS"
+  },
+  {
+    "codigo": "3303302",
+    "descricao": "Niterói",
+    "estado": "RJ",
+    "nome_normalizado": "NITEROI"
+  },
+  {
+    "codigo": "3303401",
+    "descricao": "Nova Friburgo",
+    "estado": "RJ",
+    "nome_normalizado": "NOVA FRIBURGO"
+  },
+  {
+    "codigo": "3303500",
+    "descricao": "Nova Iguaçu",
+    "estado": "RJ",
+    "nome_normalizado": "NOVA IGUACU"
+  },
+  {
+    "codigo": "3303609",
+    "descricao": "Paracambi",
+    "estado": "RJ",
+    "nome_normalizado": "PARACAMBI"
+  },
+  {
+    "codigo": "3303708",
+    "descricao": "Paraíba do Sul",
+    "estado": "RJ",
+    "nome_normalizado": "PARAIBA DO SUL"
+  },
+  {
+    "codigo": "3303807",
+    "descricao": "Paraty",
+    "estado": "RJ",
+    "nome_normalizado": "PARATY"
+  },
+  {
+    "codigo": "3303856",
+    "descricao": "Paty do Alferes",
+    "estado": "RJ",
+    "nome_normalizado": "PATY DO ALFERES"
+  },
+  {
+    "codigo": "3303906",
+    "descricao": "Petrópolis",
+    "estado": "RJ",
+    "nome_normalizado": "PETROPOLIS"
+  },
+  {
+    "codigo": "3303955",
+    "descricao": "Pinheiral",
+    "estado": "RJ",
+    "nome_normalizado": "PINHEIRAL"
+  },
+  {
+    "codigo": "3304003",
+    "descricao": "Piraí",
+    "estado": "RJ",
+    "nome_normalizado": "PIRAI"
+  },
+  {
+    "codigo": "3304102",
+    "descricao": "Porciúncula",
+    "estado": "RJ",
+    "nome_normalizado": "PORCIUNCULA"
+  },
+  {
+    "codigo": "3304110",
+    "descricao": "Porto Real",
+    "estado": "RJ",
+    "nome_normalizado": "PORTO REAL"
+  },
+  {
+    "codigo": "3304128",
+    "descricao": "Quatis",
+    "estado": "RJ",
+    "nome_normalizado": "QUATIS"
+  },
+  {
+    "codigo": "3304144",
+    "descricao": "Queimados",
+    "estado": "RJ",
+    "nome_normalizado": "QUEIMADOS"
+  },
+  {
+    "codigo": "3304151",
+    "descricao": "Quissamã",
+    "estado": "RJ",
+    "nome_normalizado": "QUISSAMA"
+  },
+  {
+    "codigo": "3304201",
+    "descricao": "Resende",
+    "estado": "RJ",
+    "nome_normalizado": "RESENDE"
+  },
+  {
+    "codigo": "3304300",
+    "descricao": "Rio Bonito",
+    "estado": "RJ",
+    "nome_normalizado": "RIO BONITO"
+  },
+  {
+    "codigo": "3304409",
+    "descricao": "Rio Claro",
+    "estado": "RJ",
+    "nome_normalizado": "RIO CLARO"
+  },
+  {
+    "codigo": "3304508",
+    "descricao": "Rio das Flores",
+    "estado": "RJ",
+    "nome_normalizado": "RIO DAS FLORES"
+  },
+  {
+    "codigo": "3304524",
+    "descricao": "Rio das Ostras",
+    "estado": "RJ",
+    "nome_normalizado": "RIO DAS OSTRAS"
+  },
+  {
+    "codigo": "3304557",
+    "descricao": "Rio de Janeiro",
+    "estado": "RJ",
+    "nome_normalizado": "RIO DE JANEIRO"
+  },
+  {
+    "codigo": "3304607",
+    "descricao": "Santa Maria Madalena",
+    "estado": "RJ",
+    "nome_normalizado": "SANTA MARIA MADALENA"
+  },
+  {
+    "codigo": "3304706",
+    "descricao": "Santo Antônio de Pádua",
+    "estado": "RJ",
+    "nome_normalizado": "SANTO ANTONIO DE PADUA"
+  },
+  {
+    "codigo": "3304755",
+    "descricao": "São Francisco de Itabapoana",
+    "estado": "RJ",
+    "nome_normalizado": "SAO FRANCISCO DE ITABAPOANA"
+  },
+  {
+    "codigo": "3304805",
+    "descricao": "São Fidélis",
+    "estado": "RJ",
+    "nome_normalizado": "SAO FIDELIS"
+  },
+  {
+    "codigo": "3304904",
+    "descricao": "São Gonçalo",
+    "estado": "RJ",
+    "nome_normalizado": "SAO GONCALO"
+  },
+  {
+    "codigo": "3305000",
+    "descricao": "São João da Barra",
+    "estado": "RJ",
+    "nome_normalizado": "SAO JOAO DA BARRA"
+  },
+  {
+    "codigo": "3305109",
+    "descricao": "São João de Meriti",
+    "estado": "RJ",
+    "nome_normalizado": "SAO JOAO DE MERITI"
+  },
+  {
+    "codigo": "3305133",
+    "descricao": "São José de Ubá",
+    "estado": "RJ",
+    "nome_normalizado": "SAO JOSE DE UBA"
+  },
+  {
+    "codigo": "3305158",
+    "descricao": "São José do Vale do Rio Preto",
+    "estado": "RJ",
+    "nome_normalizado": "SAO JOSE DO VALE DO RIO PRETO"
+  },
+  {
+    "codigo": "3305208",
+    "descricao": "São Pedro da Aldeia",
+    "estado": "RJ",
+    "nome_normalizado": "SAO PEDRO DA ALDEIA"
+  },
+  {
+    "codigo": "3305307",
+    "descricao": "São Sebastião do Alto",
+    "estado": "RJ",
+    "nome_normalizado": "SAO SEBASTIAO DO ALTO"
+  },
+  {
+    "codigo": "3305406",
+    "descricao": "Sapucaia",
+    "estado": "RJ",
+    "nome_normalizado": "SAPUCAIA"
+  },
+  {
+    "codigo": "3305505",
+    "descricao": "Saquarema",
+    "estado": "RJ",
+    "nome_normalizado": "SAQUAREMA"
+  },
+  {
+    "codigo": "3305554",
+    "descricao": "Seropédica",
+    "estado": "RJ",
+    "nome_normalizado": "SEROPEDICA"
+  },
+  {
+    "codigo": "3305604",
+    "descricao": "Silva Jardim",
+    "estado": "RJ",
+    "nome_normalizado": "SILVA JARDIM"
+  },
+  {
+    "codigo": "3305703",
+    "descricao": "Sumidouro",
+    "estado": "RJ",
+    "nome_normalizado": "SUMIDOURO"
+  },
+  {
+    "codigo": "3305752",
+    "descricao": "Tanguá",
+    "estado": "RJ",
+    "nome_normalizado": "TANGUA"
+  },
+  {
+    "codigo": "3305802",
+    "descricao": "Teresópolis",
+    "estado": "RJ",
+    "nome_normalizado": "TERESOPOLIS"
+  },
+  {
+    "codigo": "3305901",
+    "descricao": "Trajano de Moraes",
+    "estado": "RJ",
+    "nome_normalizado": "TRAJANO DE MORAES"
+  },
+  {
+    "codigo": "3306008",
+    "descricao": "Três Rios",
+    "estado": "RJ",
+    "nome_normalizado": "TRES RIOS"
+  },
+  {
+    "codigo": "3306107",
+    "descricao": "Valença",
+    "estado": "RJ",
+    "nome_normalizado": "VALENCA"
+  },
+  {
+    "codigo": "3306156",
+    "descricao": "Varre-Sai",
+    "estado": "RJ",
+    "nome_normalizado": "VARRESAI"
+  },
+  {
+    "codigo": "3306206",
+    "descricao": "Vassouras",
+    "estado": "RJ",
+    "nome_normalizado": "VASSOURAS"
+  },
+  {
+    "codigo": "3306305",
+    "descricao": "Volta Redonda",
+    "estado": "RJ",
+    "nome_normalizado": "VOLTA REDONDA"
+  }
+]

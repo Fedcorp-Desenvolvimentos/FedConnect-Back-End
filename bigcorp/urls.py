@@ -12,7 +12,8 @@ from users.views import (
 )
 from consultas.views import (
     BuscarAdministradorasPorCodigo, 
-    BuscarAdministradorasPorNome, 
+    BuscarAdministradorasPorNome,
+    BuscarCidadesAutocomplete, 
     BuscarCorretores, 
     BuscarFaturaPorNumero, 
     BuscarFaturamento, 
@@ -36,7 +37,7 @@ from agenda.views import ReservaViewSet
 from agenda_comercial.views import AgendamentoListCreateAPIView, AgendamentoRetrieveUpdateDestroyAPIView
 from django.urls import path
 from cotacao.views import calcular_cotacao_incendio
-from consultas.boletofedbnk import consultar_boletos_proxy, consultar_boleto
+from consultas.boletofedbnk import cancelar_boleto, consultar_boletos_proxy, consultar_boleto
 from bank.views import SantanderWebhookView
 
 # Importe para a documentação
@@ -110,7 +111,7 @@ urlpatterns = [
     path('consultas/faturamento/', BuscarFaturamento.as_view(), name='buscar-faturamento'),
 
     path('consultas/faturas/com-boletos/exportar-excel/', ExportarFaturasComBoletosExcel.as_view(), name='exportar-faturas-excel'),
-    path("consultas/faturas/com-boletos/exportar-pdf/", ExportarFaturasComBoletosPDF.as_view()),
+    path("consultas/faturas/com-boletos/exportar-pdf/", ExportarFaturasComBoletosPDF.as_view(), name='exportar-faturas-pdf'),
     path('consultas/faturas/<str:numero_fatura>/', BuscarFaturaPorNumero.as_view(), name='consulta-fatura-por-numero'),
     
     path('consultas/administradora/por-nome/<str:nome>/', BuscarAdministradorasPorNome.as_view(), name='consulta-administradora-por-nome'),
@@ -120,14 +121,16 @@ urlpatterns = [
     
     path('consultas/nfse/<str:documento>/', BuscarNFSEPorBoleto.as_view(), name='consulta-nfse-por-documento'),
     
+    path('cidades/autocomplete/', BuscarCidadesAutocomplete.as_view(), name='cidades-autocomplete'),
+    
     path('comercial/agenda/', AgendamentoListCreateAPIView.as_view(), name='agendamento_list'),
     path('comercial/agenda/<int:pk>/', AgendamentoRetrieveUpdateDestroyAPIView.as_view(), name='agendamento_detail'),
     
     path('cotacao/incendio-conteudo/', calcular_cotacao_incendio, name='calcular_cotacao_incendio'),
     
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
-    path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
-    path('cancelar-boletofedbnk/', consultar_boleto, name='consultar_boletos_proxy'), 
+    path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boleto_proxy'),
+    path('cancelar-boletofedbnk/', cancelar_boleto, name='cancelar_boleto_proxy'), 
     
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
     

@@ -115,11 +115,11 @@ class GoogleGeocodingService:
         Viewport REALISTA para evitar grids enormes
         """
         if is_bairro:
-            # Bairro: apenas 800m de raio (área de 1.6km x 1.6km)
-            delta_km = 0.8  # 800 metros
+            # Bairro: apenas 900m de raio (área de 1.8km x 1.8km)
+            delta_km = 0.9  # 900 metros
         else:
-            # Cidade: 2km de raio (área de 4km x 4km) - ainda grande, mas melhor
-            delta_km = 2.0
+            # Cidade: 3km de raio (área de 6km x 6km) - ainda grande, mas melhor
+            delta_km = 3.0
 
         lat_delta = delta_km / 111.0
         lng_delta = delta_km / (111.0 * math.cos(math.radians(lat)))
