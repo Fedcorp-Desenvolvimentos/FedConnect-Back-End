@@ -272,7 +272,7 @@ class ConsultaCNPJ:
             response = requests.post(url, json=payload, headers=headers, timeout=30)
             response.raise_for_status()
             
-            print("Resposta bruta da BigDataCorp:", response.text)
+            # print("Resposta bruta da BigDataCorp:", response.text)
             
             data = response.json()
 

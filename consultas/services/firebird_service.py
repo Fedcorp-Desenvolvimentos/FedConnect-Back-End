@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        # self.base_url = "https://fedhub-api-local.ngrok.app"
-        self.base_url = "http://localhost:8090"
+        self.base_url = "https://fedhub-api-local.ngrok.app"
+        # self.base_url = "http://localhost:8090"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -421,6 +421,34 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar serviço de email: {e}")
             return False
+    
+    # Localidades
+    def buscar_localidades(self) -> Optional[Dict[str, Any]]:
+        """
+        Busca localidades do gateway FastAPI
+        """
+        try: 
+            response = requests.get(
+                f"{self.base_url}/api/armazenamento/localidades",
+                headers=get_headers(),
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Gateway erro {response.status_code}: {response.text}")
+                return None
+
+            data = response.json()
+            
+            if data.get("status") != "SUCCESS":
+                logger.error(f"Gateway retornou erro: {data.get('message')}")
+                return None
+
+            return data.get("data", {})
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao buscar localidades do gateway: {e}")
+            return None
     
     # Processamento de pagamento de boleto via webhook do Santander
     async def processar_pagamento_boleto(self, documento: str, fatura: str, dados_pagamento: dict):

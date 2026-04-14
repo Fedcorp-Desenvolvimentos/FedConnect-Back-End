@@ -9,7 +9,6 @@ import requests
 import json
 
 from consultas.cache.cidade_cache import buscar_cidades_autocomplete_sync
-from consultas.services.buscar_cidades import buscar_cidade, buscar_cidades_autocomplete
 from consultas.services.firebird_service import FirebirdService
 from consultas.utils.renderers import BinaryRenderer
 from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
@@ -1583,4 +1582,35 @@ class BuscarCidadesAutocomplete(APIView):
                 "status": "error",
                 "message": "Erro ao buscar cidades",
                 "data": []
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class BuscarLocalidade(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FirebirdService()
+            dados_localidade = service.buscar_localidades()
+            
+            # Se não conseguiu buscar do gateway, retorna dados vazios
+            if not dados_localidade:
+                return Response({
+                    "status": "warning",
+                    "message": "Nenhuma localidade encontrada",
+                    "data": {}
+                })
+            
+            # Estruturar resposta para o frontend
+            return Response({
+                "status": "success",
+                "data": dados_localidade
+            })
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar localidade: {str(e)}")
+            return Response({
+                "status": "error",
+                "message": "Erro ao buscar localidade",
+                "data": {}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

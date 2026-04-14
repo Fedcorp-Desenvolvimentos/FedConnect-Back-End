@@ -16,7 +16,8 @@ from consultas.views import (
     BuscarCidadesAutocomplete, 
     BuscarCorretores, 
     BuscarFaturaPorNumero, 
-    BuscarFaturamento, 
+    BuscarFaturamento,
+    BuscarLocalidade, 
     BuscarNFSEPorBoleto, 
     BuscarTodasEmpresas, 
     ExportarFaturasComBoletosExcel, 
@@ -121,6 +122,7 @@ urlpatterns = [
     
     path('consultas/nfse/<str:documento>/', BuscarNFSEPorBoleto.as_view(), name='consulta-nfse-por-documento'),
     
+    path('consultas/localidade/', BuscarLocalidade.as_view(), name='buscar-localidade'),
     path('cidades/autocomplete/', BuscarCidadesAutocomplete.as_view(), name='cidades-autocomplete'),
     
     path('comercial/agenda/', AgendamentoListCreateAPIView.as_view(), name='agendamento_list'),
