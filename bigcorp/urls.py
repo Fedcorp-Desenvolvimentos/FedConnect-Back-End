@@ -11,6 +11,8 @@ from users.views import (
     ValidarTokenResetView
 )
 from consultas.views import (
+    AutomacaoProcessarPDFsBBZView,
+    AutomacaoUploadPDFsBBZView,
     BuscarAdministradorasPorCodigo, 
     BuscarAdministradorasPorNome,
     BuscarCidadesAutocomplete, 
@@ -133,6 +135,9 @@ urlpatterns = [
     path('consultar-boletosfedbnk/', consultar_boletos_proxy, name='consultar_boletos_proxy'),
     path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boleto_proxy'),
     path('cancelar-boletofedbnk/', cancelar_boleto, name='cancelar_boleto_proxy'), 
+    
+    path('automacao/upload-pdfs-bbz/', AutomacaoUploadPDFsBBZView.as_view(), name='automacao-upload-pdfs-bbz'),
+    path('automacao/processar-pdfs-bbz/', AutomacaoProcessarPDFsBBZView.as_view(), name='automacao-processar-pdfs-bbz'),
     
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
     

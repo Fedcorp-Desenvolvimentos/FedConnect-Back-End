@@ -450,6 +450,67 @@ class FirebirdService:
             logger.error(f"Erro ao buscar localidades do gateway: {e}")
             return None
     
+    # Automação
+    def upload_pdfs_bbz(self, files: list) -> Optional[Dict[str, Any]]:
+        """
+        Apenas envia arquivos PDF para o FedHub salvar na pasta de origem
+        """
+        try:
+            files_to_send = []
+            for file in files:
+                file_content = file.read()
+                files_to_send.append(
+                    ('files', (file.name, file_content, 'application/pdf'))
+                )
+            
+            logger.info(f"Enviando {len(files_to_send)} arquivos para o FedHub (apenas upload)")
+            
+            response = requests.post(
+                f"{self.base_url}/api/automatizador/upload-pdfs-bbz",
+                files=files_to_send,
+                timeout=300
+            )
+            
+            logger.info(f"Resposta do FedHub: status={response.status_code}")
+            
+            if response.status_code != 200:
+                logger.error(f"Gateway erro {response.status_code}: {response.text}")
+                return None
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Erro ao chamar gateway: {e}")
+            raise
+
+    def processar_pdfs_bbz(self, fazer_backup: bool = True) -> Optional[Dict[str, Any]]:
+        """
+        Chama o FedHub para processar os PDFs que já estão na pasta de origem
+        """
+        try:
+            data = {'fazer_backup': str(fazer_backup).lower()}
+            
+            logger.info(f"Chamando FedHub para processar PDFs (backup={fazer_backup})")
+            
+            response = requests.post(
+                f"{self.base_url}/api/automatizador/processar-pdfs-bbz",
+                data=data,
+                timeout=300
+            )
+            
+            logger.info(f"Resposta do FedHub: status={response.status_code}")
+            
+            if response.status_code != 200:
+                logger.error(f"Gateway erro {response.status_code}: {response.text}")
+                return None
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Erro ao chamar gateway: {e}")
+            raise
+    
+    
     # Processamento de pagamento de boleto via webhook do Santander
     async def processar_pagamento_boleto(self, documento: str, fatura: str, dados_pagamento: dict):
         try:

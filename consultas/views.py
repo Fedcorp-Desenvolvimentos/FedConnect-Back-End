@@ -26,6 +26,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import cm
 
+from django.conf import settings
+from rest_framework.parsers import MultiPartParser, FormParser
+
 logger = logging.getLogger(__name__)
 
 class RealizarConsultaView(APIView):
@@ -1614,3 +1617,74 @@ class BuscarLocalidade(APIView):
                 "message": "Erro ao buscar localidade",
                 "data": {}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+# consultas/views.py
+
+class AutomacaoUploadPDFsBBZView(APIView):
+    """Apenas upload - salva os PDFs na pasta de origem"""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def post(self, request, *args, **kwargs):
+        files = request.FILES.getlist('files')
+        
+        if not files:
+            return Response(
+                {"sucesso": False, "erro": "Nenhum arquivo enviado"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = FirebirdService()
+            resultado = service.upload_pdfs_bbz(files)
+            
+            if not resultado or resultado.get("status") != "sucesso":
+                return Response(
+                    {"sucesso": False, "erro": resultado.get("message", "Falha no upload")},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            return Response({
+                "sucesso": True,
+                "mensagem": resultado.get("message"),
+                "resultado": resultado.get("dados")
+            }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            logger.error(f"Erro no upload: {str(e)}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class AutomacaoProcessarPDFsBBZView(APIView):
+    """Apenas processa - move PDFs da pasta origem para pastas corretas"""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        fazer_backup = request.data.get('fazer_backup', True)
+        
+        try:
+            service = FirebirdService()
+            resultado = service.processar_pdfs_bbz(fazer_backup)
+            
+            if not resultado or resultado.get("status") != "sucesso":
+                return Response(
+                    {"sucesso": False, "erro": resultado.get("message", "Falha no processamento")},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            return Response({
+                "sucesso": True,
+                "mensagem": "PDFs processados com sucesso",
+                "resultado": resultado.get("dados")
+            }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            logger.error(f"Erro no processamento: {str(e)}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
