@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        self.base_url = "https://fedhub-api-local.ngrok.app"
-        # self.base_url = "http://localhost:8090"
+        # self.base_url = "https://fedhub-api-local.ngrok.app"
+        self.base_url = "http://localhost:8090"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -140,7 +140,6 @@ class FirebirdService:
             logger.error(f"Erro ao buscar fatura {fatura_numero}: {str(e)}")
             return None
 
-
     # Empresas
     async def buscar_empresa_por_cnpj(self, cnpj: str) -> Optional[List[Dict[str, Any]]]:
         """
@@ -188,7 +187,6 @@ class FirebirdService:
             return None
 
         return data.get("data")
-
 
     # Administradoras
     def buscar_administradora_por_nome(self, nome: str):
@@ -422,6 +420,27 @@ class FirebirdService:
             logger.error(f"Erro ao chamar serviço de email: {e}")
             return False
     
+    def enviar_email_fatura_mensal(self, email: str, nome_usuario: str, data_fatura: str) -> bool:
+        try:
+            pass
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar serviço de email: {e}")
+            return False
+        
+    def enviar_email_segunda_via(self, email: str, nome_usuario: str, data_fatura: str) -> bool:
+        try:
+            pass
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar serviço de email: {e}")
+            return False
+        
+    def enviar_email_aviso_vencimento(self, email: str, nome_usuario: str, data_vencimento: str) -> bool:
+        try:
+            pass
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar serviço de email: {e}")
+            return False
+    
     # Localidades
     def buscar_localidades(self) -> Optional[Dict[str, Any]]:
         """
@@ -451,9 +470,6 @@ class FirebirdService:
             return None
     
     # Automação
-    
-    # consultas/services/firebird.py (adicione no final da classe FirebirdService)
-
     def separar_pdf(self, file, nome_base: str = "") -> bytes:
         """
         Chama o FedHub para separar o PDF em páginas individuais
@@ -561,6 +577,45 @@ class FirebirdService:
             logger.error(f"Erro ao chamar gateway: {e}")
             raise
     
+    # Boleto FedBnk
+    def cancelar_boleto_fedbnk(self, fatura: str):
+        try:
+            # Corrigido: incluir a fatura na URL
+            response = requests.post(
+                f"{self.base_url}/api/fedbnk/cancelamento/{fatura}/",
+                headers=get_headers(),
+                json={"numero": fatura},  # Adicionar payload
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Fedhub erro {response.status_code}: {response.text}")
+                return {
+                    "status": "erro",
+                    "message": f"Erro na API do Fedhub: {response.status_code}"
+                }
+
+            data = response.json()
+            
+            # Retornar no formato esperado pela view
+            if data.get("status") == "sucesso":
+                return {
+                    "status": "sucesso",
+                    "message": "Boleto cancelado com sucesso",
+                    "dados": data.get("dados")
+                }
+            else:
+                return {
+                    "status": "erro",
+                    "message": data.get("mensagem", "Falha no cancelamento")
+                }
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar Fedhub: {e}")
+            return {
+                "status": "erro",
+                "message": f"Erro de comunicação: {str(e)}"
+            }
     
     # Processamento de pagamento de boleto via webhook do Santander
     async def processar_pagamento_boleto(self, documento: str, fatura: str, dados_pagamento: dict):

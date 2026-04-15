@@ -22,7 +22,8 @@ from consultas.views import (
     BuscarFaturamento,
     BuscarLocalidade, 
     BuscarNFSEPorBoleto, 
-    BuscarTodasEmpresas, 
+    BuscarTodasEmpresas,
+    CancelarBoletoFedBnkView, 
     ExportarFaturasComBoletosExcel, 
     ExportarFaturasComBoletosPDF, 
     RealizarConsultaView, 
@@ -140,13 +141,18 @@ urlpatterns = [
     path('automacao/separar-pdf/', AutomacaoSepararPDFView.as_view(), name='automacao-separar-pdf'),
     path('automacao/upload-pdfs-bbz/', AutomacaoUploadPDFsBBZView.as_view(), name='automacao-upload-pdfs-bbz'),
     path('automacao/processar-pdfs-bbz/', AutomacaoProcessarPDFsBBZView.as_view(), name='automacao-processar-pdfs-bbz'),
-    
-    path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
-    
+        
     # Recuperação de senha
     path("solicitar-reset-senha/", SolicitarResetSenhaView.as_view(), name="solicitar-reset-senha"),
     path("validar-token-reset/<str:token>/", ValidarTokenResetView.as_view(), name="validar-token-reset"),
     path("resetar-senha/", ResetarSenhaView.as_view(), name="resetar-senha"),
+    
+    # Boleto FedBNK
+    path('boletofedbnk/cancelar/<str:fatura>/', CancelarBoletoFedBnkView.as_view(), name='cancelar-boleto-fedbnk'),
+    
+    # Webhook do Santander
+    path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
+
 
     path("", include(router.urls)),
 ]

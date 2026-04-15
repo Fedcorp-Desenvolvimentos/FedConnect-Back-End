@@ -574,7 +574,9 @@ class BuscarAdministradorasPorCodigo(APIView):
             "data": dados
         })
 
-# Buscar Fatura por parametros - QUERY NAS TABELAS 'FATURAS' + 'BOLETOS'
+# *******************************************#
+#********** Consultas Firebird ********#
+# *******************************************# 
 class BuscarFaturasComBoletos(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -681,9 +683,7 @@ class BuscarFaturasComBoletos(APIView):
                     "resultado": []
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
-# consultas/views.py - Classe BuscarFaturamento
+            )      
 class BuscarFaturamento(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -823,7 +823,6 @@ class BuscarFaturamento(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )         
-
 class BuscarCorretores(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -856,7 +855,6 @@ class BuscarCorretores(APIView):
                 {"status": "error", "message": "Erro interno ao buscar corretor."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class BuscarNFSEPorBoleto(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -888,8 +886,7 @@ class BuscarNFSEPorBoleto(APIView):
             return Response(
                 {"status": "error", "message": "Erro interno ao buscar nota."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-                     
+            )                     
 class BuscarFaturasComBoletosESegurados(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -996,8 +993,7 @@ class BuscarFaturasComBoletosESegurados(APIView):
                     "resultado": []
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
+            )            
 class BuscarFaturasComBoletosPaginadas(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1105,6 +1101,10 @@ class BuscarFaturasComBoletosPaginadas(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+# *******************************************#
+#********** Excel e PDF ********#
+# *******************************************# 
 class ExportarFaturasDinamicasPaginadasExcel(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1292,8 +1292,7 @@ class ExportarFaturasDinamicasPaginadasExcel(APIView):
                     "erro": f"Erro ao gerar arquivo Excel: {str(e)}"
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
+            )   
 class ExportarFaturasComBoletosExcel(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1481,8 +1480,7 @@ class ExportarFaturasComBoletosExcel(APIView):
                     "erro": f"Erro ao gerar arquivo Excel: {str(e)}"
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
+            )           
 class ExportarFaturasComBoletosPDF(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1556,6 +1554,9 @@ class ExportarFaturasComBoletosPDF(APIView):
 
         return response
 
+# *******************************************#
+#********** Localidades ********#
+# *******************************************#    
 class BuscarCidadesAutocomplete(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1586,7 +1587,6 @@ class BuscarCidadesAutocomplete(APIView):
                 "message": "Erro ao buscar cidades",
                 "data": []
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 class BuscarLocalidade(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1617,11 +1617,11 @@ class BuscarLocalidade(APIView):
                 "message": "Erro ao buscar localidade",
                 "data": {}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-# consultas/views.py
 
-# consultas/views.py (adicione após as classes de automação existentes)
 
+# *******************************************#
+#********** AUTOMAÇÕES E UTILITÁRIOS ********#
+# *******************************************#            
 class AutomacaoSepararPDFView(APIView):
     """Separa um PDF em múltiplos arquivos (um por página)"""
     authentication_classes = [JWTAuthentication]
@@ -1669,8 +1669,7 @@ class AutomacaoSepararPDFView(APIView):
             return Response(
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
+            )           
 class AutomacaoUploadPDFsBBZView(APIView):
     """Apenas upload - salva os PDFs na pasta de origem"""
     authentication_classes = [JWTAuthentication]
@@ -1719,7 +1718,6 @@ class AutomacaoUploadPDFsBBZView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class AutomacaoProcessarPDFsBBZView(APIView):
     """Apenas processa - move PDFs da pasta origem para pastas corretas"""
     authentication_classes = [JWTAuthentication]
@@ -1746,6 +1744,42 @@ class AutomacaoProcessarPDFsBBZView(APIView):
                 
         except Exception as e:
             logger.error(f"Erro no processamento: {str(e)}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+
+# *******************************************#
+#********** Boleto FedBnk ********#
+# *******************************************# 
+class CancelarBoletoFedBnkView(APIView):
+    """Cancela um boleto no sistema do FedBnk"""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, fatura: str, *args, **kwargs):
+        try:
+            
+            logger.info("Dados de requisição para cancelamento de boleto FedBnk: {}".format(request.data))
+                     
+            service = FirebirdService()
+            resultado = service.cancelar_boleto_fedbnk(fatura)
+            
+            if not resultado or resultado.get("status") != "sucesso":
+                return Response(
+                    {"sucesso": False, "erro": resultado.get("message", "Falha no cancelamento")},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            return Response({
+                "sucesso": True,
+                "mensagem": "Boleto cancelado com sucesso",
+                "resultado": resultado.get("dados")
+            }, status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            logger.error(f"Erro no cancelamento: {str(e)}")
             return Response(
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
