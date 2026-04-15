@@ -471,6 +471,8 @@ class FirebirdService:
                 timeout=300
             )
             
+            logger.info(f"Resposta completa do FedHub: {response.json()}")
+            
             logger.info(f"Resposta do FedHub: status={response.status_code}")
             
             if response.status_code != 200:
