@@ -1639,9 +1639,20 @@ class AutomacaoUploadPDFsBBZView(APIView):
             service = FirebirdService()
             resultado = service.upload_pdfs_bbz(files)
             
-            if not resultado or resultado.get("status") != "sucesso":
+            if not resultado:
                 return Response(
-                    {"sucesso": False, "erro": resultado.get("message", "Falha no upload")},
+                    {"sucesso": False, "erro": "Sem resposta do FedHub"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+
+            status_fedhub = resultado.get("status")
+
+            if status_fedhub != "sucesso":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", f"Status inesperado: {status_fedhub}")
+                    },
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
             
