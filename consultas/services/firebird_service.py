@@ -451,6 +451,55 @@ class FirebirdService:
             return None
     
     # Automação
+    
+    # consultas/services/firebird.py (adicione no final da classe FirebirdService)
+
+    def separar_pdf(self, file, nome_base: str = "") -> bytes:
+        """
+        Chama o FedHub para separar o PDF em páginas individuais
+        """
+        try:
+            # Preparar arquivo para envio
+            files = {
+                'file': (file.name, file.read(), 'application/pdf')
+            }
+            
+            data = {}
+            if nome_base:
+                data['nome_base'] = nome_base
+            
+            logger.info(f"Enviando PDF para separação: {file.name}")
+            
+            response = requests.post(
+                f"{self.base_url}/api/automatizador/separar-pdf",
+                files=files,
+                data=data,
+                timeout=300
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"FedHub erro {response.status_code}: {response.text}")
+                # Tentar parsear como JSON de erro
+                try:
+                    error_data = response.json()
+                    return {"status": "erro", "message": error_data.get("message", "Erro desconhecido")}
+                except:
+                    return {"status": "erro", "message": f"Erro HTTP {response.status_code}"}
+            
+            # Verificar se a resposta é um ZIP (content-type application/zip)
+            if response.headers.get('content-type') == 'application/zip':
+                return response.content  # Retorna bytes do ZIP
+            
+            # Tentar parsear como JSON (caso de erro)
+            try:
+                return response.json()
+            except:
+                return response.content
+                
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FedHub para separar PDF: {e}")
+            return {"status": "erro", "message": str(e)}
+    
     def upload_pdfs_bbz(self, files: list) -> Optional[Dict[str, Any]]:
         """
         Apenas envia arquivos PDF para o FedHub salvar na pasta de origem

@@ -1620,6 +1620,57 @@ class BuscarLocalidade(APIView):
             
 # consultas/views.py
 
+# consultas/views.py (adicione após as classes de automação existentes)
+
+class AutomacaoSepararPDFView(APIView):
+    """Separa um PDF em múltiplos arquivos (um por página)"""
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get('file')
+        nome_base = request.data.get('nome_base', '')
+        
+        if not file:
+            return Response(
+                {"sucesso": False, "erro": "Nenhum arquivo enviado"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not file.name.lower().endswith('.pdf'):
+            return Response(
+                {"sucesso": False, "erro": "O arquivo deve ser um PDF"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            service = FirebirdService()
+            resultado = service.separar_pdf(file, nome_base)
+            
+            # Se o resultado for bytes (conteúdo do ZIP), retorna como download
+            if isinstance(resultado, bytes):
+                nome_base_clean = nome_base or file.name.replace('.pdf', '')
+                response = HttpResponse(
+                    resultado,
+                    content_type='application/zip'
+                )
+                response['Content-Disposition'] = f'attachment; filename="{nome_base_clean}_separado.zip"'
+                return response
+            
+            # Se for erro
+            return Response(
+                {"sucesso": False, "erro": resultado.get("message", "Erro ao processar")},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+                
+        except Exception as e:
+            logger.error(f"Erro ao separar PDF: {str(e)}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
 class AutomacaoUploadPDFsBBZView(APIView):
     """Apenas upload - salva os PDFs na pasta de origem"""
     authentication_classes = [JWTAuthentication]

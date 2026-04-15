@@ -12,6 +12,7 @@ from users.views import (
 )
 from consultas.views import (
     AutomacaoProcessarPDFsBBZView,
+    AutomacaoSepararPDFView,
     AutomacaoUploadPDFsBBZView,
     BuscarAdministradorasPorCodigo, 
     BuscarAdministradorasPorNome,
@@ -136,6 +137,7 @@ urlpatterns = [
     path('consultar-boletofedbnk/', consultar_boleto, name='consultar_boleto_proxy'),
     path('cancelar-boletofedbnk/', cancelar_boleto, name='cancelar_boleto_proxy'), 
     
+    path('automacao/separar-pdf/', AutomacaoSepararPDFView.as_view(), name='automacao-separar-pdf'),
     path('automacao/upload-pdfs-bbz/', AutomacaoUploadPDFsBBZView.as_view(), name='automacao-upload-pdfs-bbz'),
     path('automacao/processar-pdfs-bbz/', AutomacaoProcessarPDFsBBZView.as_view(), name='automacao-processar-pdfs-bbz'),
     
