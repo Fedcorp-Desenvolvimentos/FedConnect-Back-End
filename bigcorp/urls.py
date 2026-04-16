@@ -148,7 +148,7 @@ urlpatterns = [
     path("resetar-senha/", ResetarSenhaView.as_view(), name="resetar-senha"),
     
     # Boleto FedBNK
-    path('boletofedbnk/cancelar/<str:fatura>/', CancelarBoletoFedBnkView.as_view(), name='cancelar-boleto-fedbnk'),
+    path('boletofedbnk/cancelar/', CancelarBoletoFedBnkView.as_view(), name='cancelar-boleto-fedbnk'),
     
     # Webhook do Santander
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),

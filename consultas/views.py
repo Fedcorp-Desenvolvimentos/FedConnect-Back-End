@@ -1754,29 +1754,68 @@ class AutomacaoProcessarPDFsBBZView(APIView):
 #********** Boleto FedBnk ********#
 # *******************************************# 
 class CancelarBoletoFedBnkView(APIView):
-    """Cancela um boleto no sistema do FedBnk"""
+    """Cancela boleto(s) no sistema do FedBnk"""
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
-    def post(self, request, fatura: str, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
+        """
+        Payload esperado:
+        {
+            "metodo": "INDIVIDUAL" ou "TODOS",
+            "fatura": "167455",  # obrigatório
+            "documento": "0001482774",  # opcional - para INDIVIDUAL
+            "motivo": "motivo do cancelamento",
+            "mail": "email@exemplo.com"
+        }
+        """
         try:
+            data = request.data
+            metodo = data.get("metodo")
+            fatura = data.get("fatura")
+            documento = data.get("documento")
+            motivo = data.get("motivo", f"Cancelamento solicitado por {request.user.email}")
+            mail = data.get("mail", request.user.email)
             
-            logger.info("Dados de requisição para cancelamento de boleto FedBnk: {}".format(request.data))
-                     
-            service = FirebirdService()
-            resultado = service.cancelar_boleto_fedbnk(fatura)
-            
-            if not resultado or resultado.get("status") != "sucesso":
+            if not fatura:
                 return Response(
-                    {"sucesso": False, "erro": resultado.get("message", "Falha no cancelamento")},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                    {"sucesso": False, "erro": "Número da fatura é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
             
-            return Response({
-                "sucesso": True,
-                "mensagem": "Boleto cancelado com sucesso",
-                "resultado": resultado.get("dados")
-            }, status=status.HTTP_200_OK)
+            if not metodo:
+                return Response(
+                    {"sucesso": False, "erro": "Metodo (INDIVIDUAL ou TODOS) é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            logger.info(f"Cancelamento {metodo} - Fatura: {fatura}, Documento: {documento}")
+            
+            # Payload para o FedHub (sempre com fatura, documento pode ser None)
+            payload = {
+                "fatura": fatura,
+                "documento": documento if metodo == "INDIVIDUAL" else None,
+                "motivo": motivo,
+                "mail": mail
+            }
+            
+            # Chamar o FirebirdService
+            service = FirebirdService()
+            resultado = service.cancelar_boleto_fedbnk(payload)
+            
+            if resultado and resultado.get("status") == "sucesso":
+                return Response({
+                    "sucesso": True,
+                    "status": "success",
+                    "message": resultado.get("message", "Cancelamento realizado com sucesso"),
+                    "resultado": resultado.get("dados")
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "sucesso": False,
+                    "status": "error",
+                    "message": resultado.get("message", "Erro no cancelamento") if resultado else "Erro desconhecido"
+                }, status=status.HTTP_400_BAD_REQUEST)
                 
         except Exception as e:
             logger.error(f"Erro no cancelamento: {str(e)}")

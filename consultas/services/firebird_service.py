@@ -578,40 +578,45 @@ class FirebirdService:
             raise
     
     # Boleto FedBnk
-    def cancelar_boleto_fedbnk(self, fatura: str):
+    def cancelar_boleto_fedbnk(self, payload: dict) -> Optional[Dict[str, Any]]:
+        """Cancela boleto(s) no FedHub"""
         try:
-            # Corrigido: incluir a fatura na URL
+            # URL correta do FedHub (única rota para cancelamento)
+            url = f"{self.base_url}/api/fedbnk/cancelar/"
+            
             response = requests.post(
-                f"{self.base_url}/api/fedbnk/cancelamento/{fatura}/",
+                url,
                 headers=get_headers(),
-                json={"numero": fatura},  # Adicionar payload
+                json=payload,  # Payload: {fatura, documento, motivo, mail}
                 timeout=30
             )
 
             if response.status_code != 200:
-                logger.error(f"Fedhub erro {response.status_code}: {response.text}")
+                logger.error(f"FedHub erro {response.status_code}: {response.text}")
                 return {
                     "status": "erro",
-                    "message": f"Erro na API do Fedhub: {response.status_code}"
+                    "message": f"Erro na API do FedHub: {response.status_code}"
                 }
+                
+            # logger.info(f"Resposta do FedHub para cancelamento: {response.json()}")
 
             data = response.json()
             
-            # Retornar no formato esperado pela view
-            if data.get("status") == "sucesso":
+            # Retornar no formato esperado
+            if data.get("status") == "success":
                 return {
                     "status": "sucesso",
-                    "message": "Boleto cancelado com sucesso",
+                    "message": data.get("message", "Cancelamento realizado com sucesso"),
                     "dados": data.get("dados")
                 }
             else:
                 return {
                     "status": "erro",
-                    "message": data.get("mensagem", "Falha no cancelamento")
+                    "message": data.get("message", "Falha no cancelamento")
                 }
 
         except requests.RequestException as e:
-            logger.error(f"Erro ao chamar Fedhub: {e}")
+            logger.error(f"Erro ao chamar FedHub: {e}")
             return {
                 "status": "erro",
                 "message": f"Erro de comunicação: {str(e)}"
