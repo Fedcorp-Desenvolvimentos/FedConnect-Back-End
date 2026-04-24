@@ -20,6 +20,7 @@ from consultas.views import (
     AutomacaoProcessarPDFsBBZView,
     AutomacaoSepararPDFView,
     AutomacaoUploadPDFsBBZView,
+    BuscarAdministradoras,
     BuscarAdministradorasPorCodigo, 
     BuscarAdministradorasPorNome,
     BuscarCidadesAutocomplete, 
@@ -120,11 +121,12 @@ urlpatterns = [
     path('consultas/faturas/', RealizarConsultaFaturasView.as_view(), name='realizar-consulta-faturas'),
     
     path('consultas/faturamento/', BuscarFaturamento.as_view(), name='buscar-faturamento'),
-
+    
     path('consultas/faturas/com-boletos/exportar-excel/', ExportarFaturasComBoletosExcel.as_view(), name='exportar-faturas-excel'),
     path("consultas/faturas/com-boletos/exportar-pdf/", ExportarFaturasComBoletosPDF.as_view(), name='exportar-faturas-pdf'),
     path('consultas/faturas/<str:numero_fatura>/', BuscarFaturaPorNumero.as_view(), name='consulta-fatura-por-numero'),
     
+    path('consultas/administradoras/', BuscarAdministradoras.as_view(), name='consulta-administradoras'),
     path('consultas/administradora/por-nome/<str:nome>/', BuscarAdministradorasPorNome.as_view(), name='consulta-administradora-por-nome'),
     path('consultas/administradora/por-codigo/<str:codigo>/', BuscarAdministradorasPorCodigo.as_view(), name='consulta-administradora-por-codigo'),
     

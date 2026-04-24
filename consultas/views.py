@@ -538,6 +538,28 @@ class BuscarFaturasDinamicamentePaginadas(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+class BuscarAdministradoras(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, *args, **kwargs): 
+        service = FirebirdService()
+        dados = service.buscar_administradoras()
+        
+        # logger.info(f"Dados retornados do serviço de administradoras: {dados}")
+
+        if not dados:
+            return Response(
+                {"sucesso": False, "erro": "Nenhuma administradora encontrada"},
+                status=404
+            )
+
+        return Response({
+            "sucesso": True,
+            "data": dados
+        })
+        
 class BuscarAdministradorasPorNome(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -890,6 +912,7 @@ class BuscarNFSEPorBoleto(APIView):
                 {"status": "error", "message": "Erro interno ao buscar nota."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )                     
+
 class BuscarFaturasComBoletosESegurados(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]

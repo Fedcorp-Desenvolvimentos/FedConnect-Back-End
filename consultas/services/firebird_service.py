@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        self.base_url = "https://fedhub-api-local.ngrok.app"
-        # self.base_url = "http://localhost:8090"
+        # self.base_url = "https://fedhub-api-local.ngrok.app"
+        self.base_url = "http://localhost:8090"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -189,6 +189,29 @@ class FirebirdService:
         return data.get("data")
 
     # Administradoras
+    def buscar_administradoras(self):
+            try:
+                response = requests.get(
+                    f"{self.base_url}/api/administradoras/",
+                    timeout=30,
+                    headers=get_headers()
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"Firebird erro {response.status_code}")
+                    return None
+
+                data = response.json()
+
+                if data.get("status") != "success":
+                    return None
+
+                return data.get("data")
+
+            except requests.RequestException as e:
+                logger.error(f"Erro ao chamar Firebird: {e}")
+                return None
+            
     def buscar_administradora_por_nome(self, nome: str):
             try:
                 response = requests.get(
@@ -258,7 +281,7 @@ class FirebirdService:
             logger.error(f"Erro ao chamar Firebird: {e}")
             return None
 
-    # Corretores
+    # Corretores    
     def buscar_corretor_por_codigo(self, codigo: str):
         try:
             response = requests.get(
@@ -283,6 +306,29 @@ class FirebirdService:
             return None
         
     # Cedentes
+    def buscar_todos_cedentes(self, codigo: str):
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/cedentes/",
+                headers=get_headers(),
+                timeout=30
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Firebird erro {response.status_code}")
+                return None
+
+            data = response.json()
+
+            if not data.get("encontrado"):
+                return None
+
+            return data.get("dados")
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar Firebird: {e}")
+            return None
+        
     def buscar_cedente_por_codigo(self, codigo: str):
         try:
             response = requests.get(
