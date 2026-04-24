@@ -11,6 +11,12 @@ from users.views import (
     ValidarTokenResetView
 )
 from consultas.views import (
+    AnalyticsDashboardCompletoView,
+    AnalyticsFaturamentoPeriodoView,
+    AnalyticsFaturamentoPorAdministradoraView,
+    AnalyticsInadimplenciaView,
+    AnalyticsStatusFaturasView,
+    AnalyticsTopAdministradorasView,
     AutomacaoProcessarPDFsBBZView,
     AutomacaoSepararPDFView,
     AutomacaoUploadPDFsBBZView,
@@ -150,9 +156,17 @@ urlpatterns = [
     # Boleto FedBNK
     path('boletofedbnk/cancelar/', CancelarBoletoFedBnkView.as_view(), name='cancelar-boleto-fedbnk'),
     
+    
+    path('analytics/faturamento/', AnalyticsFaturamentoPeriodoView.as_view(), name='analytics-faturamento-periodo'),
+    path('analytics/administradoras/top/', AnalyticsTopAdministradorasView.as_view(), name='analytics-top-administradoras'),
+    path('analytics/inadimplencia/', AnalyticsInadimplenciaView.as_view(), name='analytics-inadimplencia'),
+    path('analytics/administradoras/faturamento/', AnalyticsFaturamentoPorAdministradoraView.as_view(), name='analytics-faturamento-administradora'),
+    path('analytics/faturas/status/', AnalyticsStatusFaturasView.as_view(), name='analytics-status-faturas'),
+    path('analytics/dashboard/', AnalyticsDashboardCompletoView.as_view(), name='analytics-dashboard-completo'),
+    
+
     # Webhook do Santander
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
-
 
     path("", include(router.urls)),
 ]
