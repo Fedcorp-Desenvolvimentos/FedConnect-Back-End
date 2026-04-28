@@ -606,7 +606,7 @@ class FirebirdService:
             logger.info(f"Chamando FedHub para processar PDFs (backup={fazer_backup})")
             
             response = requests.post(
-                f"{self.base_url}/api/automatizador/processar-pdfs-bbz",
+                f"{self.base_url}/api/automate/processar-pdfs-bbz",
                 data=data,
                 timeout=300
             )
