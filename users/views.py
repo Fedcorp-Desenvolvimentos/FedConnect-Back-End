@@ -1,5 +1,4 @@
 from rest_framework.decorators import action
-from django.contrib.auth.decorators import login_required
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets, status
@@ -7,20 +6,19 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.db.models import Q  # Importe Q para operações OR em QuerySets
 from .serializers import UsuarioSerializer
-from .permissions import IsAdmin, IsOwnerOrAdmin
+from .permissions import IsOwnerOrAdmin
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q, Case, When, IntegerField
 from rest_framework.views import APIView
 
 from consultas.services.firebird_service import FirebirdService
 
-import httpx
-import secrets
 import logging
-from datetime import timedelta
-from django.conf import settings
 from django.utils import timezone
+
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
@@ -94,12 +92,10 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-
 class CustomTokenObtainPairView(TokenObtainPairView):
     # Não há necessidade de sobrescrever o método post
     # O comportamento padrão já retorna os tokens no corpo da resposta
     pass
-
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]
@@ -111,6 +107,62 @@ class LogoutView(APIView):
             {"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK
         )
 
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        credential = request.data.get("credential")
+
+        if not credential:
+            return Response(
+                {"detail": "Credential não enviada."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # valida token google
+            idinfo = id_token.verify_oauth2_token(
+                credential,
+                requests.Request(),
+                "765602112412-336nt6annegl11j5s3ffm5lie68a975q.apps.googleusercontent.com"
+            )
+
+            email = idinfo.get("email")
+            nome = idinfo.get("name")
+
+            if not email:
+                return Response(
+                    {"detail": "Email não encontrado."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # cria ou busca usuário
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": email,
+                    "nome_completo": nome,
+                }
+            )
+
+            # gera jwt
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "nome_completo": user.nome_completo,
+                }
+            })
+
+        except ValueError:
+            return Response(
+                {"detail": "Token Google inválido."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class PasswordView(APIView):
     permission_classes = [IsAuthenticated]
@@ -130,7 +182,6 @@ class PasswordView(APIView):
         return Response(
             {"detail": "Senha alterada com sucesso."}, status=status.HTTP_200_OK
         )
-
 
 class SolicitarResetSenhaView(APIView):
     permission_classes = [AllowAny]
@@ -189,7 +240,6 @@ class SolicitarResetSenhaView(APIView):
                 }
             )
                 
-
 class ValidarTokenResetView(APIView):
     permission_classes = [AllowAny]
     

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from users.views import (
+    GoogleLoginView,
     ResetarSenhaView, 
     SolicitarResetSenhaView, 
     UsuarioViewSet, 
@@ -78,9 +79,13 @@ urlpatterns = [
     path(
         "schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"
     ),
+    
     # Rotas de Autenticação
     path("login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     #path("login/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    
+    path('google-login/', GoogleLoginView.as_view(), name='google-login'),
+    
     path("logout/", LogoutView.as_view(), name="logout"),
     # Rota para o endpoint "me" do usuário
     
