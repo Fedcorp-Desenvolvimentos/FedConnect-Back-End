@@ -144,6 +144,12 @@ class GoogleLoginView(APIView):
                     "nome_completo": nome,
                 }
             )
+            
+            if not user:
+                return Response(
+                    {"detail": "Usuário não encontrado. Favor contactar o suporte."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
             # gera jwt
             refresh = RefreshToken.for_user(user)
