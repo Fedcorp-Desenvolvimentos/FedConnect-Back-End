@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        self.base_url = "https://fedhub-api-local.ngrok.app"
-        # self.base_url = "http://localhost:8090"
+        # self.base_url = "https://fedhub-api-local.ngrok.app"
+        self.base_url = "http://localhost:8090"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -140,6 +140,47 @@ class FirebirdService:
             logger.error(f"Erro ao buscar fatura {fatura_numero}: {str(e)}")
             return None
 
+    def rodar_procedure_tratamento_erro(self) -> Optional[Dict[str, Any]]:
+        """
+        Roda a procedure de tratamento de erro do FedHub (FastAPI)
+        POST /fatura/rodar-procedure-tratamento-erro/
+        """
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/faturas/fatura/rodar-procedure-tratamento-erro/",
+                headers=get_headers(),
+                timeout=60  # Timeout maior pois pode demorar
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"FedHub erro {response.status_code}: {response.text}")
+                return {
+                    "status": "error",
+                    "message": f"Erro na API do FedHub: {response.status_code}"
+                }
+            
+            data = response.json()
+            
+            # Verificar formato da resposta do FastAPI
+            if data.get("status") == "success":
+                return {
+                    "status": "success",
+                    "message": data.get("message", "Procedure executada com sucesso"),
+                    "data": data.get("data", {})
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": data.get("message", "Falha na execução da procedure")
+                }
+                
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FedHub para procedure: {e}")
+            return {
+                "status": "error",
+                "message": f"Erro de comunicação: {str(e)}"
+            }
+    
     # Empresas
     async def buscar_empresa_por_cnpj(self, cnpj: str) -> Optional[List[Dict[str, Any]]]:
         """

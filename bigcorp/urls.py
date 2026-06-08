@@ -37,7 +37,8 @@ from consultas.views import (
     RealizarConsultaView, 
     HistoricoConsultaListView, 
     HistoricoConsultaDetailView, 
-    HistoricoConsultaUserListView
+    HistoricoConsultaUserListView,
+    TratamentoDeErroView
 )
 from planilha.views.cnpj_views import (baixar_planilha_modelo_drf_cnpj, ProcessarPlanilhaCnpjsView)
 from planilha.views.cep_views import (baixar_planilha_modelo_drf_cep,ProcessarPlanilhaCepsView)
@@ -171,7 +172,8 @@ urlpatterns = [
     path('analytics/faturas/status/', AnalyticsStatusFaturasView.as_view(), name='analytics-status-faturas'),
     path('analytics/dashboard/', AnalyticsDashboardCompletoView.as_view(), name='analytics-dashboard-completo'),
     
-
+    path('faturamento/tratamento-de-erros/rodar-procedure/', TratamentoDeErroView.as_view(), name='faturamento-tratamento-de-erro'),
+    
     # Webhook do Santander
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
 

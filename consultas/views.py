@@ -1128,6 +1128,50 @@ class BuscarFaturasComBoletosPaginadas(APIView):
             )
 
 
+class TratamentoDeErroView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        """
+        Roda a procedure de tratamento de erros no FastAPI
+        POST /faturamento/tratamento-de-erros/rodar-procedure/
+        """
+        try:
+            service = FirebirdService()
+            
+            # Chama o FastAPI para rodar a procedure
+            # Usando método síncrono ou assíncrono conforme necessário
+            resultado = service.rodar_procedure_tratamento_erro()
+            
+            if resultado and resultado.get("status") == "success":
+                return Response(
+                    {
+                        "sucesso": True,
+                        "mensagem": "Procedure de tratamento de erros executada com sucesso",
+                        "resultado": resultado.get("data", {})
+                    },
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Erro ao executar procedure") if resultado else "Erro desconhecido"
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
+        except Exception as e:
+            logger.error(f"Erro ao rodar procedure de tratamento de erros: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 # *******************************************#
 #********** Excel e PDF ********#
 # *******************************************# 
