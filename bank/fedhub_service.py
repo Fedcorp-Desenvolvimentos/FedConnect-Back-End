@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 class FedhubService:
     def __init__(self):
-        # self.base_url = "https://fedhub-api-local.ngrok.app"
-        self.base_url = "http://localhost:8090"
+        self.base_url = "https://fedhub-api-local.ngrok.app"
+        # self.base_url = "http://localhost:8090"
         
     # Busca fatura pelo nosso número (bankNumber do Santander)
     async def buscar_fatura_por_nosso_numero(self, nosso_numero: str):
