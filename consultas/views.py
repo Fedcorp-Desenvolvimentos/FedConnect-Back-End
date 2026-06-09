@@ -1172,6 +1172,117 @@ class TratamentoDeErroView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+class ConverterBoletoCSVView(APIView):
+    """
+    Converte boletos de uma fatura para CSV
+    GET /faturamento/formato-arquivos/converter-boleto-csv?fatura=169777
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Log da requisição completa
+            logger.info(f"=== CONVERTER BOLETO CSV ===")
+            logger.info(f"Método: {request.method}")
+            logger.info(f"Path: {request.path}")
+            logger.info(f"Query params: {request.query_params}")
+            logger.info(f"Headers: {dict(request.headers)}")
+            
+            # Pega o número da fatura da query string
+            fatura = request.query_params.get("fatura")
+            
+            if not fatura:
+                logger.error("Parâmetro 'fatura' não informado")
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Parâmetro 'fatura' é obrigatório"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Valida se é número
+            try:
+                fatura = int(fatura)
+            except ValueError:
+                logger.error(f"Parâmetro 'fatura' inválido: {fatura}")
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Parâmetro 'fatura' deve ser um número válido"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            logger.info(f"Convertendo boletos da fatura {fatura} para CSV")
+            
+            # Chama o serviço
+            service = FirebirdService()
+            resultado = service.converter_boleto_csv(fatura)
+            
+            logger.info(f"Resultado do serviço: {resultado}")
+            
+            # Verifica se houve erro
+            if not resultado:
+                logger.error("Erro ao comunicar com o serviço de conversão")
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao comunicar com o serviço de conversão"
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            # Se a fatura não foi encontrada
+            if resultado.get("status") == "not_found":
+                logger.warning(f"Fatura {fatura} não encontrada")
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Fatura não encontrada"),
+                        "fatura": fatura
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Se o CSV foi gerado com sucesso
+            if resultado.get("status") == "success" and resultado.get("csv_content"):
+                logger.info(f"CSV gerado com sucesso para fatura {fatura}")
+                logger.info(f"Tamanho do CSV: {len(resultado['csv_content'])} bytes")
+                
+                # Cria resposta HTTP com o CSV
+                response = HttpResponse(
+                    resultado["csv_content"],
+                    content_type="text/csv; charset=utf-8"
+                )
+                response['Content-Disposition'] = f'attachment; filename="{resultado["filename"]}"'
+                response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+                response['Content-Length'] = len(resultado["csv_content"])
+                
+                return response
+            
+            # Se não tem CSV, retorna erro
+            logger.error(f"Nenhum boleto encontrado para fatura {fatura}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": "Nenhum boleto encontrado para esta fatura",
+                    "fatura": fatura
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro ao converter boleto para CSV: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 # *******************************************#
 #********** Excel e PDF ********#
 # *******************************************# 

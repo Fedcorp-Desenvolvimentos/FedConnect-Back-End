@@ -31,7 +31,8 @@ from consultas.views import (
     BuscarLocalidade, 
     BuscarNFSEPorBoleto, 
     BuscarTodasEmpresas,
-    CancelarBoletoFedBnkView, 
+    CancelarBoletoFedBnkView,
+    ConverterBoletoCSVView, 
     ExportarFaturasComBoletosExcel, 
     ExportarFaturasComBoletosPDF, 
     RealizarConsultaView, 
@@ -173,6 +174,7 @@ urlpatterns = [
     path('analytics/dashboard/', AnalyticsDashboardCompletoView.as_view(), name='analytics-dashboard-completo'),
     
     path('faturamento/tratamento-de-erros/rodar-procedure/', TratamentoDeErroView.as_view(), name='faturamento-tratamento-de-erro'),
+    path('faturamento/formato-arquivos/converter-boleto-csv/', ConverterBoletoCSVView.as_view(), name='faturamento-converter-boleto-csv'),
     
     # Webhook do Santander
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),

@@ -181,6 +181,77 @@ class FirebirdService:
                 "message": f"Erro de comunicação: {str(e)}"
             }
     
+    def converter_boleto_csv(self, fatura: int) -> Optional[Dict[str, Any]]:
+        """
+        Converte boletos de uma fatura para CSV
+        GET /api/faturas/fatura/converter-boleto-csv/{fatura}/
+        """
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/faturas/fatura/converter-boleto-csv/{fatura}/",
+                headers=get_headers(),
+                timeout=60  # Timeout maior pois pode gerar muitos dados
+            )
+            
+            logger.info(f"Chamando FedHub para converter CSV - URL: {response.url} | Status: {response.status_code}")
+            
+            # Verifica se é uma resposta de arquivo CSV (content-type: text/csv)
+            if response.status_code == 200:
+                content_type = response.headers.get('content-type', '')
+                
+                # Se for CSV, processa como texto
+                if 'text/csv' in content_type:
+                    return {
+                        "status": "success",
+                        "csv_content": response.text,
+                        "filename": response.headers.get('content-disposition', '').split('filename=')[-1].strip('"') if 'filename=' in response.headers.get('content-disposition', '') else f"boletos_fatura_{fatura}.csv"
+                    }
+                
+                # Se for JSON, parse normal
+                data = response.json()
+                
+                # Verificar estrutura da resposta do FedHub
+                if data.get("status") == "success":
+                    # Se já tem csv_content, retorna direto
+                    if "csv_content" in data:
+                        return data
+                    
+                    # Se tem data mas não csv_content, converte aqui
+                    if "data" in data and data["data"]:
+                        # Importa a função de conversão
+                        from consultas.utils.csv_utils import convert_to_csv
+                        
+                        csv_content = convert_to_csv(data["data"])
+                        
+                        return {
+                            "status": "success",
+                            "csv_content": csv_content,
+                            "filename": f"boletos_fatura_{fatura}.csv",
+                            "total_registros": len(data["data"])
+                        }
+                
+                # Se status for not_found
+                if data.get("status") == "not_found":
+                    return data
+                
+                # Se chegou aqui, algo deu errado
+                logger.error(f"Resposta inesperada do FedHub: {data}")
+                return None
+            
+            # Status diferente de 200
+            logger.error(f"FedHub erro {response.status_code}: {response.text}")
+            return {
+                "status": "error",
+                "message": f"Erro na API do FedHub: {response.status_code}"
+            }
+                
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FedHub para converter CSV: {e}")
+            return {
+                "status": "error",
+                "message": f"Erro de comunicação: {str(e)}"
+            }
+    
     # Empresas
     async def buscar_empresa_por_cnpj(self, cnpj: str) -> Optional[List[Dict[str, Any]]]:
         """
