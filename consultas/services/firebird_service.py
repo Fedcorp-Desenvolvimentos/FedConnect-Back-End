@@ -235,7 +235,7 @@ class FirebirdService:
                     if "data" in data and data["data"]:
                         # Importa a função de conversão
                         from consultas.utils.csv_utils import convert_to_csv
-
+                        logger.info(f" resposta do fedhub: {response.text}")
                         csv_content = convert_to_csv(
                             data["data"],
                             fieldnames=[
