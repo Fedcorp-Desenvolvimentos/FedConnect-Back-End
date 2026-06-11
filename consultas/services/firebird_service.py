@@ -236,10 +236,14 @@ class FirebirdService:
                         # Importa a função de conversão
                         from consultas.utils.csv_utils import convert_to_csv
                         logger.info(f" resposta do fedhub: {response.text}")
+                        dados = [
+                            {k.upper(): v for k, v in item.items()}
+                            for item in data["data"]
+                        ]
                         csv_content = convert_to_csv(
-                            data["data"],
+                            dados,
                             fieldnames=[
-                                "CNPJPOSTO", "NOME", "LINHA_BARRA",
+                                "CNPJ", "POSTO", "NOME", "LINHA_BARRA",
                                 "LINHA_DIGITAVEL", "VENCIMENTO", "VALOR"
                             ]
                         )
