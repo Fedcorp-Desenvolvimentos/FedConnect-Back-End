@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from datetime import date, datetime
 from decimal import Decimal
 
-def convert_to_csv(data: List[Dict[str, Any]], delimiter: str = ';', encoding: str = 'utf-8') -> str:
+def convert_to_csv(data: List[Dict[str, Any]], delimiter: str = ';', encoding: str = 'utf-8', fieldnames: List[str] = None) -> str:
     """
     Converte uma lista de dicionários para CSV
     
@@ -13,6 +13,7 @@ def convert_to_csv(data: List[Dict[str, Any]], delimiter: str = ';', encoding: s
         data: Lista de dicionários com os dados
         delimiter: Delimitador do CSV (padrão: ';')
         encoding: Encoding do arquivo (padrão: 'utf-8')
+        fieldnames: Ordem das colunas (se None, usa ordem alfabética)
     
     Returns:
         String com o conteúdo CSV
@@ -20,12 +21,11 @@ def convert_to_csv(data: List[Dict[str, Any]], delimiter: str = ';', encoding: s
     if not data:
         return ""
     
-    # Obtém todas as chaves únicas dos dicionários
-    fieldnames = set()
-    for row in data:
-        fieldnames.update(row.keys())
-    
-    fieldnames = sorted(list(fieldnames))  # Ordena para consistência
+    if fieldnames is None:
+        fieldnames = set()
+        for row in data:
+            fieldnames.update(row.keys())
+        fieldnames = sorted(list(fieldnames))
     
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=fieldnames, delimiter=delimiter, extrasaction='ignore')
