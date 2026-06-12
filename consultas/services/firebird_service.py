@@ -846,23 +846,40 @@ class FirebirdService:
         except httpx.RequestError as e:
             logger.error(f"Erro ao chamar Fedhub: {e}")
             return None
-        
-    async def processar_dados_segunda_via_boleto(self, fatura: str, dados_boletos: list):
+    
+    def processar_dados_segunda_via_boleto(self, fatura: str):
+        """Este método já está síncrono - perfeito!"""
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self.base_url}/api/faturamento/dados-segunda-via/{fatura}/",
-                    headers=get_headers(),
-                    json={"dados_boletos": dados_boletos}
-                )
+            # ⚠️ IMPORTANTE: Validar se fatura não é None
+            if not fatura:
+                logger.error("Fatura não informada")
+                return None
+                
+            # Usando GET (não POST) como está no FastAPI
+            response = requests.get(
+                f"{self.base_url}/api/faturamento/dados-segunda-via/{fatura}/",
+                headers=get_headers(),
+                timeout=30.0
+            )
 
-                if response.status_code != 200:
-                    logger.error(f"Fedhub erro {response.status_code}: {response.text}")
-                    return None
+            # Log mais detalhado
+            logger.info(f"Chamando FedHub: {self.base_url}/api/faturamento/dados-segunda-via/{fatura}/")
+            logger.info(f"Status code: {response.status_code}")
+            logger.info(f"Response: {response.text}")
 
-                data = response.json()
-                return data.get("data") if data.get("status") == "success" else None
+            if response.status_code != 200:
+                logger.error(f"Fedhub erro {response.status_code}: {response.text}")
+                return None
 
-        except httpx.RequestError as e:
+            data = response.json()
+            
+            # Verificar estrutura da resposta
+            if data.get("status") == "success":
+                return data.get("data")
+            else:
+                logger.error(f"Fedhub retornou status não-success: {data}")
+                return None
+
+        except requests.RequestException as e:
             logger.error(f"Erro ao chamar Fedhub: {e}")
             return None

@@ -1286,27 +1286,54 @@ class ConverterBoletoCSVView(APIView):
 # ************* SEGUNDA VIA BOLETO *****************# 
 # *******************************************# 
 class DadosSegundaViaBoletoView(APIView):
-    """
-    Gera a segunda via do boleto de uma fatura
-    GET /faturamento/segunda-via-boleto?fatura=169777
-    """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         try:
-            # Log da requisição completa
             logger.info(f"=== SEGUNDA VIA BOLETO ===")
-            logger.info(f"Req: {request}")
             
-            dados = request.query_params
-            logger.info(f"Query params: {dados}")
+            # ⚠️ IMPORTANTE: Extrair fatura corretamente
+            # Sua URL é: /faturamento/dados-segunda-via-boleto/162028/
+            # O parâmetro está na URL, não no query_params!
+            
+            # Opção 1: Se for path parameter (recomendado)
+            fatura = kwargs.get('fatura')  # Pega da URL
+            
+            # Opção 2: Se for query string
+            # fatura = request.query_params.get("fatura")
+            
+            if not fatura:
+                logger.error("Fatura não informada")
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Parâmetro 'fatura' é obrigatório"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            logger.info(f"Buscando dados para fatura: {fatura}")
+            
+            service = FirebirdService()
+            dados = service.processar_dados_segunda_via_boleto(fatura)
+            
+            if not dados:
+                logger.error(f"Erro ao gerar segunda via do boleto para fatura {fatura}")
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao gerar segunda via do boleto"
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             
             return Response(
                 {
-                    "sucesso": False,
+                    "sucesso": True,
                     "dados": dados
                 },
+                status=status.HTTP_200_OK
             )
             
         except Exception as e:
