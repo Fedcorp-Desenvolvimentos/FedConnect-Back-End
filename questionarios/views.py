@@ -71,7 +71,7 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
             template_html = render_to_string("email/questionario_processo.html", contexto)
             
             # Email destinatário - pode vir do settings
-            email_to = getattr(settings, "QUESTIONARIO_EMAIL_TO", "novosnegocios@grupofecorp.com.br")
+            email_to = getattr(settings, "QUESTIONARIO_EMAIL_TO", "novosnegocios@grupofedcorp.com.br")
             
             self.base_url = settings.FEDHUB_URL
             
