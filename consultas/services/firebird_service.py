@@ -855,8 +855,8 @@ class FirebirdService:
             'CNPJ_EMISSOR': 'cnpj_emissor',
             'ESTIPULANTE': 'estipulante',
             'CNPJ_ESTIPULANTE': 'cnpj_estipulante',
-            'CO_ESTIPULANTE': 'co_estipulante',
-            'CNPJ_CO_ESTIPULANTE': 'cnpj_co_estipulante',
+            'CO_ESTIPULANTE': 'co-estipulante',
+            'CNPJ_CO_ESTIPULANTE': 'cnpj_co-estipulante',
             'FATURA_NUM': 'fatura_num',
             'DATA_EMISSAO': 'data_emissao',
             'VALOR_TOTAL': 'valor_total',
@@ -878,7 +878,14 @@ class FirebirdService:
             'VIGENCIA_FINAL': 'vigencia_final',
             'CAMINHO_QRCODE': 'caminho_qrcode',
         }
-        return {field_map.get(k, k): v for k, v in boleto.items()}
+        normalized = {field_map.get(k, k): v for k, v in boleto.items()}
+
+        if not normalized.get('pagador_nome'):
+            normalized['pagador_nome'] = normalized.get('co-estipulante', '')
+        if not normalized.get('pagador_cnpj'):
+            normalized['pagador_cnpj'] = normalized.get('cnpj_co-estipulante', '')
+
+        return normalized
 
     def emitir_segunda_via_boleto(self, fatura: str, boletos: dict) -> Optional[Dict[str, Any]]:
         try:
