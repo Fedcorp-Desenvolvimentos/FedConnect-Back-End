@@ -182,7 +182,6 @@ class StandardResultsPagination(PageNumberPagination):
     page_size = 10  # Deve ser o mesmo que intensPorPagina no frontend
     page_size_query_param = "page_size"
     max_page_size = 100
-
 class HistoricoConsultaListView(generics.ListAPIView):
 
     serializer_class = HistoricoConsultaSerializer
@@ -230,7 +229,6 @@ class HistoricoConsultaDetailView(generics.RetrieveAPIView):
                 self.request,
                 message="Você não tem permissão para acessar esta consulta.",
             )
-
 class BuscarTodasEmpresas(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -421,8 +419,7 @@ class BuscarFaturaDinamicamente(APIView):
                     "resultado": []
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
+            )        
 class BuscarFaturasDinamicamentePaginadas(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -558,8 +555,7 @@ class BuscarAdministradoras(APIView):
         return Response({
             "sucesso": True,
             "data": dados
-        })
-        
+        })      
 class BuscarAdministradorasPorNome(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -579,7 +575,6 @@ class BuscarAdministradorasPorNome(APIView):
             "sucesso": True,
             "data": dados
         })
-
 class BuscarAdministradorasPorCodigo(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1128,6 +1123,9 @@ class BuscarFaturasComBoletosPaginadas(APIView):
             )
 
 
+# *******************************************# 
+# *******************************************# 
+# *******************************************# 
 class TratamentoDeErroView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1171,7 +1169,6 @@ class TratamentoDeErroView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class ConverterBoletoCSVView(APIView):
     """
     Converte boletos de uma fatura para CSV
@@ -1282,6 +1279,37 @@ class ConverterBoletoCSVView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+# *******************************************# 
+# ************* SEGUNDA VIA BOLETO *****************# 
+# *******************************************# 
+class DadosSegundaViaBoletoView(APIView):
+    """
+    Gera a segunda via do boleto de uma fatura
+    GET /faturamento/segunda-via-boleto?fatura=169777
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Log da requisição completa
+            logger.info(f"=== SEGUNDA VIA BOLETO ===")
+            logger.info(f"Req: {request}")
+            
+        except Exception as e:
+            logger.error(f"Erro ao gerar segunda via do boleto: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 
 # *******************************************#
 #********** Excel e PDF ********#
@@ -1981,7 +2009,6 @@ class AnalyticsFaturamentoPeriodoView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class AnalyticsTopAdministradorasView(APIView):
     """
     2. Top administradoras que mais faturam
@@ -2017,7 +2044,6 @@ class AnalyticsTopAdministradorasView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class AnalyticsInadimplenciaView(APIView):
     """
     3. Métricas de inadimplência
@@ -2045,7 +2071,6 @@ class AnalyticsInadimplenciaView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class AnalyticsFaturamentoPorAdministradoraView(APIView):
     """
     4. Faturamento detalhado por administradora no período
@@ -2091,8 +2116,6 @@ class AnalyticsFaturamentoPorAdministradoraView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
 class AnalyticsStatusFaturasView(APIView):
     """
     5. Distribuição de faturas por status
@@ -2120,7 +2143,6 @@ class AnalyticsStatusFaturasView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class AnalyticsDashboardCompletoView(APIView):
     """
     6. Dashboard completo (junção de todas as métricas)

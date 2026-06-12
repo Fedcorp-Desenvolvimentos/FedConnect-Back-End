@@ -193,8 +193,6 @@ class FirebirdService:
                 timeout=60  # Timeout maior pois pode gerar muitos dados
             )
             
-            logger.info(f"Chamando FedHub para converter CSV - URL: {response.url} | Status: {response.status_code}")
-            
             # Verifica se é uma resposta de arquivo CSV (content-type: text/csv)
             if response.status_code == 200:
                 content_type = response.headers.get('content-type', '')
@@ -788,6 +786,26 @@ class FirebirdService:
                     f"{self.base_url}/api/santander/webhook/processar-pagamento/{documento}/{fatura}",
                     headers=get_headers(),
                     json=dados_pagamento
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"Fedhub erro {response.status_code}: {response.text}")
+                    return None
+
+                data = response.json()
+                return data.get("data") if data.get("status") == "success" else None
+
+        except httpx.RequestError as e:
+            logger.error(f"Erro ao chamar Fedhub: {e}")
+            return None
+        
+    async def processar_dados_segunda_via_boleto(self, fatura: str, dados_boletos: list):
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/faturamento/dados-segunda-via/{fatura}/",
+                    headers=get_headers(),
+                    json={"dados_boletos": dados_boletos}
                 )
 
                 if response.status_code != 200:
