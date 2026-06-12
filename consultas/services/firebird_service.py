@@ -853,7 +853,7 @@ class FirebirdService:
             payload = json.dumps(boletos) if not isinstance(boletos, str) else boletos
 
             response = requests.post(
-                f"{self.base_url}/api/faturamento/emissao-segunda-via-boleto/",
+                f"{self.base_url}api/pdf-generator/gerar-boleto",
                 data=payload,
                 headers=get_headers(),
                 timeout=30.0
@@ -869,7 +869,7 @@ class FirebirdService:
                 return None
 
             file_response = requests.delete(
-                f"{self.base_url}/api/faturamento/excluir-boleto/{nome_arquivo}",
+                f"{self.base_url}/api/pdf-generator/excluir-boleto/{nome_arquivo}",
                 headers=get_headers(),
                 timeout=30.0
             )
