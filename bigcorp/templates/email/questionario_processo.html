@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Questionário de Processo</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #1a73e8; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .section { margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+        .section h2 { color: #1a73e8; font-size: 16px; margin-top: 0; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
+        .field { margin: 8px 0; }
+        .field-label { font-weight: bold; color: #555; font-size: 12px; text-transform: uppercase; }
+        .field-value { margin: 2px 0 0 0; white-space: pre-wrap; }
+        .footer { text-align: center; color: #888; font-size: 12px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Novo Questionário de Processo</h1>
+            <p>{{ setor }}</p>
+        </div>
+
+        <div class="section">
+            <h2>Identificação</h2>
+            <div class="field">
+                <div class="field-label">Setor</div>
+                <div class="field-value">{{ setor }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Responsável pela Entrevista</div>
+                <div class="field-value">{{ responsavel_entrevista }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Participantes</div>
+                <div class="field-value">{{ participantes|default:"—" }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Data da Entrevista</div>
+                <div class="field-value">{{ data_entrevista }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Processos</h2>
+            <div class="field">
+                <div class="field-label">Principais Processos</div>
+                <div class="field-value">{{ principais_processos|default:"—" }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Atividades / Frequência</div>
+                <div class="field-value">{{ atividades_frequencia|default:"—" }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Informações Consultadas</div>
+                <div class="field-value">{{ informacoes_consultadas|default:"—" }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Sistemas</h2>
+            <div class="field">
+                <div class="field-label">Sistemas Utilizados</div>
+                <div class="field-value">{{ sistemas_utilizados|default:"—" }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Múltiplas Fontes?</div>
+                <div class="field-value">{{ multiplas_fontes|default:"—" }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Gargalos</h2>
+            <div class="field">
+                <div class="field-label">Atividades Manuais / Retrabalho</div>
+                <div class="field-value">{{ atividades_manuais_retrabalho|default:"—" }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Erros / Perda de Tempo</div>
+                <div class="field-value">{{ erros_perda_tempo|default:"—" }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Dependência de Outro Setor</div>
+                <div class="field-value">{{ dependencia_outro_setor|default:"—" }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Gestão e Melhoria</h2>
+            <div class="field">
+                <div class="field-label">Relatórios / Indicadores</div>
+                <div class="field-value">{{ relatorios_indicadores|default:"—" }}</div>
+            </div>
+            <div class="field">
+                <div class="field-label">Melhorias / Impacto</div>
+                <div class="field-value">{{ melhorias_impacto|default:"—" }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Considerações Finais</h2>
+            <div class="field-value">{{ consideracoes_finais|default:"—" }}</div>
+        </div>
+
+        <div class="footer">
+            <p>Este e-mail foi gerado automaticamente pelo FedConnect.</p>
+        </div>
+    </div>
+</body>
+</html>
