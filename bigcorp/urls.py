@@ -34,6 +34,7 @@ from consultas.views import (
     CancelarBoletoFedBnkView,
     ConverterBoletoCSVView,
     DadosSegundaViaBoletoView, 
+    EmissaoSegundaViaBoletoView,
     ExportarFaturasComBoletosExcel, 
     ExportarFaturasComBoletosPDF, 
     RealizarConsultaView, 
