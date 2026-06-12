@@ -853,7 +853,7 @@ class FirebirdService:
             payload = json.dumps(boletos) if not isinstance(boletos, str) else boletos
 
             response = requests.post(
-                f"{self.base_url}api/pdf-generator/gerar-boleto",
+                f"{self.base_url}/api/pdf-generator/gerar-boleto",
                 data=payload,
                 headers=get_headers(),
                 timeout=30.0
