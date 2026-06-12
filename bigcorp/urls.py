@@ -176,7 +176,7 @@ urlpatterns = [
     
     path('faturamento/tratamento-de-erros/rodar-procedure/', TratamentoDeErroView.as_view(), name='faturamento-tratamento-de-erro'),
     path('faturamento/formato-arquivos/converter-boleto-csv/', ConverterBoletoCSVView.as_view(), name='faturamento-converter-boleto-csv'),
-    path('faturamento/dados-segunda-via-boleto/', DadosSegundaViaBoletoView.as_view(), name='faturamento-dados-segunda-via-boleto'),
+    path('faturamento/dados-segunda-via-boleto/<str:fatura>/', DadosSegundaViaBoletoView.as_view(), name='faturamento-dados-segunda-via-boleto'),
     
     # Webhook do Santander
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
