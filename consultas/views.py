@@ -1346,7 +1346,61 @@ class DadosSegundaViaBoletoView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
+
+class EmissaoSegundaViaBoletoView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        
+        payload = request.data
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/faturamento/emissao-segunda-via-boleto/",
+                data=payload,
+                headers=get_headers(),
+                timeout=30.0
+            )
+
+            if response.status_code in [200, 201, 202, 204]:
+                nome_arquivo = response.json().get("arquivo")
+                
+                file_obj = request.delete(f"{self.base_url}/api/faturamento/excluir-boleto/{nome_arquivo}",headers=get_headers(),timeout=30.0)
+                return Response(
+                    content=file_obj.content,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{nome_arquivo}"'
+                    }
+                )
+                
+                if file_obj.status_code != 200:
+                    logger.error(f"Erro ao excluir boleto {nome_arquivo}")
+                    return Response(
+                        {
+                            "sucesso": False,
+                            "erro": "Erro ao excluir boleto"
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+
+                
             
+
+            
+            
+        except Exception as e:
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
 # *******************************************#
 #********** Excel e PDF ********#
 # *******************************************# 
