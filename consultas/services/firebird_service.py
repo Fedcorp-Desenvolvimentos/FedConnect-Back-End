@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        self.base_url = "https://fedhub-api-local.ngrok.app"
-        # self.base_url = "http://localhost:8090"
+        # self.base_url = "https://fedhub-api-local.ngrok.app"
+        self.base_url = "http://localhost:8090"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -638,6 +638,9 @@ class FirebirdService:
             logger.error(f"Erro ao chamar serviço de email: {e}")
             return False
 
+    
+    
+    
     # Localidades
     def buscar_localidades(self) -> Optional[Dict[str, Any]]:
         """

@@ -24,6 +24,12 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         instance = serializer.instance
+        
+        logger.debug(f"Questionário de processo - dados: {request.data}")
+        
+        logger.info(f"Questionário de processo criado com ID {instance.id} por {request.user.username}")
+        
+        logger.debug(f"Dados do questionário: {serializer.data}")
 
         email_enviado = self._enviar_email(instance)
 
@@ -62,7 +68,7 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
                 "email/questionario_processo.html", contexto
             )
             email_to = getattr(
-                settings, "QUESTIONARIO_EMAIL_TO", "tecnologia@fedcorp.com.br"
+                settings, "QUESTIONARIO_EMAIL_TO", "novosnegocios@grupofedcorp.com.br"
             )
             email_service = EmailService()
             sucesso = email_service.enviar_email(

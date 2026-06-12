@@ -1,9 +1,11 @@
+# questionarios/serializers.py
 from rest_framework import serializers
 from .models import QuestionarioProcesso
 
 CAMEL_TO_SNAKE = {
     "responsavelEntrevista": "responsavel_entrevista",
     "data": "data_entrevista",
+    "subarea": "subarea",
     "principaisProcessos": "principais_processos",
     "atividadesFrequencia": "atividades_frequencia",
     "informacoesConsultadas": "informacoes_consultadas",
@@ -24,6 +26,7 @@ class QuestionarioProcessoSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "setor",
+            "subarea",
             "responsavel_entrevista",
             "participantes",
             "data_entrevista",
@@ -55,3 +58,15 @@ class QuestionarioProcessoSerializer(serializers.ModelSerializer):
             if camel in mutable and snake not in mutable:
                 mutable[snake] = mutable.pop(camel)
         return super().to_internal_value(mutable)
+    
+    def to_representation(self, instance):
+        """Converte snake_case para camelCase na resposta"""
+        data = super().to_representation(instance)
+        # Converte data_entrevista -> data para o frontend
+        if 'data_entrevista' in data:
+            data['data'] = data.pop('data_entrevista')
+        # Converte outros campos snake para camel se necessário
+        for snake, camel in CAMEL_TO_SNAKE.items():
+            if snake in data:
+                data[camel] = data.pop(snake)
+        return data

@@ -4,6 +4,7 @@ from django.conf import settings
 
 class QuestionarioProcesso(models.Model):
     setor = models.CharField(max_length=255)
+    subarea = models.CharField(max_length=255, blank=True, default="")
     responsavel_entrevista = models.CharField(max_length=255)
     participantes = models.TextField(blank=True, default="")
     data_entrevista = models.DateField()
