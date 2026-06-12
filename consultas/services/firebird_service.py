@@ -848,12 +848,58 @@ class FirebirdService:
             logger.error(f"Erro ao chamar Fedhub: {e}")
             return None
 
+    @staticmethod
+    def _normalize_boleto_keys(boleto: dict) -> dict:
+        field_map = {
+            'EMISSOR': 'emissor',
+            'CNPJ_EMISSOR': 'cnpj_emissor',
+            'ESTIPULANTE': 'estipulante',
+            'CNPJ_ESTIPULANTE': 'cnpj_estipulante',
+            'CO_ESTIPULANTE': 'co-estipulante',
+            'CNPJ_CO_ESTIPULANTE': 'cnpj_co-estipulante',
+            'FATURA_NUM': 'fatura_num',
+            'DATA_EMISSAO': 'data_emissao',
+            'VALOR_TOTAL': 'valor_total',
+            'LINHA_DIGITAVEL': 'linha_digitavel',
+            'LINHA_PURIFICADA': 'linha_purificada',
+            'VENCIMENTO': 'vencimento',
+            'AGENCIA_COD': 'agencia_cod',
+            'NOSSO_NUMERO': 'nosso_numero',
+            'NRO_BANCO': 'nro_banco',
+            'VALOR_DOCUMENTO': 'valor_documento',
+            'DEDUCOES': 'deducoes',
+            'INSTRUCOES': 'instrucoes',
+            'PAGADOR_NOME': 'pagador_nome',
+            'PAGADOR_CNPJ': 'pagador_cnpj',
+            'PAGADOR_ENDERECO': 'pagador_endereco',
+            'PRODUTO': 'produto',
+            'QUANTIDADE_BOL': 'quantidade_bol',
+            'VIGENCIA_INICIAL': 'vigencia_inicial',
+            'VIGENCIA_FINAL': 'vigencia_final',
+            'CAMINHO_QRCODE': 'caminho_qrcode',
+        }
+        normalized = {field_map.get(k, k): v for k, v in boleto.items()}
+
+        if not normalized.get('pagador_nome'):
+            normalized['pagador_nome'] = normalized.get('co-estipulante', '')
+        if not normalized.get('pagador_cnpj'):
+            normalized['pagador_cnpj'] = normalized.get('cnpj_co-estipulante', '')
+
+        return normalized
+
     def emitir_segunda_via_boleto(self, fatura: str, boletos: dict) -> Optional[Dict[str, Any]]:
         try:
-            payload = json.dumps(boletos) if not isinstance(boletos, str) else boletos
+            if isinstance(boletos, list):
+                normalized = [self._normalize_boleto_keys(b) for b in boletos]
+            elif isinstance(boletos, dict):
+                normalized = [self._normalize_boleto_keys(boletos)]
+            else:
+                normalized = boletos
+
+            payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
 
             response = requests.post(
-                f"{self.base_url}/api/faturamento/emissao-segunda-via-boleto/",
+                f"{self.base_url}/api/pdf-generator/gerar-boleto",
                 data=payload,
                 headers=get_headers(),
                 timeout=30.0
@@ -869,7 +915,7 @@ class FirebirdService:
                 return None
 
             file_response = requests.delete(
-                f"{self.base_url}/api/faturamento/excluir-boleto/{nome_arquivo}",
+                f"{self.base_url}/api/pdf-generator/excluir-boleto/{nome_arquivo}",
                 headers=get_headers(),
                 timeout=30.0
             )
