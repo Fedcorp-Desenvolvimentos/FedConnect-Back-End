@@ -1299,6 +1299,16 @@ class DadosSegundaViaBoletoView(APIView):
             logger.info(f"=== SEGUNDA VIA BOLETO ===")
             logger.info(f"Req: {request}")
             
+            dados = request.query_params
+            logger.info(f"Query params: {dados}")
+            
+            return Response(
+                {
+                    "sucesso": False,
+                    "dados": dados
+                },
+            )
+            
         except Exception as e:
             logger.error(f"Erro ao gerar segunda via do boleto: {str(e)}", exc_info=True)
             return Response(
