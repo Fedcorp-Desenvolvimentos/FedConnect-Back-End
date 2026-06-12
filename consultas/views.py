@@ -1350,52 +1350,39 @@ class DadosSegundaViaBoletoView(APIView):
 class EmissaoSegundaViaBoletoView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    
-    def post(self, request, *args, **kwargs):
-        
-        payload = request.data
 
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/faturamento/emissao-segunda-via-boleto/",
-                data=payload,
-                headers=get_headers(),
-                timeout=30.0
+    def post(self, request, *args, **kwargs):
+        fatura = kwargs.get('fatura')
+        boletos = request.data
+
+        if not fatura:
+            return Response(
+                {"sucesso": False, "erro": "Parâmetro 'fatura' é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-            if response.status_code in [200, 201, 202, 204]:
-                nome_arquivo = response.json().get("arquivo")
-                
-                file_obj = request.delete(f"{self.base_url}/api/faturamento/excluir-boleto/{nome_arquivo}",headers=get_headers(),timeout=30.0)
+        try:
+            service = FirebirdService()
+            resultado = service.emitir_segunda_via_boleto(fatura, boletos)
+
+            if not resultado or resultado.get("status") != "success":
                 return Response(
-                    content=file_obj.content,
-                    media_type="application/pdf",
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{nome_arquivo}"'
-                    }
+                    {"sucesso": False, "erro": "Erro ao emitir segunda via do boleto"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-                
-                if file_obj.status_code != 200:
-                    logger.error(f"Erro ao excluir boleto {nome_arquivo}")
-                    return Response(
-                        {
-                            "sucesso": False,
-                            "erro": "Erro ao excluir boleto"
-                        },
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                    )
 
-                
-            
+            response = HttpResponse(
+                resultado["content"],
+                content_type="application/pdf"
+            )
+            response['Content-Disposition'] = f'attachment; filename="{resultado["filename"]}"'
+            response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+            return response
 
-            
-            
         except Exception as e:
+            logger.error(f"Erro ao emitir segunda via: {str(e)}", exc_info=True)
             return Response(
-                {
-                    "sucesso": False,
-                    "erro": f"Erro interno: {str(e)}"
-                },
+                {"sucesso": False, "erro": f"Erro interno: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
