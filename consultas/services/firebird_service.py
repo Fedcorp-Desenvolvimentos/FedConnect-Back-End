@@ -847,6 +847,7 @@ class FirebirdService:
             logger.error(f"Erro ao chamar Fedhub: {e}")
             return None
     
+    # Segunda via de boleto
     def processar_dados_segunda_via_boleto(self, fatura: str):
         """Este método já está síncrono - perfeito!"""
         try:
@@ -883,3 +884,5 @@ class FirebirdService:
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar Fedhub: {e}")
             return None
+        
+

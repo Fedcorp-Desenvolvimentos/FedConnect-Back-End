@@ -1345,9 +1345,8 @@ class DadosSegundaViaBoletoView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
-
+            
+            
 # *******************************************#
 #********** Excel e PDF ********#
 # *******************************************# 
