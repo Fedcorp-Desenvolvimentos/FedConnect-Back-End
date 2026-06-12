@@ -15,6 +15,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 from consultas.utils.get_headers import get_headers
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -849,7 +850,47 @@ class FirebirdService:
         except httpx.RequestError as e:
             logger.error(f"Erro ao chamar Fedhub: {e}")
             return None
-    
+
+    def emitir_segunda_via_boleto(self, fatura: str, boletos: dict) -> Optional[Dict[str, Any]]:
+        try:
+            payload = json.dumps(boletos) if not isinstance(boletos, str) else boletos
+
+            response = requests.post(
+                f"{self.base_url}/api/faturamento/emissao-segunda-via-boleto/",
+                data=payload,
+                headers=get_headers(),
+                timeout=30.0
+            )
+
+            if response.status_code not in [200, 201, 202, 204]:
+                logger.error(f"FedHub erro {response.status_code}: {response.text}")
+                return None
+
+            nome_arquivo = response.json().get("arquivo")
+            if not nome_arquivo:
+                logger.error("Nome do arquivo não retornado pelo FedHub")
+                return None
+
+            file_response = requests.delete(
+                f"{self.base_url}/api/faturamento/excluir-boleto/{nome_arquivo}",
+                headers=get_headers(),
+                timeout=30.0
+            )
+
+            if file_response.status_code != 200:
+                logger.error(f"Erro ao baixar/excluir boleto {nome_arquivo}: {file_response.status_code}")
+                return None
+
+            return {
+                "status": "success",
+                "content": file_response.content,
+                "filename": nome_arquivo,
+            }
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FedHub: {e}")
+            return None
+
     # Segunda via de boleto
     def processar_dados_segunda_via_boleto(self, fatura: str):
         """Este método já está síncrono - perfeito!"""
