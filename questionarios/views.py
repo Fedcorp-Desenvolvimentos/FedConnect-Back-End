@@ -73,22 +73,26 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
             # Email destinatário - pode vir do settings
             email_to = getattr(settings, "QUESTIONARIO_EMAIL_TO", "novosnegocios@grupofecorp.com.br")
             
-            # Usar o EmailService que já existe no projeto
-            from bigcorp.services.email_service import EmailService
+            self.base_url = settings.FEDHUB_URL
             
-            email_service = EmailService()
-            sucesso = email_service.enviar_email(
-                para=[email_to],
-                assunto=assunto,
-                template_html=template_html
-            )
-            
-            if sucesso:
-                logger.info(f"E-mail do questionário {instance.id} enviado com sucesso para {email_to}")
-                return True
-            else:
-                logger.error(f"EmailService retornou falha para o questionário {instance.id}")
-                return False
+            with httpx.Client() as client:
+                response = client.post(
+                    f"{self.base_url}/api/email/send/gmail",
+                    json={
+                        "to_email": email_to,
+                        "subject": assunto,
+                        "body": template_html,
+                        "is_html": True
+                    },
+                    timeout=30.0
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"Email enviado com sucesso via Gateway para: {email_to}")
+                    return True
+                else:
+                    logger.error(f"Gateway retornou erro {response.status_code}: {response.text}")
+                    return False
                 
         except Exception as e:
             logger.error(f"Erro ao enviar e-mail do questionário {instance.id}: {str(e)}")
