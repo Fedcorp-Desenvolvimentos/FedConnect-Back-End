@@ -55,6 +55,7 @@ from django.urls import path
 from cotacao.views import calcular_cotacao_incendio
 from consultas.boletofedbnk import cancelar_boleto, consultar_boletos_proxy, consultar_boleto
 from bank.views import SantanderWebhookView
+from questionarios.views import QuestionarioProcessoViewSet
 
 # Importe para a documentação
 from drf_spectacular.views import (
@@ -68,6 +69,7 @@ router = DefaultRouter()
 router.register(r"users", UsuarioViewSet, basename="users")
 router.register(r'empresas', EmpresaViewSet)
 router.register(r'agenda', ReservaViewSet)
+router.register(r'questionarios', QuestionarioProcessoViewSet)
 
 urlpatterns = [
     path("admin/", admin.site.urls),

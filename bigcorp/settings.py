@@ -31,6 +31,7 @@ SITE_NAME = os.getenv('SITE_NAME', 'Grupo FedCorp')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 FEDHUB_URL = os.getenv('FEDHUB_URL', 'http://localhost:8090')
 SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'suporte@fedcorp.com')
+QUESTIONARIO_EMAIL_TO = os.getenv('QUESTIONARIO_EMAIL_TO', 'tecnologia@fedcorp.com.br')
 LOGO_URL = os.getenv('LOGO_URL', 'https://i.postimg.cc/SsPmTvDM/logo-fedcorp.png')
 
 # Configurações de Recuperação de Senha
@@ -76,6 +77,7 @@ INSTALLED_APPS = [
     "agenda_comercial",
     "cotacao",
     "bank",
+    "questionarios",
 ]
 
 MIDDLEWARE = [
