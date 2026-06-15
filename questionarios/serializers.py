@@ -21,6 +21,9 @@ CAMEL_TO_SNAKE = {
 
 
 class QuestionarioProcessoSerializer(serializers.ModelSerializer):
+    # Campo opcional para receber userId do frontend (apenas para validação)
+    userId = serializers.IntegerField(write_only=True, required=False)
+    
     class Meta:
         model = QuestionarioProcesso
         fields = [
@@ -44,6 +47,7 @@ class QuestionarioProcessoSerializer(serializers.ModelSerializer):
             "criado_por",
             "criado_em",
             "atualizado_em",
+            "userId",  # campo auxiliar - apenas para validação
         ]
         read_only_fields = [
             "id",
@@ -54,19 +58,54 @@ class QuestionarioProcessoSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         mutable = data.copy() if hasattr(data, "copy") else dict(data)
+        
+        # Remove userId antes da conversão para não causar problemas
+        user_id = mutable.pop('userId', None)
+        
         for camel, snake in CAMEL_TO_SNAKE.items():
             if camel in mutable and snake not in mutable:
                 mutable[snake] = mutable.pop(camel)
+        
+        # Guarda o userId no contexto da validação
+        self._validation_user_id = user_id
+        
         return super().to_internal_value(mutable)
     
     def to_representation(self, instance):
         """Converte snake_case para camelCase na resposta"""
         data = super().to_representation(instance)
-        # Converte data_entrevista -> data para o frontend
         if 'data_entrevista' in data:
             data['data'] = data.pop('data_entrevista')
-        # Converte outros campos snake para camel se necessário
         for snake, camel in CAMEL_TO_SNAKE.items():
             if snake in data:
                 data[camel] = data.pop(snake)
         return data
+    
+    def validate(self, attrs):
+        """Validação personalizada para evitar duplicatas"""
+        request = self.context.get('request')
+        
+        # Pega o userId do contexto ou do request
+        user_id = getattr(self, '_validation_user_id', None)
+        
+        if not user_id and request and request.user:
+            user_id = request.user.id
+        
+        if user_id:
+            # Verifica se já existe um questionário para este usuário
+            # Ignora se for edição (quando tem id)
+            instance = getattr(self, 'instance', None)
+            
+            if not instance:  # Somente para criação
+                if QuestionarioProcesso.objects.filter(criado_por_id=user_id).exists():
+                    raise serializers.ValidationError(
+                        "Você já enviou um questionário. Cada usuário pode enviar apenas um questionário."
+                    )
+        
+        return attrs
+    
+    def create(self, validated_data):
+        # Remove qualquer campo que não pertença ao modelo
+        # (garantia extra)
+        validated_data.pop('userId', None)
+        return super().create(validated_data)

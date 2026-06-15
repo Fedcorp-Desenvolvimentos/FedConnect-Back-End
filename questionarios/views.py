@@ -2,6 +2,7 @@
 import logging
 from django.conf import settings
 from django.template.loader import render_to_string
+from django.db.models import Q
 import httpx
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
@@ -13,29 +14,36 @@ logger = logging.getLogger(__name__)
 
 
 class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
-    queryset = QuestionarioProcesso.objects.all()
     serializer_class = QuestionarioProcessoSerializer
     permission_classes = [IsAuthenticated]
+    # Adicione um queryset base para o router
+    queryset = QuestionarioProcesso.objects.none()  # Queryset vazio como base
+
+    def get_queryset(self):
+        user = self.request.user
+        
+        # Admin e TI veem todos os questionários
+        if user.nivel_acesso and user.nivel_acesso.lower() in ['admin', 'ti']:
+            return QuestionarioProcesso.objects.all()
+        
+        # Usuários normais veem apenas os seus próprios questionários
+        return QuestionarioProcesso.objects.filter(criado_por=user)
 
     def perform_create(self, serializer):
         serializer.save(criado_por=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        instance = serializer.instance
+        # Validação: verificar se o usuário já enviou um questionário
+        user = request.user
         
-        user_id = request.data.get('userId')
-        
-        if user_id:
-            # Verifica se já existe um questionário deste usuário
+        # Verifica se o usuário já tem um questionário (exceto admin/TI)
+        if not (user.nivel_acesso and user.nivel_acesso.lower() in ['admin', 'ti']):
             questionario_existente = QuestionarioProcesso.objects.filter(
-                criado_por_id=user_id
+                criado_por=user
             ).exists()
             
             if questionario_existente:
-                logger.warning(f"Usuário {user_id} tentou enviar um segundo questionário")
+                logger.warning(f"Usuário {user.id} tentou enviar um segundo questionário")
                 return Response(
                     {
                         "status": "error",
@@ -45,10 +53,13 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = serializer.instance
+        
         logger.debug(f"Questionário de processo - dados: {request.data}")
-        
-        logger.info(f"Questionário de processo criado com ID {instance.id} por {request.user.username if request.user else 'Anonymous'}")
-        
+        logger.info(f"Questionário de processo criado com ID {instance.id} por {request.user.username}")
         logger.debug(f"Dados do questionário: {serializer.data}")
 
         # Tenta enviar o email, mas não bloqueia a resposta se falhar
@@ -61,6 +72,37 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Verifica se o usuário é o dono do questionário
+        if instance.criado_por_id != request.user.id:
+            return Response(
+                {
+                    "status": "error",
+                    "message": "Você só pode editar seus próprios questionários."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Verifica se o usuário é o dono do questionário ou admin/ti
+        if instance.criado_por_id != request.user.id:
+            if not (request.user.nivel_acesso and request.user.nivel_acesso.lower() in ['admin', 'ti']):
+                return Response(
+                    {
+                        "status": "error",
+                        "message": "Você só pode excluir seus próprios questionários."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        return super().destroy(request, *args, **kwargs)
+    
     def _enviar_email(self, instance):
         """Envia e-mail usando o serviço de email do projeto"""
         try:
@@ -92,11 +134,11 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
             # Email destinatário - pode vir do settings
             email_to = getattr(settings, "QUESTIONARIO_EMAIL_TO", "novosnegocios@grupofedcorp.com.br")
             
-            self.base_url = settings.FEDHUB_URL
+            base_url = getattr(settings, "FEDHUB_URL", "http://localhost:8090")
             
             with httpx.Client() as client:
                 response = client.post(
-                    f"{self.base_url}/api/email/send/gmail",
+                    f"{base_url}/api/email/send/gmail",
                     json={
                         "to_email": email_to,
                         "subject": assunto,
