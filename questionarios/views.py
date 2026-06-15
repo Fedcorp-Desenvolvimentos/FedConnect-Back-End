@@ -26,6 +26,25 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         instance = serializer.instance
         
+        user_id = request.data.get('userId')
+        
+        if user_id:
+            # Verifica se já existe um questionário deste usuário
+            questionario_existente = QuestionarioProcesso.objects.filter(
+                criado_por_id=user_id
+            ).exists()
+            
+            if questionario_existente:
+                logger.warning(f"Usuário {user_id} tentou enviar um segundo questionário")
+                return Response(
+                    {
+                        "status": "error",
+                        "message": "Você já enviou um questionário. Cada usuário pode enviar apenas um questionário.",
+                        "code": "duplicate_submission"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
         logger.debug(f"Questionário de processo - dados: {request.data}")
         
         logger.info(f"Questionário de processo criado com ID {instance.id} por {request.user.username if request.user else 'Anonymous'}")
