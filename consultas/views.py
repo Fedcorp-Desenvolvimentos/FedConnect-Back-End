@@ -34,6 +34,170 @@ from asgiref.sync import async_to_sync
 
 logger = logging.getLogger(__name__)
 
+
+# ============================================================
+# VIEWS PARA COMISSÕES / RECIBOS / VOUCHERS
+# ============================================================
+
+class BuscarFaturasComissoesView(APIView):
+    """
+    Busca faturas para emissão de recibos de comissões
+    GET /comissoes/faturas/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FirebirdService()
+            params = {
+                "favorecido": request.query_params.get("favorecido"),
+                "fatura": request.query_params.get("fatura"),
+                "vencimento_inicial": request.query_params.get("vencimento_inicial"),
+                "vencimento_final": request.query_params.get("vencimento_final"),
+                "status": request.query_params.get("status"),
+                "tipo": request.query_params.get("tipo"),
+                "co_estipulante": request.query_params.get("co_estipulante"),
+                "apolice": request.query_params.get("apolice"),
+                "comercial": request.query_params.get("comercial"),
+                "recibo": request.query_params.get("recibo"),
+                "vigencia_inicial": request.query_params.get("vigencia_inicial"),
+                "vigencia_final": request.query_params.get("vigencia_final"),
+                "limit": request.query_params.get("limit", 100),
+                "offset": request.query_params.get("offset", 0),
+            }
+            dados = service.buscar_faturas_comissoes(params)
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar faturas de comissão"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarFaturasComissoesView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class BuscarComissoesPorFaturaView(APIView):
+    """
+    Busca comissões individuais de uma fatura
+    GET /comissoes/faturas/{numero_fatura}/comissoes/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, numero_fatura, *args, **kwargs):
+        try:
+            service = FirebirdService()
+            dados = service.buscar_comissoes_por_fatura(numero_fatura)
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar comissões"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarComissoesPorFaturaView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class EmitirVoucherView(APIView):
+    """
+    Emite voucher/recibo de comissão
+    POST /comissoes/emitir/
+    Payload: {fatura, parcela, tipo_fat, tipo_documento}
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            fatura = request.data.get("fatura")
+            parcela = request.data.get("parcela", 1)
+            tipo_fat = request.data.get("tipo_fat", "F")
+            tipo_documento = request.data.get("tipo_documento", "recibo")
+
+            if not fatura:
+                return Response(
+                    {"sucesso": False, "erro": "Número da fatura é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            service = FirebirdService()
+            payload = {
+                "fatura": fatura,
+                "parcela": parcela,
+                "tipo_fat": tipo_fat,
+            }
+            resultado = service.emitir_voucher(payload)
+
+            if not resultado or resultado.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("detail", "Erro ao emitir documento") if resultado else "Erro de comunicação",
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            return Response(
+                {
+                    "sucesso": True,
+                    "data": {
+                        "id": resultado.get("numero_guia"),
+                        "numero": resultado.get("numero_guia"),
+                        "emitidoEm": resultado.get("data_emissao"),
+                        "fatura": fatura,
+                        "tipoDocumento": tipo_documento,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            logger.error(f"Erro em EmitirVoucherView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class BuscarPessoasView(APIView):
+    """
+    Busca pessoas (favorecidos)
+    GET /pessoas/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FirebirdService()
+            limit = request.query_params.get("limit")
+            params = {
+                "status": request.query_params.get("status", "A"),
+                "limit": limit if limit else 7000,
+                "offset": request.query_params.get("offset", 0),
+            }
+            dados = service.buscar_pessoas(params)
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar pessoas"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarPessoasView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 class RealizarConsultaView(APIView):
 
     authentication_classes = [JWTAuthentication]
