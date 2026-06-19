@@ -31,10 +31,14 @@ from consultas.views import (
     BuscarLocalidade, 
     BuscarNFSEPorBoleto, 
     BuscarTodasEmpresas,
+    BuscarFaturasComissoesView,
+    BuscarComissoesPorFaturaView,
+    BuscarPessoasView,
     CancelarBoletoFedBnkView,
     ConverterBoletoCSVView,
     DadosSegundaViaBoletoView, 
     EmissaoSegundaViaBoletoView,
+    EmitirVoucherView,
     ExportarFaturasComBoletosExcel, 
     ExportarFaturasComBoletosPDF, 
     RealizarConsultaView, 
@@ -184,6 +188,14 @@ urlpatterns = [
     
     # Webhook do Santander
     path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
+    
+    # Comissões / Recibos / Vouchers
+    path('comissoes/faturas/', BuscarFaturasComissoesView.as_view(), name='buscar-faturas-comissoes'),
+    path('comissoes/faturas/<str:numero_fatura>/comissoes/', BuscarComissoesPorFaturaView.as_view(), name='buscar-comissoes-por-fatura'),
+    path('comissoes/emitir/', EmitirVoucherView.as_view(), name='emitir-voucher'),
+    
+    # Pessoas (favorecidos)
+    path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),
     
     path("", include(router.urls)),
 ]
