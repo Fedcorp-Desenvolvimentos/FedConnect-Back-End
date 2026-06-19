@@ -733,6 +733,16 @@ class BuscarFaturamento(APIView):
             # Chamar o serviço que consulta o FedHub
             dados = service.buscar_faturamento(filtros_limpos)
             
+            logger.info(
+            "Dados retornados do serviço de faturamento:\n%s",
+            json.dumps(
+                    dados.json() if hasattr(dados, "json") else dados,
+                    indent=4,
+                    ensure_ascii=False,
+                    default=str
+                )
+            )
+            
             if not dados:
                 return Response(
                     {
