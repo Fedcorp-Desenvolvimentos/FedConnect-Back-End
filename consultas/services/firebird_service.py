@@ -899,8 +899,7 @@ class FirebirdService:
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
 
             response = requests.post(
-                f"{self.base_url}/api/pdf-generator/gerar-boleto",
-                data=payload,
+                f"{self.base_url}/api/fatura-pdf/{fatura}",
                 headers=get_headers(),
                 timeout=30.0
             )
