@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 class FirebirdService:
     def __init__(self):
-        # self.base_url = "https://fedhub-api-local.ngrok.app"
-        self.base_url = "http://localhost:8090"
+        self.base_url = "https://fedhub-api-local.ngrok.app"
+        #self.base_url = "http://localhost:8090"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -899,8 +899,9 @@ class FirebirdService:
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
 
             response = requests.post(
-                f"{self.base_url}/api/fatura-pdf/{fatura}",
+                f"{self.base_url}/api/pdf-generator/gerar-boleto/",
                 headers=get_headers(),
+                data=payload,
                 timeout=30.0
             )
 
