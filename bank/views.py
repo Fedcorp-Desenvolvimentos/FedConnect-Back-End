@@ -4,8 +4,7 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-# from bank.fedhub_service import FedhubService
-from consultas.services.firebird_service import FirebirdService
+from consultas.services.fedhub_service import FedhubService
 from asgiref.sync import async_to_sync
 
 logger = logging.getLogger(__name__)
@@ -36,14 +35,14 @@ class SantanderWebhookView(APIView):
                 return Response(status=200)
 
             # Inicializar serviço
-            firebird_service = FirebirdService()
+            fedhub_service = FedhubService()
             
             # Buscar fatura pelo nosso número
             logger.info(f"🔍 Buscando fatura para nosso_numero={bank_number}")
             
             try:
                 dados_fatura_lista = async_to_sync(
-                    firebird_service.buscar_fatura_por_nosso_numero
+                    fedhub_service.buscar_fatura_por_nosso_numero
                 )(bank_number)
             except Exception as e:
                 logger.error(f"❌ Erro ao buscar fatura: {e}")
@@ -172,7 +171,7 @@ class SantanderWebhookView(APIView):
             logger.info(f"Chamando Fedhub para processar pagamento - DOCUMENTO={fatura.get('DOCUMENTO')}, FATURA={fatura.get('FATURA')}")
             try:
                 response = async_to_sync(
-                    firebird_service.processar_pagamento_boleto
+                    fedhub_service.processar_pagamento_boleto
                 )(
                     fatura.get("DOCUMENTO"),
                     fatura.get("FATURA"),

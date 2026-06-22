@@ -8,7 +8,7 @@
 # import requests
 # import json
 
-# from consultas.services.firebird_service import FirebirdService
+# from consultas.services.fedhub_service import FedhubService
 # from consultas.utils.renderers import BinaryRenderer
 # from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
 # from .models import HistoricoConsulta
@@ -229,7 +229,7 @@
     
 #     def get(self, request):
 #         try:
-#             service = FirebirdService()
+#             service = FedhubService()
 #             dados = asyncio.run(service.buscar_todas_empresas())
             
 #             # logger.info(
@@ -291,7 +291,7 @@
 #     permission_classes = [IsAuthenticated]
     
 #     def get(self, request, numero_fatura: str, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
 #         dados = service.buscar_fatura_por_numero(numero_fatura)
 
 #         if not dados:
@@ -311,7 +311,7 @@
 #     permission_classes = [IsAuthenticated]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Parâmetros da requisição: {request.query_params}")
 
@@ -421,7 +421,7 @@
 #     permission_classes = [IsAuthenticated]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Parâmetros da requisição faturas dinâmicas paginadas: {request.query_params}")
 
@@ -537,7 +537,7 @@
     
 #     def get(self, request, nome: str, *args, **kwargs):
         
-#         service = FirebirdService()
+#         service = FedhubService()
 #         dados = service.buscar_administradora_por_nome(nome)
 
 #         if not dados:
@@ -556,7 +556,7 @@
 #     permission_classes = [IsAuthenticated]
     
 #     def get(self, request, codigo: str, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
 #         dados = service.buscar_administradora_por_codigo(codigo)
 
 #         if not dados:
@@ -576,7 +576,7 @@
 #     permission_classes = [IsAuthenticated]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Parâmetros da requisição de faturas com boletos: {request.query_params}")
 
@@ -685,7 +685,7 @@
 #     permission_classes = [IsAuthenticated]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Parâmetros da requisição de faturamento: {request.query_params}")
 
@@ -826,7 +826,7 @@
 
 #     def get(self, request, codigo, *args, **kwargs):
 #         try:
-#             service = FirebirdService()
+#             service = FedhubService()
 
 #             corretor = service.buscar_corretor_por_codigo(codigo)
             
@@ -859,7 +859,7 @@
 
 #     def get(self, request, documento, *args, **kwargs):
 #         try:
-#             service = FirebirdService()
+#             service = FedhubService()
 
 #             nota_id = service.buscar_nfse_por_boleto(documento)
             
@@ -891,7 +891,7 @@
 #     permission_classes = [IsAuthenticated]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Parâmetros da requisição de faturas com boletos: {request.query_params}")
 
@@ -999,7 +999,7 @@
 #     permission_classes = [IsAuthenticated]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Parâmetros da requisição faturas com boletos paginadas: {request.query_params}")
 
@@ -1107,7 +1107,7 @@
 #     renderer_classes = [BinaryRenderer]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Exportação Excel dinâmica paginada - Parâmetros: {request.query_params}")
 
@@ -1297,7 +1297,7 @@
 #     renderer_classes = [BinaryRenderer]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
         
 #         logger.info(f"Exportação Excel - Parâmetros: {request.query_params}")
 
@@ -1485,7 +1485,7 @@
 #     renderer_classes = [BinaryRenderer]
 
 #     def get(self, request, *args, **kwargs):
-#         service = FirebirdService()
+#         service = FedhubService()
 
 #         filtros = {
 #             "fatura": request.query_params.get("fatura"),

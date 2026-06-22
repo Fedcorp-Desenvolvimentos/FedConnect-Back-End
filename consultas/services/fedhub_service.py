@@ -20,7 +20,7 @@ import json
 logger = logging.getLogger(__name__)
 
 
-class FirebirdService:
+class FedhubService:
     def __init__(self):
         self.base_url = "https://fedhub-api-local.ngrok.app"
         #self.base_url = "http://localhost:8090"

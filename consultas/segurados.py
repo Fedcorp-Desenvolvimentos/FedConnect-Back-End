@@ -1,5 +1,5 @@
 import logging
-from consultas.services.firebird_service import FirebirdService
+from consultas.services.fedhub_service import FedhubService
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -193,7 +193,7 @@ class BuscaPorAdms(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Parâmetros da requisição: {request.query_params}")
 

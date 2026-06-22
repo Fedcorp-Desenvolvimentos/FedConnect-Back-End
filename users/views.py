@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.db.models import Q, Case, When, IntegerField
 from rest_framework.views import APIView
 
-from consultas.services.firebird_service import FirebirdService
+from consultas.services.fedhub_service import FedhubService
 
 import logging
 from django.utils import timezone
@@ -216,7 +216,7 @@ class SolicitarResetSenhaView(APIView):
         # Enviar email via Gateway
         try:
             
-            service = FirebirdService()
+            service = FedhubService()
             
             email_enviado = service.enviar_email_recuperacao_senha(
                 email=user.email,

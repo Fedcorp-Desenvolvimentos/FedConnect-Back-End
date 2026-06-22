@@ -10,7 +10,7 @@ import json
 
 from consultas.cache.cidade_cache import buscar_cidades_autocomplete_sync
 from consultas.services.analytics_service import AnalyticsService
-from consultas.services.firebird_service import FirebirdService
+from consultas.services.fedhub_service import FedhubService
 from consultas.utils.renderers import BinaryRenderer
 from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
 from .models import HistoricoConsulta
@@ -49,7 +49,7 @@ class BuscarFaturasComissoesView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            service = FirebirdService()
+            service = FedhubService()
             params = {
                 "favorecido": request.query_params.get("favorecido"),
                 "fatura": request.query_params.get("fatura"),
@@ -91,7 +91,7 @@ class BuscarComissoesPorFaturaView(APIView):
 
     def get(self, request, numero_fatura, *args, **kwargs):
         try:
-            service = FirebirdService()
+            service = FedhubService()
             dados = service.buscar_comissoes_por_fatura(numero_fatura)
             if not dados:
                 return Response(
@@ -129,7 +129,7 @@ class EmitirVoucherView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            service = FirebirdService()
+            service = FedhubService()
             payload = {
                 "fatura": fatura,
                 "parcela": parcela,
@@ -177,7 +177,7 @@ class BuscarPessoasView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            service = FirebirdService()
+            service = FedhubService()
             limit = request.query_params.get("limit")
             params = {
                 "status": request.query_params.get("status", "A"),
@@ -398,7 +398,7 @@ class BuscarTodasEmpresas(APIView):
     
     def get(self, request):
         try:
-            service = FirebirdService()
+            service = FedhubService()
             dados = asyncio.run(service.buscar_todas_empresas())
             
             # logger.info(
@@ -460,7 +460,7 @@ class BuscarFaturaPorNumero(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request, numero_fatura: str, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         dados = service.buscar_fatura_por_numero(numero_fatura)
 
         if not dados:
@@ -480,7 +480,7 @@ class BuscarFaturaDinamicamente(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Parâmetros da requisição: {request.query_params}")
 
@@ -589,7 +589,7 @@ class BuscarFaturasDinamicamentePaginadas(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Parâmetros da requisição faturas dinâmicas paginadas: {request.query_params}")
 
@@ -705,7 +705,7 @@ class BuscarAdministradoras(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request, *args, **kwargs): 
-        service = FirebirdService()
+        service = FedhubService()
         dados = service.buscar_administradoras()
         
         # logger.info(f"Dados retornados do serviço de administradoras: {dados}")
@@ -726,7 +726,7 @@ class BuscarAdministradorasPorNome(APIView):
     
     def get(self, request, nome: str, *args, **kwargs):
         
-        service = FirebirdService()
+        service = FedhubService()
         dados = service.buscar_administradora_por_nome(nome)
 
         if not dados:
@@ -744,7 +744,7 @@ class BuscarAdministradorasPorCodigo(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request, codigo: str, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         dados = service.buscar_administradora_por_codigo(codigo)
 
         if not dados:
@@ -766,7 +766,7 @@ class BuscarFaturasComBoletos(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Parâmetros da requisição de faturas com boletos: {request.query_params}")
 
@@ -873,7 +873,7 @@ class BuscarFaturamento(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Parâmetros da requisição de faturamento: {request.query_params}")
 
@@ -1023,7 +1023,7 @@ class BuscarCorretores(APIView):
 
     def get(self, request, codigo, *args, **kwargs):
         try:
-            service = FirebirdService()
+            service = FedhubService()
 
             corretor = service.buscar_corretor_por_codigo(codigo)
             
@@ -1055,7 +1055,7 @@ class BuscarNFSEPorBoleto(APIView):
 
     def get(self, request, documento, *args, **kwargs):
         try:
-            service = FirebirdService()
+            service = FedhubService()
 
             nota_id = service.buscar_nfse_por_boleto(documento)
             
@@ -1087,7 +1087,7 @@ class BuscarFaturasComBoletosESegurados(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Parâmetros da requisição de faturas com boletos: {request.query_params}")
 
@@ -1194,7 +1194,7 @@ class BuscarFaturasComBoletosPaginadas(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Parâmetros da requisição faturas com boletos paginadas: {request.query_params}")
 
@@ -1310,7 +1310,7 @@ class TratamentoDeErroView(APIView):
         POST /faturamento/tratamento-de-erros/rodar-procedure/
         """
         try:
-            service = FirebirdService()
+            service = FedhubService()
             
             # Chama o FastAPI para rodar a procedure
             # Usando método síncrono ou assíncrono conforme necessário
@@ -1389,7 +1389,7 @@ class ConverterBoletoCSVView(APIView):
             logger.info(f"Convertendo boletos da fatura {fatura} para CSV")
             
             # Chama o serviço
-            service = FirebirdService()
+            service = FedhubService()
             resultado = service.converter_boleto_csv(fatura)
             
             logger.info(f"Resultado do serviço: {resultado}")
@@ -1489,7 +1489,7 @@ class DadosSegundaViaBoletoView(APIView):
             
             logger.info(f"Buscando dados para fatura: {fatura}")
             
-            service = FirebirdService()
+            service = FedhubService()
             dados = service.processar_dados_segunda_via_boleto(fatura)
             
             if not dados:
@@ -1536,7 +1536,7 @@ class EmissaoSegundaViaBoletoView(APIView):
             )
 
         try:
-            service = FirebirdService()
+            service = FedhubService()
             resultado = service.emitir_segunda_via_boleto(fatura, boletos)
 
             if not resultado or resultado.get("status") != "success":
@@ -1571,7 +1571,7 @@ class ExportarFaturasDinamicasPaginadasExcel(APIView):
     renderer_classes = [BinaryRenderer]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Exportação Excel dinâmica paginada - Parâmetros: {request.query_params}")
 
@@ -1760,7 +1760,7 @@ class ExportarFaturasComBoletosExcel(APIView):
     renderer_classes = [BinaryRenderer]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
         
         logger.info(f"Exportação Excel - Parâmetros: {request.query_params}")
 
@@ -1947,7 +1947,7 @@ class ExportarFaturasComBoletosPDF(APIView):
     renderer_classes = [BinaryRenderer]
 
     def get(self, request, *args, **kwargs):
-        service = FirebirdService()
+        service = FedhubService()
 
         filtros = {
             "fatura": request.query_params.get("fatura"),
@@ -2053,7 +2053,7 @@ class BuscarLocalidade(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            service = FirebirdService()
+            service = FedhubService()
             dados_localidade = service.buscar_localidades()
             
             # Se não conseguiu buscar do gateway, retorna dados vazios
@@ -2105,7 +2105,7 @@ class AutomacaoSepararPDFView(APIView):
             )
         
         try:
-            service = FirebirdService()
+            service = FedhubService()
             resultado = service.separar_pdf(file, nome_base)
             
             # Se o resultado for bytes (conteúdo do ZIP), retorna como download
@@ -2146,7 +2146,7 @@ class AutomacaoUploadPDFsBBZView(APIView):
             )
         
         try:
-            service = FirebirdService()
+            service = FedhubService()
             resultado = service.upload_pdfs_bbz(files)
             
             if not resultado:
@@ -2187,7 +2187,7 @@ class AutomacaoProcessarPDFsBBZView(APIView):
         fazer_backup = request.data.get('fazer_backup', True)
         
         try:
-            service = FirebirdService()
+            service = FedhubService()
             resultado = service.processar_pdfs_bbz(fazer_backup)
             
             if not resultado or resultado.get("status") != "sucesso":
@@ -2492,8 +2492,8 @@ class CancelarBoletoFedBnkView(APIView):
                 "mail": mail
             }
             
-            # Chamar o FirebirdService
-            service = FirebirdService()
+            # Chamar o FedhubService
+            service = FedhubService()
             resultado = service.cancelar_boleto_fedbnk(payload)
             
             if resultado and resultado.get("status") == "sucesso":
