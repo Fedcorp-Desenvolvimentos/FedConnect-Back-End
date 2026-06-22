@@ -914,7 +914,7 @@ class FirebirdService:
                 if not boleto.get('linha_digitavel') or not boleto.get('linha_purificada'):
                     raise ValueError(
                         f"Boleto {idx + 1} da fatura {fatura} não foi gerado corretamente no FINANC. "
-                        "Linha digitável ou linha purificada vazia."
+                        "Por favor, refaça o processo de faturamento."
                     )
 
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
