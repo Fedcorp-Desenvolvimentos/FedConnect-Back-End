@@ -885,6 +885,20 @@ class FirebirdService:
         if not normalized.get('pagador_cnpj'):
             normalized['pagador_cnpj'] = normalized.get('cnpj_co-estipulante', '')
 
+        # Garante que os campos obrigatórios do FedHub não sejam null
+        campos_obrigatorios_string = [
+            'estipulante', 'cnpj_estipulante',
+            'pagador_endereco', 'vigencia_inicial', 'vigencia_final',
+        ]
+        for campo in campos_obrigatorios_string:
+            if normalized.get(campo) is None:
+                normalized[campo] = ''
+
+        # FedHub espera ambos os campos de QR; caminho_qrimagem é obrigatório
+        caminho_qr = normalized.get('caminho_qrcode')
+        normalized.setdefault('caminho_qrimagem', caminho_qr or '')
+        normalized.setdefault('caminho_qrcode', caminho_qr or '')
+
         return normalized
 
     def emitir_segunda_via_boleto(self, fatura: str, boletos: dict) -> Optional[Dict[str, Any]]:
