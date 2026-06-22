@@ -910,6 +910,13 @@ class FirebirdService:
             else:
                 normalized = boletos
 
+            for idx, boleto in enumerate(normalized if isinstance(normalized, list) else [normalized]):
+                if not boleto.get('linha_digitavel') or not boleto.get('linha_purificada'):
+                    raise ValueError(
+                        f"Boleto {idx + 1} da fatura {fatura} não foi gerado corretamente no FINANC. "
+                        "Linha digitável ou linha purificada vazia."
+                    )
+
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
 
             response = requests.post(
