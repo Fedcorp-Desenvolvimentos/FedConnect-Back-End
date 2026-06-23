@@ -24,12 +24,14 @@ from consultas.views import (
     BuscarAdministradoras,
     BuscarAdministradorasPorCodigo, 
     BuscarAdministradorasPorNome,
-    BuscarCidadesAutocomplete, 
+    BuscarCidadesAutocomplete,
+    BuscarComissaoPorDataCorteView, 
     BuscarCorretores, 
     BuscarFaturaPorNumero, 
     BuscarFaturamento,
     BuscarLocalidade, 
-    BuscarNFSEPorBoleto, 
+    BuscarNFSEPorBoleto,
+    BuscarPessoaPorCodigoView, 
     BuscarTodasEmpresas,
     BuscarFaturasComissoesView,
     BuscarComissoesPorFaturaView,
@@ -194,8 +196,12 @@ urlpatterns = [
     path('comissoes/faturas/<str:numero_fatura>/comissoes/', BuscarComissoesPorFaturaView.as_view(), name='buscar-comissoes-por-fatura'),
     path('comissoes/emitir/', EmitirVoucherView.as_view(), name='emitir-voucher'),
     
+    
+    path('comissoes/por-data/<str:data_corte>/', BuscarComissaoPorDataCorteView.as_view(), name='buscar-comissao-por-data'),
+    
     # Pessoas (favorecidos)
     path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),
+    path('pessoas/<str:codigo>/', BuscarPessoaPorCodigoView.as_view(), name='buscar-pessoa-por-codigo'),
     
     path("", include(router.urls)),
 ]

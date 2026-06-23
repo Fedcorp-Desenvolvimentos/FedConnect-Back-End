@@ -100,86 +100,6 @@ class BuscarComissoesPorFaturaView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-class BuscarComissaoPorDataCorteView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-
-    def get(self, request, data_corte, *args, **kwargs):
-        try:
-            logger.info("========== DEBUG COMISSÕES ==========")
-            logger.info(f"data_corte (path param): {data_corte}")
-            logger.info(f"type(data_corte): {type(data_corte)}")
-
-            logger.info("Query params RAW:")
-            for k, v in request.query_params.lists():
-                logger.info(f"  {k} = {v} | type={type(v)}")
-
-            logger.info("Query params iterados (simples):")
-            for key, value in request.query_params.items():
-                logger.info(f"  {key} = {value} | type={type(value)}")
-
-            params = {}
-
-            logger.info("Montando params finais:")
-
-            for key, value in request.query_params.items():
-                if value not in [None, '', 'null']:
-                    params[key] = value
-                    logger.info(f"  ADICIONADO -> {key} = {value} (type={type(value)})")
-                else:
-                    logger.info(f"  IGNORADO -> {key} = {value}")
-
-            logger.info(f"PARAMS FINAIS: {params}")
-            logger.info("=====================================")
-            
-            # Se tiver com_voucher, converte para boolean
-            if 'com_voucher' in params:
-                val = params['com_voucher']
-                if val.lower() == 'true':
-                    params['com_voucher'] = True
-                elif val.lower() == 'false':
-                    params['com_voucher'] = False
-                elif val.lower() == 'null' or val == '':
-                    del params['com_voucher']
-            
-            service = FedhubService()
-            dados = service.buscar_comissao_por_data_corte(data_corte, params)
-            if not dados:
-                return Response(
-                    {
-                        "sucesso": False,
-                        "erro": "Não foi possível consultar comissões. Verifique a data informada."
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            
-            if dados.get("status") == "error":
-                return Response(
-                    {
-                        "sucesso": False,
-                        "erro": dados.get("message", "Erro na consulta")
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            
-            return Response(
-                {
-                    "sucesso": True,
-                    "dados": dados,
-                    "data_corte": data_corte,
-                    "filtros_aplicados": params
-                },
-                status=status.HTTP_200_OK
-            )
-            
-        except Exception as e:
-            logger.error(f"Erro em BuscarComissaoPorDataCorteView: {e}")
-            return Response(
-                {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
 class EmitirVoucherView(APIView):
     """
     Emite voucher/recibo de comissão
@@ -269,33 +189,6 @@ class BuscarPessoasView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-
-class BuscarPessoaPorCodigoView(APIView):
-    """
-    Busca pessoa (favorecido) por código
-    GET /pessoas/{codigo}/
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, codigo, *args, **kwargs):
-        try:
-            service = FedhubService()
-            dados = service.buscar_pessoa_por_codigo(codigo)
-            if not dados:
-                return Response(
-                    {"sucesso": False, "erro": "Erro ao consultar pessoa"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            return Response(dados, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Erro em BuscarPessoaPorCodigoView: {e}")
-            return Response(
-                {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
 
 class RealizarConsultaView(APIView):
 

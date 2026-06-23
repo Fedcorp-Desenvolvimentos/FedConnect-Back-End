@@ -1042,6 +1042,94 @@ class FedhubService:
             logger.error(f"Erro ao buscar pessoas: {e}")
             return None
 
+
+    def buscar_comissao_por_data_corte(self, data_corte: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+        """
+        Busca comissões por data de corte
+        Encaminha diretamente para o FastAPI /buscar-faturas-comissoes
+        
+        GET /api/vouchers/buscar-faturas-comissoes
+        Parâmetros:
+            - data_corte (obrigatório): YYYY-MM-DD
+            - favorecido: Código do favorecido
+            - fatura: Número da fatura
+            - vencimento_inicial: Data inicial
+            - vencimento_final: Data final
+            - status: todas, baixadas, pendentes
+            - tipo: Tipo de comissão (A, B, etc)
+            - co_estipulante: Co-estipulante
+            - apolice: Número da apólice
+            - recibo: Número do recibo/voucher
+            - com_voucher: true, false, null (todos)
+            - limit: Limite de registros (default: 100)
+            - offset: Offset para paginação (default: 0)
+        """
+        try:
+            # Valida formato da data
+            from datetime import datetime
+            datetime.strptime(data_corte, '%Y-%m-%d')
+            
+            # Monta os parâmetros da query
+            query_params = {"data_corte": data_corte}
+            
+            # Adiciona todos os parâmetros opcionais
+            if params:
+                # Mapeamento direto dos parâmetros
+                for key, value in params.items():
+                    if value is not None and value != '' and value != 'null':
+                        query_params[key] = value
+            
+            logger.info(f"Chamando FastAPI com params: {query_params}")
+            
+            response = requests.get(
+                f"{self.base_url}/api/vouchers/buscar-faturas-comissoes",
+                params=query_params,
+                headers=get_headers(),
+                timeout=60,  # Timeout maior para queries complexas
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+                return None
+                
+            data = response.json()
+            
+            # Verifica status da resposta
+            if data.get("status") != "success":
+                logger.error(f"FastAPI retornou erro: {data}")
+                return None
+                
+            return data
+            
+        except ValueError as e:
+            logger.error(f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD")
+            return {
+                "status": "error",
+                "message": f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD"
+            }
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FastAPI: {e}")
+            return None
+    
+    def buscar_pessoa_por_codigo(self, codigo: str) -> Optional[Dict[str, Any]]:
+        try: 
+            response = requests.get(
+                f"{self.base_url}/api/pessoas/{codigo}/",
+                headers=get_headers(),
+                timeout=30,
+            )
+            if response.status_code != 200:
+                logger.error(f"FedHub erro {response.status_code}: {response.text}")
+                return None
+            data = response.json()
+            if data.get("status") != "success":
+                logger.error(f"FedHub retornou erro: {data}")
+                return None
+            return data.get("data")
+        except requests.RequestException as e:
+            logger.error(f"Erro ao buscar pessoa por código: {e}")
+            return None
+        
     # Segunda via de boleto
     def processar_dados_segunda_via_boleto(self, fatura: str):
         """Este método já está síncrono - perfeito!"""
