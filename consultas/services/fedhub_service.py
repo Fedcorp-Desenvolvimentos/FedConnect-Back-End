@@ -877,6 +877,7 @@ class FedhubService:
             'VIGENCIA_INICIAL': 'vigencia_inicial',
             'VIGENCIA_FINAL': 'vigencia_final',
             'CAMINHO_QRCODE': 'caminho_qrcode',
+            'CAMINHO_QRIMAGEM': 'caminho_qrimagem',
         }
         normalized = {field_map.get(k, k): v for k, v in boleto.items()}
 
@@ -918,7 +919,7 @@ class FedhubService:
                     )
 
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
-
+            
             response = requests.post(
                 f"{self.base_url}/api/pdf-generator/gerar-boleto/",
                 headers=get_headers(),
@@ -1132,7 +1133,7 @@ class FedhubService:
         
     # Segunda via de boleto
     def processar_dados_segunda_via_boleto(self, fatura: str):
-        """Este método já está síncrono - perfeito!"""
+        """Este método já está síncrono"""
         try:
             # ⚠️ IMPORTANTE: Validar se fatura não é None
             if not fatura:
@@ -1147,9 +1148,9 @@ class FedhubService:
             )
 
             # Log mais detalhado
-            logger.info(f"Chamando FedHub: {self.base_url}/api/faturamento/dados-segunda-via/{fatura}/")
-            logger.info(f"Status code: {response.status_code}")
-            logger.info(f"Response: {response.text}")
+            # logger.info(f"Chamando FedHub: {self.base_url}/api/faturamento/dados-segunda-via/{fatura}/")
+            # logger.info(f"Status code: {response.status_code}")
+            # logger.info(f"Response: {response.text}")
 
             if response.status_code != 200:
                 logger.error(f"Fedhub erro {response.status_code}: {response.text}")

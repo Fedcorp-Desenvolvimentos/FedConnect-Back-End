@@ -29,9 +29,9 @@ class FedhubService:
             )
 
             # Log mais detalhado
-            logger.info(f"Chamando FedHub: {self.base_url}/api/faturamento/dados-segunda-via/{fatura}/")
-            logger.info(f"Status code: {response.status_code}")
-            logger.info(f"Response: {response.text}")
+            # logger.info(f"Chamando FedHub: {self.base_url}/api/faturamento/dados-segunda-via/{fatura}/")
+            # logger.info(f"Status code: {response.status_code}")
+            # logger.info(f"Response: {response.text}")
 
             if response.status_code != 200:
                 logger.error(f"Fedhub erro {response.status_code}: {response.text}")
