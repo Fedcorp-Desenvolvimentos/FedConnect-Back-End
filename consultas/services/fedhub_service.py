@@ -1021,7 +1021,14 @@ class FedhubService:
             # Limpa parâmetros vazios
             for key, value in params.items():
                 if value not in [None, "", "null"]:
-                    query_params[key] = value
+                    # Converte favorecido para int se necessário
+                    if key == 'favorecido' and value:
+                        try:
+                            query_params[key] = int(value)
+                        except ValueError:
+                            query_params[key] = value
+                    else:
+                        query_params[key] = value
             
             # Converte com_voucher para boolean se vier como string
             if 'com_voucher' in query_params:
@@ -1036,8 +1043,9 @@ class FedhubService:
             
             logger.info(f"Chamando FastAPI V2 com params: {query_params}")
             
+            # 🔥 ROTA CORRETA
             response = requests.get(
-                f"{self.base_url}/api/vouchers/buscar-faturas-comissoes-v2",
+                f"{self.base_url}/api/vouchers/teste-buscar-faturas-comissoes",
                 params=query_params,
                 headers=get_headers(),
                 timeout=120,  # Timeout maior para queries complexas
