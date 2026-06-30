@@ -180,6 +180,84 @@ class BuscarComissaoPorDataCorteView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+class BuscarComissaoPorDataCorteV2View(APIView):
+    """
+    Busca comissões por data de corte - VERSÃO 100% CONSISTENTE
+    GET /comissoes/por-data-v2/<str:data_corte>/
+    
+    Parâmetros (query string):
+        - favorecido: Código do favorecido (com ou sem zeros)
+        - fatura: Número da fatura
+        - vencimento_inicial: Data inicial (YYYY-MM-DD)
+        - vencimento_final: Data final (YYYY-MM-DD)
+        - status: todas, baixadas, pendentes
+        - tipo: Tipo de comissão (A, B, etc)
+        - co_estipulante: Co-estipulante
+        - apolice: Número da apólice
+        - recibo: Número do recibo/voucher
+        - com_voucher: null=apenas sem voucher, true=apenas com voucher, false=todos
+        - limit: Limite de registros (default: 100)
+        - offset: Offset para paginação (default: 0)
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, data_corte, *args, **kwargs):
+        try:
+            logger.info("========== DEBUG COMISSÕES V2 ==========")
+            logger.info(f"data_corte (path param): {data_corte}")
+            
+            # Coleta todos os parâmetros da query string
+            params = {}
+            for key, value in request.query_params.items():
+                if value not in [None, '', 'null']:
+                    params[key] = value
+                    logger.info(f"  {key} = {value}")
+            
+            # Tratamento especial para com_voucher
+            if 'com_voucher' in params:
+                val = params['com_voucher']
+                if val.lower() == 'true':
+                    params['com_voucher'] = True
+                elif val.lower() == 'false':
+                    params['com_voucher'] = False
+                elif val.lower() == 'null' or val == '':
+                    del params['com_voucher']
+            
+            logger.info(f"PARAMS FINAIS V2: {params}")
+            logger.info("=========================================")
+            
+            service = FedhubService()
+            dados = service.buscar_comissoes_v2(data_corte, params)
+            
+            if not dados:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Não foi possível consultar comissões. Verifique a data informada."
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            
+            # A V2 já retorna no formato correto
+            return Response(
+                {
+                    "sucesso": True,
+                    "dados": dados,
+                    "data_corte": data_corte,
+                    "filtros_aplicados": params,
+                    "versao": "v2"
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro em BuscarComissaoPorDataCorteV2View: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 class EmitirVoucherView(APIView):
     """
     Emite voucher/recibo de comissão

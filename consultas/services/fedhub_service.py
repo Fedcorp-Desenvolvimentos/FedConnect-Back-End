@@ -1000,6 +1000,56 @@ class FedhubService:
             logger.error(f"Erro ao buscar comissões por fatura: {e}")
             return None
 
+    def buscar_comissoes_v2(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Busca comissões usando a V2 do FastAPI (100% consistente)
+        GET /api/vouchers/buscar-faturas-comissoes-v2
+        """
+        try:
+            # Limpa parâmetros vazios
+            params_limpos = {k: v for k, v in params.items() if v not in [None, "", "null"]}
+            
+            # Converte com_voucher para boolean se vier como string
+            if 'com_voucher' in params_limpos:
+                val = params_limpos['com_voucher']
+                if isinstance(val, str):
+                    if val.lower() == 'true':
+                        params_limpos['com_voucher'] = True
+                    elif val.lower() == 'false':
+                        params_limpos['com_voucher'] = False
+                    elif val.lower() == 'null' or val == '':
+                        del params_limpos['com_voucher']
+            
+            logger.info(f"Chamando FastAPI V2 com params: {params_limpos}")
+            
+            response = requests.get(
+                f"{self.base_url}/api/vouchers/teste-buscar-faturas-comissoes",
+                params=params_limpos,
+                headers=get_headers(),
+                timeout=120,  # Timeout maior para queries complexas
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"FastAPI V2 erro {response.status_code}: {response.text}")
+                return None
+                
+            data = response.json()
+            
+            # Verifica status da resposta
+            if data.get("status") != "success":
+                logger.error(f"FastAPI V2 retornou erro: {data}")
+                return None
+                
+            return data
+            
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FastAPI V2: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Erro inesperado ao chamar FastAPI V2: {e}")
+            return None
+    
+    
     def emitir_voucher(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Emite voucher/recibo de comissão
