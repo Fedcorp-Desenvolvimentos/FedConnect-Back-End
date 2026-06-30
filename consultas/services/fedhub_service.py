@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 class FedhubService:
     def __init__(self):
         self.base_url = "https://fedhub-api-local.ngrok.app"
-        #self.base_url = "http://localhost:8090"
+        # self.base_url = "https://enjoyably-cranial-twistable.ngrok-free.dev"
+        # self.base_url = "http://localhost:8090"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -1000,31 +1001,44 @@ class FedhubService:
             logger.error(f"Erro ao buscar comissões por fatura: {e}")
             return None
 
-    def buscar_comissoes_v2(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def buscar_comissoes_v2(self, data_corte: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         """
         Busca comissões usando a V2 do FastAPI (100% consistente)
         GET /api/vouchers/buscar-faturas-comissoes-v2
         """
         try:
+            # Inicializa params se None
+            if params is None:
+                params = {}
+            
+            # Valida formato da data
+            from datetime import datetime
+            datetime.strptime(data_corte, '%Y-%m-%d')
+            
+            # Monta os parâmetros da query
+            query_params = {"data_corte": data_corte}
+            
             # Limpa parâmetros vazios
-            params_limpos = {k: v for k, v in params.items() if v not in [None, "", "null"]}
+            for key, value in params.items():
+                if value not in [None, "", "null"]:
+                    query_params[key] = value
             
             # Converte com_voucher para boolean se vier como string
-            if 'com_voucher' in params_limpos:
-                val = params_limpos['com_voucher']
+            if 'com_voucher' in query_params:
+                val = query_params['com_voucher']
                 if isinstance(val, str):
                     if val.lower() == 'true':
-                        params_limpos['com_voucher'] = True
+                        query_params['com_voucher'] = True
                     elif val.lower() == 'false':
-                        params_limpos['com_voucher'] = False
+                        query_params['com_voucher'] = False
                     elif val.lower() == 'null' or val == '':
-                        del params_limpos['com_voucher']
+                        del query_params['com_voucher']
             
-            logger.info(f"Chamando FastAPI V2 com params: {params_limpos}")
+            logger.info(f"Chamando FastAPI V2 com params: {query_params}")
             
             response = requests.get(
-                f"{self.base_url}/api/vouchers/teste-buscar-faturas-comissoes",
-                params=params_limpos,
+                f"{self.base_url}/api/vouchers/buscar-faturas-comissoes-v2",
+                params=query_params,
                 headers=get_headers(),
                 timeout=120,  # Timeout maior para queries complexas
             )
@@ -1042,6 +1056,12 @@ class FedhubService:
                 
             return data
             
+        except ValueError as e:
+            logger.error(f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD")
+            return {
+                "status": "error",
+                "message": f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD"
+            }
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar FastAPI V2: {e}")
             return None
