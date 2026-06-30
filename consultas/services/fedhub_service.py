@@ -1061,6 +1061,14 @@ class FedhubService:
             if data.get("status") != "success":
                 logger.error(f"FastAPI V2 retornou erro: {data}")
                 return None
+            
+            if "data" in data:
+                return {
+                    "status": "success",
+                    "total_registros": data.get("total_registros", len(data.get("data", []))),
+                    "has_more": data.get("has_more", False),
+                    "data": data.get("data", []),
+                }
                 
             return data
             

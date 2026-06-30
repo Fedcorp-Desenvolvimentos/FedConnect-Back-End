@@ -243,7 +243,11 @@ class BuscarComissaoPorDataCorteV2View(APIView):
             return Response(
                 {
                     "sucesso": True,
-                    "dados": dados,
+                    "dados": {
+                        "data": dados.get("data", []),
+                        "total_registros": dados.get("total_registros", 0),
+                        "has_more": dados.get("has_more", False),
+                    },
                     "data_corte": data_corte,
                     "filtros_aplicados": params,
                     "versao": "v2"
