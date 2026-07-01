@@ -204,15 +204,11 @@ class BuscarComissaoPorDataCorteV2View(APIView):
 
     def get(self, request, data_corte, *args, **kwargs):
         try:
-            logger.info("========== DEBUG COMISSÕES V2 ==========")
-            logger.info(f"data_corte (path param): {data_corte}")
-            
             # Coleta todos os parâmetros da query string
             params = {}
             for key, value in request.query_params.items():
                 if value not in [None, '', 'null']:
                     params[key] = value
-                    logger.info(f"  {key} = {value}")
             
             # Tratamento especial para com_voucher
             if 'com_voucher' in params:
@@ -223,9 +219,6 @@ class BuscarComissaoPorDataCorteV2View(APIView):
                     params['com_voucher'] = False
                 elif val.lower() == 'null' or val == '':
                     del params['com_voucher']
-            
-            logger.info(f"PARAMS FINAIS V2: {params}")
-            logger.info("=========================================")
             
             service = FedhubService()
             dados = service.buscar_comissoes_v2(data_corte, params)
@@ -246,7 +239,6 @@ class BuscarComissaoPorDataCorteV2View(APIView):
                     "dados": {
                         "data": dados.get("data", []),
                         "total_registros": dados.get("total_registros", 0),
-                        "has_more": dados.get("has_more", False),
                     },
                     "data_corte": data_corte,
                     "filtros_aplicados": params,

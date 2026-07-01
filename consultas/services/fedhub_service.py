@@ -961,6 +961,8 @@ class FedhubService:
     # Comissões / Vouchers (Recibos de Comissões)
     # ============================================================
 
+    
+    
     def buscar_faturas_comissoes(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Busca faturas para emissão de recibos de comissões
@@ -1045,7 +1047,7 @@ class FedhubService:
             
             # 🔥 ROTA CORRETA
             response = requests.get(
-                f"{self.base_url}/api/vouchers/teste-buscar-faturas-comissoes",
+                f"{self.base_url}/api/vouchers/buscar-faturas-comissoes",
                 params=query_params,
                 headers=get_headers(),
                 timeout=120,  # Timeout maior para queries complexas
@@ -1085,7 +1087,6 @@ class FedhubService:
             logger.error(f"Erro inesperado ao chamar FastAPI V2: {e}")
             return None
     
-    
     def emitir_voucher(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Emite voucher/recibo de comissão
@@ -1107,6 +1108,8 @@ class FedhubService:
             logger.error(f"Erro ao emitir voucher: {e}")
             return None
 
+    
+    
     # Pessoas
     def buscar_pessoas(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
