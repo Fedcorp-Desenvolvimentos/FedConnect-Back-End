@@ -960,8 +960,6 @@ class FedhubService:
     # ============================================================
     # Comissões / Vouchers (Recibos de Comissões)
     # ============================================================
-
-    
     
     def buscar_faturas_comissoes(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
@@ -1087,28 +1085,48 @@ class FedhubService:
             logger.error(f"Erro inesperado ao chamar FastAPI V2: {e}")
             return None
     
-    def emitir_voucher(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    
+    def emitir_recibo_comissao(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        Emite voucher/recibo de comissão
-        POST /api/vouchers/emitir
-        Payload: {fatura, parcela, tipo_fat}
+        Emite recibo de comissão via FastAPI
+        POST /api/voucher/emitir-recibo
         """
         try:
             response = requests.post(
-                f"{self.base_url}/api/vouchers/emitir",
+                f"{self.base_url}/api/vouchers/emitir-recibo",
                 json=payload,
                 headers=get_headers(),
-                timeout=30,
+                timeout=60, 
+            )
+            
+            if response.status_code not in [200, 201]:
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+                return None
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"Erro ao emitir recibo: {e}")
+            return None
+
+    def emitir_voucher_comissao(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Emite voucher de comissão via FastAPI
+        POST /api/voucher/emitir-voucher
+        """
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/vouchers/emitir-voucher",
+                json=payload,
+                headers=get_headers(),
+                timeout=60,  # Timeout maior para gerar PDF
             )
             if response.status_code not in [200, 201]:
-                logger.error(f"FedHub erro {response.status_code}: {response.text}")
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
                 return None
             return response.json()
         except requests.RequestException as e:
             logger.error(f"Erro ao emitir voucher: {e}")
             return None
-
-    
+        
     
     # Pessoas
     def buscar_pessoas(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:

@@ -39,9 +39,10 @@ from consultas.views import (
     BuscarPessoasView,
     CancelarBoletoFedBnkView,
     ConverterBoletoCSVView,
-    DadosSegundaViaBoletoView, 
+    DadosSegundaViaBoletoView,
+    EmissaoDeReciboComissaoView, 
     EmissaoSegundaViaBoletoView,
-    EmitirVoucherView,
+    EmitirVoucherComissaoView,
     ExportarFaturasComBoletosExcel, 
     ExportarFaturasComBoletosPDF, 
     RealizarConsultaView, 
@@ -194,13 +195,14 @@ urlpatterns = [
     
     # Comissões / Recibos / Vouchers
     path('comissoes/faturas/', BuscarFaturasComissoesView.as_view(), name='buscar-faturas-comissoes'),
-    path('comissoes/faturas/<str:numero_fatura>/comissoes/', BuscarComissoesPorFaturaView.as_view(), name='buscar-comissoes-por-fatura'),
-    path('comissoes/emitir/', EmitirVoucherView.as_view(), name='emitir-voucher'),
-    
+    path('comissoes/faturas/<str:numero_fatura>/comissoes/', BuscarComissoesPorFaturaView.as_view(), name='buscar-comissoes-por-fatura'),    
     
     path('comissoes/por-data/<str:data_corte>/', BuscarComissaoPorDataCorteView.as_view(), name='buscar-comissao-por-data'),
     
     path('comissoes/por-data-v2/<str:data_corte>/', BuscarComissaoPorDataCorteV2View.as_view(), name='buscar-comissao-por-data-v2'),
+    
+    path('comissoes/emitir-recibo/', EmissaoDeReciboComissaoView.as_view(), name='emissao-recibo-comissao'),
+    path('comissoes/emitir-voucher/', EmitirVoucherComissaoView.as_view(), name='emissao-voucher-comissao'),
     
     # Pessoas (favorecidos)
     path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),

@@ -253,65 +253,168 @@ class BuscarComissaoPorDataCorteV2View(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+                      
 
-class EmitirVoucherView(APIView):
+class EmissaoDeReciboComissaoView(APIView):
     """
-    Emite voucher/recibo de comissão
-    POST /comissoes/emitir/
-    Payload: {fatura, parcela, tipo_fat, tipo_documento}
+    Emite recibo de comissão
+    POST /comissoes/emitir-recibo/
+    
+    Payload esperado:
+    {
+        "tipo_documento": "recibo",
+        "data_corte": "2026-06-01",
+        "data_emissao": "2026-06-23",
+        "usuario": "nome_usuario",
+        "comissoes": [...],
+        "retencoes": [...],
+        "resumo": {...}
+    }
     """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         try:
-            fatura = request.data.get("fatura")
-            parcela = request.data.get("parcela", 1)
-            tipo_fat = request.data.get("tipo_fat", "F")
-            tipo_documento = request.data.get("tipo_documento", "recibo")
-
-            if not fatura:
+            logger.info("========== EMITIR RECIBO ==========")
+            dados = request.data
+            
+            # Valida dados básicos
+            if not dados.get('comissoes'):
                 return Response(
-                    {"sucesso": False, "erro": "Número da fatura é obrigatório"},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"sucesso": False, "erro": "Nenhuma comissão selecionada"},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # Chama o serviço que vai gerar o recibo
             service = FedhubService()
+            
+            # Prepara o payload para o FastAPI
             payload = {
-                "fatura": fatura,
-                "parcela": parcela,
-                "tipo_fat": tipo_fat,
+                "tipo_documento": dados.get("tipo_documento", "recibo"),
+                "data_corte": dados.get("data_corte"),
+                "data_emissao": dados.get("data_emissao", datetime.now().strftime("%Y-%m-%d")),
+                "usuario": dados.get("usuario", request.user.email),
+                "comissoes": dados.get("comissoes", []),
+                "retencoes": dados.get("retencoes", []),
+                "resumo": dados.get("resumo", {}),
             }
-            resultado = service.emitir_voucher(payload)
-
-            if not resultado or resultado.get("status") != "success":
+            
+            # Chama o FastAPI para gerar o PDF
+            resultado = service.emitir_recibo_comissao(payload)
+            
+            if not resultado:
                 return Response(
-                    {
-                        "sucesso": False,
-                        "erro": resultado.get("detail", "Erro ao emitir documento") if resultado else "Erro de comunicação",
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    {"sucesso": False, "erro": "Erro ao gerar recibo"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
 
-            return Response(
-                {
+            # Se o FastAPI retornou o PDF em base64
+            if resultado.get("pdf_base64"):
+                return Response({
                     "sucesso": True,
-                    "data": {
-                        "id": resultado.get("numero_guia"),
-                        "numero": resultado.get("numero_guia"),
-                        "emitidoEm": resultado.get("data_emissao"),
-                        "fatura": fatura,
-                        "tipoDocumento": tipo_documento,
-                    },
-                },
-                status=status.HTTP_200_OK,
-            )
+                    "numero_documento": resultado.get("numero_documento"),
+                    "nome_arquivo": resultado.get("nome_arquivo"),
+                    "pdf_base64": resultado.get("pdf_base64"),
+                    "mensagem": "Recibo gerado com sucesso"
+                }, status=status.HTTP_200_OK)
+            
+            # Se retornou apenas dados (sem PDF)
+            return Response({
+                "sucesso": True,
+                "dados": resultado,
+                "mensagem": "Recibo gerado com sucesso"
+            }, status=status.HTTP_200_OK)
+            
         except Exception as e:
-            logger.error(f"Erro em EmitirVoucherView: {e}")
+            logger.error(f"Erro em EmissaoDeReciboComissaoView: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return Response(
                 {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class EmitirVoucherComissaoView(APIView):
+    """
+    Emite voucher de comissão
+    POST /comissoes/emitir-voucher/
+    
+    Payload esperado:
+    {
+        "tipo_documento": "voucher",
+        "data_corte": "2026-06-01",
+        "data_emissao": "2026-06-23",
+        "usuario": "nome_usuario",
+        "comissoes": [...],
+        "retencoes": [...],
+        "resumo": {...}
+    }
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            logger.info("========== EMITIR VOUCHER ==========")
+            dados = request.data
+            
+            # Valida dados básicos
+            if not dados.get('comissoes'):
+                return Response(
+                    {"sucesso": False, "erro": "Nenhuma comissão selecionada"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Chama o serviço
+            service = FedhubService()
+            
+            # Prepara o payload para o FastAPI
+            payload = {
+                "tipo_documento": dados.get("tipo_documento", "voucher"),
+                "data_corte": dados.get("data_corte"),
+                "data_emissao": dados.get("data_emissao", datetime.now().strftime("%Y-%m-%d")),
+                "usuario": dados.get("usuario", request.user.email),
+                "comissoes": dados.get("comissoes", []),
+                "retencoes": dados.get("retencoes", []),
+                "resumo": dados.get("resumo", {}),
+            }
+            
+            # Chama o FastAPI para gerar o PDF
+            resultado = service.emitir_voucher_comissao(payload)
+            
+            if not resultado:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao gerar voucher"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+
+            # Se o FastAPI retornou o PDF em base64
+            if resultado.get("pdf_base64"):
+                return Response({
+                    "sucesso": True,
+                    "numero_documento": resultado.get("numero_documento"),
+                    "nome_arquivo": resultado.get("nome_arquivo"),
+                    "pdf_base64": resultado.get("pdf_base64"),
+                    "mensagem": "Voucher gerado com sucesso"
+                }, status=status.HTTP_200_OK)
+            
+            # Se retornou apenas dados
+            return Response({
+                "sucesso": True,
+                "dados": resultado,
+                "mensagem": "Voucher gerado com sucesso"
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Erro em EmitirVoucherComissaoView: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return Response(
+                {"success": False, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class BuscarPessoasView(APIView):
     """
@@ -344,7 +447,6 @@ class BuscarPessoasView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
 class BuscarPessoaPorCodigoView(APIView):
     """
     Busca pessoa (favorecido) por código
@@ -369,7 +471,6 @@ class BuscarPessoaPorCodigoView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
 
 class RealizarConsultaView(APIView):
 
