@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 class FedhubService:
     def __init__(self):
-        # self.base_url = "https://fedhub-api-local.ngrok.app"
-        self.base_url = "https://enjoyably-cranial-twistable.ngrok-free.dev"
+        self.base_url = "https://fedhub-api-local.ngrok.app"
+        # self.base_url = "https://enjoyably-cranial-twistable.ngrok-free.dev"
         # self.base_url = "http://localhost:8090"
 
     # Faturas
