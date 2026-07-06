@@ -40,9 +40,8 @@ from consultas.views import (
     CancelarBoletoFedBnkView,
     ConverterBoletoCSVView,
     DadosSegundaViaBoletoView,
-    EmissaoDeReciboComissaoView, 
     EmissaoSegundaViaBoletoView,
-    EmitirReciboCorretorComissaoView,
+    EmitirReciboComissaoView,
     EmitirVoucherComissaoView,
     ExportarFaturasComBoletosExcel, 
     ExportarFaturasComBoletosPDF, 
@@ -202,9 +201,8 @@ urlpatterns = [
     
     path('comissoes/por-data-v2/<str:data_corte>/', BuscarComissaoPorDataCorteV2View.as_view(), name='buscar-comissao-por-data-v2'),
     
-    path('comissoes/emitir-recibo/', EmissaoDeReciboComissaoView.as_view(), name='emissao-recibo-comissao'),
-    path('comissoes/emitir-recibo-corretor/', EmitirReciboCorretorComissaoView.as_view(), name='emitir-recibo-corretor'),
-    path('comissoes/emitir-voucher/', EmitirVoucherComissaoView.as_view(), name='emissao-voucher-comissao'),
+    path('comissoes/emitir-recibo/', EmitirReciboComissaoView.as_view(), name='emitir-recibo-comissao'),
+    path('comissoes/emitir-voucher/', EmitirVoucherComissaoView.as_view(), name='emitir-voucher-comissao'),
     
     # Pessoas (favorecidos)
     path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),

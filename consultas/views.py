@@ -254,91 +254,10 @@ class BuscarComissaoPorDataCorteV2View(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
                       
-
-class EmissaoDeReciboComissaoView(APIView):
-    """
-    Emite recibo de comissão
-    POST /comissoes/emitir-recibo/
-    
-    Payload esperado:
-    {
-        "tipo_documento": "recibo",
-        "data_corte": "2026-06-01",
-        "data_emissao": "2026-06-23",
-        "usuario": "nome_usuario",
-        "comissoes": [...],
-        "retencoes": [...],
-        "resumo": {...}
-    }
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        try:
-            logger.info("========== EMITIR RECIBO ==========")
-            dados = request.data
-            
-            # Valida dados básicos
-            if not dados.get('comissoes'):
-                return Response(
-                    {"sucesso": False, "erro": "Nenhuma comissão selecionada"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Chama o serviço que vai gerar o recibo
-            service = FedhubService()
-            
-            # Prepara o payload para o FastAPI
-            payload = {
-                "tipo_documento": dados.get("tipo_documento", "recibo"),
-                "data_corte": dados.get("data_corte"),
-                "data_emissao": dados.get("data_emissao", datetime.now().strftime("%Y-%m-%d")),
-                "usuario": dados.get("usuario", request.user.email),
-                "comissoes": dados.get("comissoes", []),
-                "retencoes": dados.get("retencoes", []),
-                "resumo": dados.get("resumo", {}),
-            }
-            
-            # Chama o FastAPI para gerar o PDF
-            resultado = service.emitir_recibo_comissao(payload)
-            
-            if not resultado:
-                return Response(
-                    {"sucesso": False, "erro": "Erro ao gerar recibo"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE
-                )
-
-            # Se o FastAPI retornou o PDF em base64
-            if resultado.get("pdf_base64"):
-                return Response({
-                    "sucesso": True,
-                    "numero_documento": resultado.get("numero_documento"),
-                    "nome_arquivo": resultado.get("nome_arquivo"),
-                    "pdf_base64": resultado.get("pdf_base64"),
-                    "mensagem": "Recibo gerado com sucesso"
-                }, status=status.HTTP_200_OK)
-            
-            # Se retornou apenas dados (sem PDF)
-            return Response({
-                "sucesso": True,
-                "dados": resultado,
-                "mensagem": "Recibo gerado com sucesso"
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Erro em EmissaoDeReciboComissaoView: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            return Response(
-                {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-class EmitirReciboCorretorComissaoView(APIView):
+class EmitirReciboComissaoView(APIView):
     """
     Emite recibo do corretor (agrupado por favorecido)
-    POST /comissoes/emitir-recibo-corretor/
+    POST /comissoes/emitir-recibo/
     
     Payload esperado:
     {
@@ -380,8 +299,8 @@ class EmitirReciboCorretorComissaoView(APIView):
                 "resumo": dados.get("resumo", {}),
             }
             
-            # Chama o FastAPI para gerar o PDF (rota nova)
-            resultado = service.emitir_recibo_corretor_comissao(payload)
+            # Chama o FastAPI para gerar o PDF
+            resultado = service.emitir_recibo_comissao(payload)
             
             if not resultado:
                 return Response(
@@ -694,8 +613,6 @@ class RealizarConsultaView(APIView):
 
         # Se o serializer não for válido (erros de validação de entrada).
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# --- View para Listar o Histórico de Consultas ---
 class StandardResultsPagination(PageNumberPagination):
     page_size = 10  # Deve ser o mesmo que intensPorPagina no frontend
     page_size_query_param = "page_size"

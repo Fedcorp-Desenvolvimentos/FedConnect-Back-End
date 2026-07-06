@@ -1087,39 +1087,18 @@ class FedhubService:
             logger.error(f"Erro inesperado ao chamar FastAPI V2: {e}")
             return None
     
-    
+
     def emitir_recibo_comissao(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        Emite recibo de comissão via FastAPI
-        POST /api/voucher/emitir-recibo
+        Emite recibo do corretor via FastAPI
+        POST /api/vouchers/emitir-recibo
         """
         try:
             response = requests.post(
                 f"{self.base_url}/api/vouchers/emitir-recibo",
                 json=payload,
                 headers=get_headers(),
-                timeout=60, 
-            )
-            
-            if response.status_code not in [200, 201]:
-                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
-                return None
-            return response.json()
-        except requests.RequestException as e:
-            logger.error(f"Erro ao emitir recibo: {e}")
-            return None
-
-    def emitir_recibo_corretor_comissao(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Emite recibo do corretor via FastAPI
-        POST /api/vouchers/emitir-recibo-corretor
-        """
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/vouchers/emitir-recibo-corretor",
-                json=payload,
-                headers=get_headers(),
-                timeout=60,  # Timeout maior para gerar PDF
+                timeout=60,
             )
             
             if response.status_code not in [200, 201]:
