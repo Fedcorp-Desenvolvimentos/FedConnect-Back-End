@@ -25,6 +25,9 @@ class FedhubService:
         self.base_url = "https://fedhub-api-local.ngrok.app"
         # self.base_url = "https://enjoyably-cranial-twistable.ngrok-free.dev"
         # self.base_url = "http://localhost:8090"
+        
+        # self.ambiente = "dev" 
+        # self.base_url = "http://localhost:8090" if self.ambiente == "dev" else "https://fedhub-api-local.ngrok.app"
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
