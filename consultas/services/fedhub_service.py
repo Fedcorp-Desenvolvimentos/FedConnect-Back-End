@@ -1063,6 +1063,8 @@ class FedhubService:
                 return None
             
             if "data" in data:
+                
+                logger.info(f"Dados retornados: {data.get('data')[:5]}... (total {len(data.get('data', []))} registros)")
                 return {
                     "status": "success",
                     "total_registros": data.get("total_registros", len(data.get("data", []))),
