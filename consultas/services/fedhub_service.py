@@ -25,9 +25,7 @@ class FedhubService:
         self.base_url = "https://fedhub-api-local.ngrok.app"
         # self.base_url = "https://enjoyably-cranial-twistable.ngrok-free.dev"
         # self.base_url = "http://localhost:8090"
-        
-        # self.ambiente = "dev" 
-        # self.base_url = "http://localhost:8090" if self.ambiente == "dev" else "https://fedhub-api-local.ngrok.app"
+
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):
@@ -447,48 +445,62 @@ class FedhubService:
             return None
 
     # Cedentes
-    def buscar_todos_cedentes(self, codigo: str):
+    def buscar_todos_cedentes(self) -> Optional[Dict[str, Any]]:
+        """
+        Busca todos os cedentes no FastAPI
+        GET /api/cedentes/
+        """
         try:
             response = requests.get(
-                f"{self.base_url}/api/cedentes/", headers=get_headers(), timeout=30
-            )
-
-            if response.status_code != 200:
-                logger.error(f"Firebird erro {response.status_code}")
-                return None
-
-            data = response.json()
-
-            if not data.get("encontrado"):
-                return None
-
-            return data.get("dados")
-
-        except requests.RequestException as e:
-            logger.error(f"Erro ao chamar Firebird: {e}")
-            return None
-
-    def buscar_cedente_por_codigo(self, codigo: str):
-        try:
-            response = requests.get(
-                f"{self.base_url}/api/cedentes/cedente/{codigo}",
+                f"{self.base_url}/api/cedentes/",
                 headers=get_headers(),
                 timeout=30,
             )
-
+            
             if response.status_code != 200:
-                logger.error(f"Firebird erro {response.status_code}")
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
                 return None
-
+            
             data = response.json()
-
-            if not data.get("encontrado"):
+            
+            # Verifica estrutura da resposta
+            if data.get("status") != "success":
+                logger.error(f"FastAPI retornou erro: {data}")
                 return None
-
-            return data.get("dados")
-
+            
+            return data
+            
         except requests.RequestException as e:
-            logger.error(f"Erro ao chamar Firebird: {e}")
+            logger.error(f"Erro ao buscar cedentes: {e}")
+            return None
+
+    def buscar_cedente_por_nome(self, nome: str) -> Optional[Dict[str, Any]]:
+        """
+        Busca cedente por nome no FastAPI
+        GET /api/cedentes/por-nome/?nome=termo
+        """
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/cedentes/por-nome",
+                params={"nome": nome},
+                headers=get_headers(),
+                timeout=30,
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+                return None
+            
+            data = response.json()
+            
+            if data.get("status") != "success":
+                logger.error(f"FastAPI retornou erro: {data}")
+                return None
+            
+            return data
+            
+        except requests.RequestException as e:
+            logger.error(f"Erro ao buscar cedente por nome: {e}")
             return None
 
     # Nota Fiscal
@@ -1153,6 +1165,26 @@ class FedhubService:
             return response.json()
         except requests.RequestException as e:
             logger.error(f"Erro ao buscar pessoas: {e}")
+            return None
+        
+    def criar_pessoa(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Cria pessoa - proxy para FedHub
+        POST /api/pessoas/
+        """
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/pessoas/",
+                json=payload,
+                headers=get_headers(),
+                timeout=30,
+            )
+            if response.status_code not in [200, 201]:
+                logger.error(f"FedHub erro {response.status_code}: {response.text}")
+                return None
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"Erro ao criar pessoa: {e}")
             return None
 
 

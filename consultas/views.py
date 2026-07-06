@@ -1791,7 +1791,6 @@ class DadosSegundaViaBoletoView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
-
 class EmissaoSegundaViaBoletoView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -1831,6 +1830,178 @@ class EmissaoSegundaViaBoletoView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+# consultas/views.py
+
+class CriarPessoaView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados_pessoa = request.data
+            
+            logger.info(f"Dados recebidos para criar pessoa: {dados_pessoa}")
+            
+            # ✅ Chama o FastAPI para criar a pessoa
+            resultado = service.criar_pessoa(dados_pessoa)
+            
+            if not resultado:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao criar pessoa no sistema"
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            # Verifica se o FastAPI retornou erro
+            if resultado.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Erro ao criar pessoa")
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # ✅ Retorna sucesso com Response
+            return Response(
+                {
+                    "sucesso": True,
+                    "mensagem": "Pessoa criada com sucesso",
+                    "data": resultado.get("data", {})
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        except Exception as e:
+            logger.error(f"Erro ao criar pessoa: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class BuscarCedentesView(APIView):
+    """
+    Busca todos os cedentes via FastAPI
+    GET /cedentes/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            
+            # Busca todos os cedentes no FastAPI
+            resultado = service.buscar_todos_cedentes()
+            
+            if not resultado:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao buscar cedentes"
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            # Verifica se o resultado tem a estrutura esperada
+            if resultado.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Erro ao buscar cedentes")
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Retorna os dados dos cedentes
+            return Response(
+                {
+                    "sucesso": True,
+                    "data": resultado.get("data", []),
+                    "total": resultado.get("total", 0)
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar cedentes: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class BuscarCedentePorNomeView(APIView):
+    """
+    Busca cedente por nome via FastAPI
+    GET /cedentes/buscar/?nome=termo
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            nome = request.query_params.get("nome", "").strip()
+            
+            if not nome or len(nome) < 2:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Digite pelo menos 2 caracteres para buscar"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            service = FedhubService()
+            
+            # Busca cedente por nome no FastAPI
+            resultado = service.buscar_cedente_por_nome(nome)
+            
+            if not resultado:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao buscar cedente"
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            if resultado.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Erro ao buscar cedente")
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            return Response(
+                {
+                    "sucesso": True,
+                    "data": resultado.get("data", []),
+                    "total": resultado.get("total", 0)
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar cedente por nome: {str(e)}")
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 # *******************************************#

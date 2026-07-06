@@ -24,6 +24,8 @@ from consultas.views import (
     BuscarAdministradoras,
     BuscarAdministradorasPorCodigo, 
     BuscarAdministradorasPorNome,
+    BuscarCedentePorNomeView,
+    BuscarCedentesView,
     BuscarCidadesAutocomplete,
     BuscarComissaoPorDataCorteV2View,
     BuscarComissaoPorDataCorteView, 
@@ -39,6 +41,7 @@ from consultas.views import (
     BuscarPessoasView,
     CancelarBoletoFedBnkView,
     ConverterBoletoCSVView,
+    CriarPessoaView,
     DadosSegundaViaBoletoView,
     EmissaoSegundaViaBoletoView,
     EmitirReciboComissaoView,
@@ -207,6 +210,10 @@ urlpatterns = [
     # Pessoas (favorecidos)
     path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),
     path('pessoas/<str:codigo>/', BuscarPessoaPorCodigoView.as_view(), name='buscar-pessoa-por-codigo'),
+    path('pessoas/criar/', CriarPessoaView.as_view(), name='criar-pessoa'),
+    
+    path('cedentes/', BuscarCedentesView.as_view(), name='buscar-cedentes'),
+    path('cedentes/buscar/', BuscarCedentePorNomeView.as_view(), name='buscar-cedente-por-nome'),
     
     path("", include(router.urls)),
 ]
