@@ -133,16 +133,6 @@ class BuscarComissaoPorDataCorteView(APIView):
             logger.info(f"PARAMS FINAIS: {params}")
             logger.info("=====================================")
             
-            # Se tiver com_voucher, converte para boolean
-            if 'com_voucher' in params:
-                val = params['com_voucher']
-                if val.lower() == 'true':
-                    params['com_voucher'] = True
-                elif val.lower() == 'false':
-                    params['com_voucher'] = False
-                elif val.lower() == 'null' or val == '':
-                    del params['com_voucher']
-            
             service = FedhubService()
             dados = service.buscar_comissao_por_data_corte(data_corte, params)
             if not dados:
@@ -195,7 +185,6 @@ class BuscarComissaoPorDataCorteV2View(APIView):
         - co_estipulante: Co-estipulante
         - apolice: Número da apólice
         - recibo: Número do recibo/voucher
-        - com_voucher: null=apenas sem voucher, true=apenas com voucher, false=todos
         - limit: Limite de registros (default: 100)
         - offset: Offset para paginação (default: 0)
     """
@@ -209,16 +198,6 @@ class BuscarComissaoPorDataCorteV2View(APIView):
             for key, value in request.query_params.items():
                 if value not in [None, '', 'null']:
                     params[key] = value
-            
-            # Tratamento especial para com_voucher
-            if 'com_voucher' in params:
-                val = params['com_voucher']
-                if val.lower() == 'true':
-                    params['com_voucher'] = True
-                elif val.lower() == 'false':
-                    params['com_voucher'] = False
-                elif val.lower() == 'null' or val == '':
-                    del params['com_voucher']
             
             service = FedhubService()
             dados = service.buscar_comissoes_v2(data_corte, params)

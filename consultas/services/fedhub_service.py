@@ -1030,8 +1030,8 @@ class FedhubService:
             from datetime import datetime
             datetime.strptime(data_corte, '%Y-%m-%d')
             
-            # Monta os parâmetros da query
-            query_params = {"data_corte": data_corte}
+            # Monta os parâmetros da query (data_corte é fixo no backend)
+            query_params = {}
             
             # Limpa parâmetros vazios
             for key, value in params.items():
@@ -1044,17 +1044,6 @@ class FedhubService:
                             query_params[key] = value
                     else:
                         query_params[key] = value
-            
-            # Converte com_voucher para boolean se vier como string
-            if 'com_voucher' in query_params:
-                val = query_params['com_voucher']
-                if isinstance(val, str):
-                    if val.lower() == 'true':
-                        query_params['com_voucher'] = True
-                    elif val.lower() == 'false':
-                        query_params['com_voucher'] = False
-                    elif val.lower() == 'null' or val == '':
-                        del query_params['com_voucher']
             
             logger.info(f"Chamando FastAPI V2 com params: {query_params}")
             
@@ -1214,8 +1203,8 @@ class FedhubService:
             from datetime import datetime
             datetime.strptime(data_corte, '%Y-%m-%d')
             
-            # Monta os parâmetros da query
-            query_params = {"data_corte": data_corte}
+            # Monta os parâmetros da query (data_corte é fixo no backend)
+            query_params = {}
             
             # Adiciona todos os parâmetros opcionais
             if params:
