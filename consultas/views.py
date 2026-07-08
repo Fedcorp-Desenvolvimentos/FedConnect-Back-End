@@ -248,6 +248,9 @@ class ConsultarComissaoView(APIView):
         - co_estipulante: Co-estipulante
         - apolice: Número da apólice
         - voucher: Número do voucher/recibo
+        - produto: Descrição do produto
+        - vigencia_inicial: Início da vigência (YYYY-MM-DD)
+        - vigencia_final: Fim da vigência (YYYY-MM-DD)
         - limit: Limite de registros (default: 100)
         - offset: Offset para paginação (default: 0)
     """
@@ -296,6 +299,50 @@ class ConsultarComissaoView(APIView):
             
         except Exception as e:
             logger.error(f"Erro em ConsultarComissaoView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class BuscarProdutosPorFavorecidoView(APIView):
+    """
+    Retorna lista de produtos distintos para um favorecido
+    GET /comissoes/produtos-por-favorecido/?favorecido=...
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            favorecido = request.query_params.get('favorecido')
+            if not favorecido:
+                return Response(
+                    {"sucesso": False, "erro": "Parâmetro 'favorecido' é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            service = FedhubService()
+            dados = service.buscar_produtos_por_favorecido(favorecido)
+            
+            if not dados:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao buscar produtos"
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            
+            return Response(
+                {
+                    "sucesso": True,
+                    "produtos": dados.get("produtos", []),
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro em BuscarProdutosPorFavorecidoView: {e}")
             return Response(
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

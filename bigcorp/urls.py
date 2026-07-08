@@ -30,6 +30,7 @@ from consultas.views import (
     BuscarComissaoPorDataCorteV2View,
     BuscarComissaoPorDataCorteView,
     ConsultarComissaoView,
+    BuscarProdutosPorFavorecidoView,
     BuscarCorretores, 
     BuscarFaturaPorNumero, 
     BuscarFaturamento,
@@ -209,6 +210,7 @@ urlpatterns = [
     path('comissoes/emitir-voucher/', EmitirVoucherComissaoView.as_view(), name='emitir-voucher-comissao'),
     
     path('comissoes/consultar/', ConsultarComissaoView.as_view(), name='consultar-comissoes'),
+    path('comissoes/produtos-por-favorecido/', BuscarProdutosPorFavorecidoView.as_view(), name='produtos-por-favorecido'),
     
     # Pessoas (favorecidos)
     path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),

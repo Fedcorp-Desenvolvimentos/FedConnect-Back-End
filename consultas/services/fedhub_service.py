@@ -1015,6 +1015,29 @@ class FedhubService:
             logger.error(f"Erro ao consultar comissões: {e}")
             return None
     
+    def buscar_produtos_por_favorecido(self, favorecido: str) -> Optional[Dict[str, Any]]:
+        """
+        Busca lista de produtos distintos por favorecido
+        GET /api/vouchers/produtos-por-favorecido?favorecido=...
+        """
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/vouchers/produtos-por-favorecido",
+                params={"favorecido": favorecido},
+                headers=get_headers(),
+                timeout=30,
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+                return None
+            
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar produtos por favorecido: {e}")
+            return None
+    
     def buscar_faturas_comissoes(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Busca faturas para emissão de recibos de comissões
