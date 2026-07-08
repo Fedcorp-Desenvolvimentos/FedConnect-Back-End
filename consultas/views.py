@@ -513,6 +513,7 @@ class BuscarPessoasView(APIView):
     """
     Busca pessoas (favorecidos)
     GET /pessoas/
+    POST /pessoas/
     """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -537,6 +538,63 @@ class BuscarPessoasView(APIView):
             logger.error(f"Erro em BuscarPessoasView: {e}")
             return Response(
                 {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def post(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados_pessoa = request.data
+
+            logger.info(f"Dados recebidos para criar pessoa: {dados_pessoa}")
+
+            resultado = service.criar_pessoa(dados_pessoa)
+            if not resultado:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao criar pessoa no sistema",
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            if resultado.get("status") == "timeout":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get(
+                            "message", "Timeout ao criar pessoa no FedHub"
+                        ),
+                    },
+                    status=status.HTTP_504_GATEWAY_TIMEOUT,
+                )
+
+            if resultado.get("status") != "success":
+                http_status = resultado.get("http_status", status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Erro ao criar pessoa"),
+                    },
+                    status=http_status,
+                )
+
+            return Response(
+                {
+                    "sucesso": True,
+                    "mensagem": "Pessoa criada com sucesso",
+                    "data": resultado.get("data", {}),
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logger.error(f"Erro ao criar pessoa: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}",
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -1949,15 +2007,27 @@ class CriarPessoaView(APIView):
                     },
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
+
+            if resultado.get("status") == "timeout":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get(
+                            "message", "Timeout ao criar pessoa no FedHub"
+                        ),
+                    },
+                    status=status.HTTP_504_GATEWAY_TIMEOUT,
+                )
             
             # Verifica se o FastAPI retornou erro
             if resultado.get("status") != "success":
+                http_status = resultado.get("http_status", status.HTTP_400_BAD_REQUEST)
                 return Response(
                     {
                         "sucesso": False,
                         "erro": resultado.get("message", "Erro ao criar pessoa")
                     },
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=http_status
                 )
             
             # ✅ Retorna sucesso com Response

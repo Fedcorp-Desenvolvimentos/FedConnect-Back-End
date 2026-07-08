@@ -1223,20 +1223,85 @@ class FedhubService:
         Cria pessoa - proxy para FedHub
         POST /api/pessoas/
         """
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/pessoas/",
-                json=payload,
-                headers=get_headers(),
-                timeout=30,
-            )
-            if response.status_code not in [200, 201]:
-                logger.error(f"FedHub erro {response.status_code}: {response.text}")
-                return None
-            return response.json()
-        except requests.RequestException as e:
-            logger.error(f"Erro ao criar pessoa: {e}")
-            return None
+        urls = [
+            f"{self.base_url}/api/pessoas/criar-pessoa",
+            f"{self.base_url}/api/pessoas/",
+        ]
+        timeout_por_tentativa = [(10, 60), (10, 90)]
+        ultimo_erro = None
+
+        for url in urls:
+            for tentativa, timeout_atual in enumerate(timeout_por_tentativa, start=1):
+                try:
+                    response = requests.post(
+                        url,
+                        json=payload,
+                        headers=get_headers(),
+                        timeout=timeout_atual,
+                    )
+
+                    if response.status_code in [200, 201]:
+                        try:
+                            return response.json()
+                        except ValueError:
+                            return {
+                                "status": "error",
+                                "message": "Resposta inválida do FedHub ao criar pessoa",
+                                "http_status": 502,
+                            }
+
+                    logger.error(
+                        f"FedHub erro ao criar pessoa | URL: {url} | tentativa: {tentativa} | "
+                        f"status: {response.status_code} | body: {response.text}"
+                    )
+
+                    mensagem = "Erro ao criar pessoa no FedHub"
+                    try:
+                        body = response.json()
+                        mensagem = body.get("message", mensagem)
+                    except ValueError:
+                        pass
+
+                    if response.status_code in [404, 405] and url.endswith("/api/pessoas/criar-pessoa"):
+                        # Se o upstream mudar a rota, tenta o endpoint legado em seguida.
+                        break
+
+                    return {
+                        "status": "error",
+                        "message": mensagem,
+                        "http_status": response.status_code,
+                    }
+
+                except requests.Timeout as e:
+                    ultimo_erro = e
+                    logger.error(
+                        f"Timeout ao criar pessoa | URL: {url} | tentativa: {tentativa} | erro: {e}",
+                        exc_info=True,
+                    )
+
+                    if tentativa == len(timeout_por_tentativa):
+                        continue
+
+                except requests.RequestException as e:
+                    ultimo_erro = e
+                    logger.error(
+                        f"Erro ao criar pessoa | URL: {url} | tentativa: {tentativa} | erro: {e}",
+                        exc_info=True,
+                    )
+                    break
+
+        if isinstance(ultimo_erro, requests.Timeout):
+            return {
+                "status": "timeout",
+                "message": "Timeout ao aguardar resposta do FedHub ao criar pessoa",
+                "http_status": 504,
+            }
+
+        return {
+            "status": "error",
+            "message": f"Erro de comunicação com FedHub: {ultimo_erro}" if ultimo_erro else "Erro de comunicação com FedHub",
+            "http_status": 503,
+        }
 
 
     def buscar_comissao_por_data_corte(self, data_corte: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
