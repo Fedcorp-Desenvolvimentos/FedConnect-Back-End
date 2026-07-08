@@ -976,6 +976,45 @@ class FedhubService:
     # Comissões / Vouchers (Recibos de Comissões)
     # ============================================================
     
+    def consultar_comissoes(self, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+        """
+        Consulta comissões com voucher (consulta/histórico)
+        GET /api/vouchers/consultar-faturas-comissoes
+        """
+        try:
+            query_params = {}
+            
+            if params:
+                for key, value in params.items():
+                    if value not in [None, '', 'null']:
+                        query_params[key] = value
+            
+            logger.info(f"Chamando FastAPI CONSULTA com params: {query_params}")
+            
+            response = requests.get(
+                f"{self.base_url}/api/vouchers/consultar-faturas-comissoes",
+                params=query_params,
+                headers=get_headers(),
+                timeout=60,
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+                return None
+            
+            data = response.json()
+            return {
+                "status": "success",
+                "total_registros": data.get("total_registros", 0),
+                "data": data.get("data", []),
+                "has_more": data.get("has_more", False),
+                "filtros_aplicados": data.get("filtros_aplicados", {}),
+            }
+            
+        except Exception as e:
+            logger.error(f"Erro ao consultar comissões: {e}")
+            return None
+    
     def buscar_faturas_comissoes(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Busca faturas para emissão de recibos de comissões

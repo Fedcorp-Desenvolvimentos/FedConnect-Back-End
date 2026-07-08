@@ -232,7 +232,75 @@ class BuscarComissaoPorDataCorteV2View(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-                      
+
+class ConsultarComissaoView(APIView):
+    """
+    Consulta comissões com voucher emitido (consulta/histórico)
+    GET /comissoes/consultar/
+    
+    Parâmetros (query string):
+        - favorecido: Código do favorecido (com ou sem zeros)
+        - fatura: Número da fatura
+        - vencimento_inicial: Data inicial (YYYY-MM-DD)
+        - vencimento_final: Data final (YYYY-MM-DD)
+        - status: todas, baixadas, pendentes
+        - tipo: Tipo de comissão (A, B, etc)
+        - co_estipulante: Co-estipulante
+        - apolice: Número da apólice
+        - voucher: Número do voucher/recibo
+        - limit: Limite de registros (default: 100)
+        - offset: Offset para paginação (default: 0)
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            params = {}
+            for key, value in request.query_params.items():
+                if value not in [None, '', 'null']:
+                    params[key] = value
+            
+            service = FedhubService()
+            dados = service.consultar_comissoes(params)
+            
+            if not dados:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Não foi possível consultar comissões."
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            
+            if dados.get("status") == "error":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": dados.get("message", "Erro na consulta")
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            return Response(
+                {
+                    "sucesso": True,
+                    "dados": {
+                        "data": dados.get("data", []),
+                        "total_registros": dados.get("total_registros", 0),
+                    },
+                    "filtros_aplicados": params,
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro em ConsultarComissaoView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+             
 class EmitirReciboComissaoView(APIView):
     """
     Emite recibo do corretor (agrupado por favorecido)
