@@ -29,6 +29,7 @@ from consultas.views import (
     BuscarCidadesAutocomplete,
     BuscarComissaoPorDataCorteV2View,
     BuscarComissaoPorDataCorteView,
+    CancelarComissaoView,
     ConsultarComissaoView,
     BuscarProdutosPorFavorecidoView,
     BuscarCorretores, 
@@ -211,6 +212,7 @@ urlpatterns = [
     
     path('comissoes/consultar/', ConsultarComissaoView.as_view(), name='consultar-comissoes'),
     path('comissoes/produtos-por-favorecido/', BuscarProdutosPorFavorecidoView.as_view(), name='produtos-por-favorecido'),
+    path('comissoes/cancelar/', CancelarComissaoView.as_view(), name='cancelar-comissoes'),
     
     # Pessoas (favorecidos)
     path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),

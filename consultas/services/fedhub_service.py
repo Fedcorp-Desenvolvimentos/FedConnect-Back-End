@@ -1195,6 +1195,61 @@ class FedhubService:
             logger.error(f"Erro ao emitir voucher: {e}")
             return None
         
+    def cancelar_comissao(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Cancela uma comissão via FastAPI
+        POST /api/vouchers/cancelar-comissao
+        
+        Payload esperado:
+        {
+            "numero_comissao": "20129486",
+            "parcela": 1,
+            "documento": "0001525504",
+            "favorecido": "0000002098",
+            "tipo_comissao": "BENEFICIO",
+            "voucher": "20129486",
+            "motivo_cancelamento": "Cancelamento solicitado pelo usuário"
+        }
+        """
+        try:
+            logger.info(f"Cancelando comissão no FedHub: {payload}")
+            
+            response = requests.post(
+                f"{self.base_url}/api/vouchers/cancelar-comissao",
+                json=payload,
+                headers=get_headers(),
+                timeout=60,
+            )
+            
+            if response.status_code not in [200, 201]:
+                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+                return {
+                    "status": "error",
+                    "message": f"Erro na API do FedHub: {response.status_code}"
+                }
+            
+            data = response.json()
+            
+            # Verifica se o FedHub retornou sucesso
+            if data.get("status") == "success":
+                return {
+                    "status": "success",
+                    "message": data.get("message", "Comissão cancelada com sucesso"),
+                    "data": data.get("data", {})
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": data.get("message", "Falha ao cancelar comissão")
+                }
+                
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FastAPI para cancelar comissão: {e}")
+            return {
+                "status": "error",
+                "message": f"Erro de comunicação: {str(e)}"
+            }
+        
     
     # Pessoas
     def buscar_pessoas(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:

@@ -508,7 +508,111 @@ class EmitirVoucherComissaoView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+class CancelarComissaoView(APIView):
+    """
+    Cancela uma ou mais comissões.
+    POST /comissoes/cancelar/
+    Payload esperado:
+    {
+        "comissoes": [
+            {
+                "fatura": 379807,
+                "parcela": 1,
+                "documento": "0001525504",
+                "favorecido": "0000002098",
+                "voucher": "20129486",
+                "tipo": "BENEFICIO"
+            }
+        ]
+    }
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request, *args, **kwargs):
+        try:
+            lista_comissoes = request.data.get("comissoes", [])
+
+            if not lista_comissoes:
+                return Response(
+                    {"sucesso": False, "erro": "Nenhuma comissão fornecida para cancelamento."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            logger.info("========== CANCELAR COMISSÕES ==========")
+            logger.info(f"Dados recebidos para cancelamento: {lista_comissoes}")
+            logger.info("========================================")
+
+            service = FedhubService()
+            resultados = []
+            comissoes_canceladas = 0
+
+            for comissao in lista_comissoes:
+                numero_comissao = comissao.get("voucher")
+                parcela = comissao.get("parcela")
+                documento = comissao.get("documento")
+                favorecido = comissao.get("favorecido")
+                tipo_comissao = comissao.get("tipo")
+                voucher = comissao.get("voucher")
+                motivo_cancelamento = comissao.get("motivo_cancelamento", "Cancelamento solicitado pelo usuário")
+
+                # Valida dados obrigatórios
+                if not all([numero_comissao, documento, favorecido, voucher]):
+                    logger.warning(f"Comissão ignorada devido a dados faltantes: {comissao}")
+                    resultados.append({
+                        "comissao": comissao,
+                        "status": "erro",
+                        "mensagem": "Dados obrigatórios (voucher, documento, favorecido) faltando."
+                    })
+                    continue
+
+                payload_fedhub = {
+                    "numero_comissao": numero_comissao,
+                    "parcela": parcela,
+                    "documento": documento,
+                    "favorecido": favorecido,
+                    "tipo_comissao": tipo_comissao,
+                    "voucher": voucher,
+                    "motivo_cancelamento": motivo_cancelamento
+                }
+
+                logger.info(f"Cancelando comissão: {payload_fedhub}")
+
+                resultado = service.cancelar_comissao(payload_fedhub)
+
+                if resultado and resultado.get("status") == "success":
+                    comissoes_canceladas += 1
+                    resultados.append({
+                        "comissao": comissao,
+                        "status": "sucesso",
+                        "mensagem": resultado.get("message", "Cancelada com sucesso")
+                    })
+                else:
+                    resultados.append({
+                        "comissao": comissao,
+                        "status": "erro",
+                        "mensagem": resultado.get("message", "Erro ao cancelar comissão") if resultado else "Erro desconhecido"
+                    })
+
+            return Response(
+                {
+                    "sucesso": True,
+                    "mensagem": f"{comissoes_canceladas} comissão(ões) cancelada(s) com sucesso.",
+                    "total_processadas": len(lista_comissoes),
+                    "total_canceladas": comissoes_canceladas,
+                    "resultados": resultados
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            logger.error(f"Erro em CancelarComissaoView: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 class BuscarPessoasView(APIView):
     """
     Busca pessoas (favorecidos)
