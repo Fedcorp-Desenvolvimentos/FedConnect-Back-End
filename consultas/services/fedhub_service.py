@@ -920,47 +920,20 @@ class FedhubService:
 
     def emitir_segunda_via_boleto(self, fatura: str, boletos: dict) -> Optional[Dict[str, Any]]:
         try:
-            # Converte para lista se necessário
-            if isinstance(boletos, dict):
-                boletos = [boletos]
-            
-            # Processa cada boleto
-            boletos_processados = []
-            for boleto in boletos:
-                # Extrai valores
-                valor_total = boleto.get('valor_total', 0)
-                deducao = boleto.get('deducao', 0)  # ou 'deducoes' dependendo do campo
-                
-                # Converte para float
-                try:
-                    valor_total = float(valor_total) if valor_total else 0.0
-                    deducao = float(deducao) if deducao else 0.0
-                except (ValueError, TypeError):
-                    valor_total = 0.0
-                    deducao = 0.0
-                
-                # Calcula valor do documento
-                valor_documento = valor_total + deducao
-                
-                # Cria uma cópia do boleto com o valor atualizado
-                boleto_atualizado = boleto.copy()
-                boleto_atualizado['valor_documento'] = valor_documento
-                boleto_atualizado['valor_total'] = valor_total  # Mantém o original
-                
-                boletos_processados.append(boleto_atualizado)
-            
-            # Agora normaliza os boletos com o valor calculado
-            normalized = [self._normalize_boleto_keys(b) for b in boletos_processados]
-            
-            # Validação...
-            for idx, boleto in enumerate(normalized):
+            if isinstance(boletos, list):
+                normalized = [self._normalize_boleto_keys(b) for b in boletos]
+            elif isinstance(boletos, dict):
+                normalized = [self._normalize_boleto_keys(boletos)]
+            else:
+                normalized = boletos
+
+            for idx, boleto in enumerate(normalized if isinstance(normalized, list) else [normalized]):
                 if not boleto.get('linha_digitavel') or not boleto.get('linha_purificada'):
                     raise ValueError(
                         f"Boleto {idx + 1} da fatura {fatura} não foi gerado corretamente no FINANC. "
                         "Por favor, refaça o processo de faturamento."
                     )
-            
-            # Envia para o PDF generator
+
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
             
             response = requests.post(
@@ -969,61 +942,36 @@ class FedhubService:
                 data=payload,
                 timeout=30.0
             )
-            
+
             if response.status_code not in [200, 201, 202, 204]:
                 logger.error(f"FedHub erro {response.status_code}: {response.text}")
                 return None
-            
+
             nome_arquivo = response.json().get("arquivo")
             if not nome_arquivo:
                 logger.error("Nome do arquivo não retornado pelo FedHub")
                 return None
-            
-            # Baixa e exclui o arquivo
+
             file_response = requests.delete(
                 f"{self.base_url}/api/pdf-generator/excluir-boleto/{nome_arquivo}",
                 headers=get_headers(),
                 timeout=30.0
             )
-            
+
             if file_response.status_code != 200:
                 logger.error(f"Erro ao baixar/excluir boleto {nome_arquivo}: {file_response.status_code}")
                 return None
-            
+
             return {
                 "status": "success",
                 "content": file_response.content,
                 "filename": nome_arquivo,
             }
-            
+
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar FedHub: {e}")
             return None
-    
-    def _calcular_valor_documento(self, valor_total: float, deducao: float) -> float:
-        """
-        Calcula o valor do documento somando o valor total com a dedução.
-        
-        Args:
-            valor_total: Valor total do boleto
-            deducao: Valor da dedução (pode ser negativo)
-        
-        Returns:
-            float: Valor do documento calculado
-        """
-        try:
-            # Converte para float se necessário
-            valor_total = float(valor_total) if not isinstance(valor_total, float) else valor_total
-            deducao = float(deducao) if not isinstance(deducao, float) else deducao
-            
-            # Soma os valores
-            return valor_total + deducao
-        except (ValueError, TypeError) as e:
-            logger.error(f"Erro ao calcular valor do documento: {e}")
-            return float(valor_total) if valor_total else 0.0
-    
-    
-    
+
     # ============================================================
     # Comissões / Vouchers (Recibos de Comissões)
     # ============================================================
