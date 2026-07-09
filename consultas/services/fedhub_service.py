@@ -918,78 +918,22 @@ class FedhubService:
 
         return normalized
 
-    def _processar_e_formatar_valores(self, boleto: dict) -> dict:
-        """
-        Processa e formata os valores do boleto para string no formato brasileiro
-        """
-        try:
-            # Extrai valores
-            valor_total = boleto.get('valor_total', '0,00')
-            deducao = boleto.get('deducao', '0,00') or boleto.get('deducoes', '0,00')
-            
-            # Função para converter string BR para float
-            def parse_br_currency(val):
-                if isinstance(val, (int, float)):
-                    return float(val)
-                if isinstance(val, str):
-                    # Remove R$, espaços, pontos de milhar e substitui vírgula por ponto
-                    val = val.replace('R$', '').replace(' ', '').strip()
-                    val = val.replace('.', '').replace(',', '.')
-                    try:
-                        return float(val) if val else 0.0
-                    except ValueError:
-                        return 0.0
-                return 0.0
-            
-            # Função para formatar float para string BR
-            def format_br_currency(val):
-                try:
-                    val = float(val)
-                    return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                except (ValueError, TypeError):
-                    return "0,00"
-            
-            valor_total_float = parse_br_currency(valor_total)
-            deducao_float = parse_br_currency(deducao)
-            valor_documento_float = valor_total_float + deducao_float
-            
-            # Cria cópia atualizada com valores formatados como STRING
-            boleto_atualizado = boleto.copy()
-            boleto_atualizado['valor_total'] = format_br_currency(valor_total_float)
-            boleto_atualizado['valor_documento'] = format_br_currency(valor_documento_float)
-            boleto_atualizado['deducoes'] = format_br_currency(deducao_float)
-            
-            logger.debug(f"Valores processados - Total: {boleto_atualizado['valor_total']}, "
-                        f"Dedução: {boleto_atualizado['deducoes']}, "
-                        f"Documento: {boleto_atualizado['valor_documento']}")
-            
-            return boleto_atualizado
-            
-        except Exception as e:
-            logger.error(f"Erro ao processar valores do boleto: {e}")
-            return boleto
-
     def emitir_segunda_via_boleto(self, fatura: str, boletos: dict) -> Optional[Dict[str, Any]]:
         try:
-            # Converte para lista se necessário
-            if isinstance(boletos, dict):
-                boletos = [boletos]
-            
-            # Processa e formata os valores de cada boleto
-            boletos_processados = [self._processar_e_formatar_valores(b) for b in boletos]
-            
-            # Normaliza os boletos
-            normalized = [self._normalize_boleto_keys(b) for b in boletos_processados]
-            
-            # Validação...
-            for idx, boleto in enumerate(normalized):
+            if isinstance(boletos, list):
+                normalized = [self._normalize_boleto_keys(b) for b in boletos]
+            elif isinstance(boletos, dict):
+                normalized = [self._normalize_boleto_keys(boletos)]
+            else:
+                normalized = boletos
+
+            for idx, boleto in enumerate(normalized if isinstance(normalized, list) else [normalized]):
                 if not boleto.get('linha_digitavel') or not boleto.get('linha_purificada'):
                     raise ValueError(
                         f"Boleto {idx + 1} da fatura {fatura} não foi gerado corretamente no FINANC. "
                         "Por favor, refaça o processo de faturamento."
                     )
-            
-            # Envia para o PDF generator
+
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
             
             response = requests.post(
@@ -998,33 +942,32 @@ class FedhubService:
                 data=payload,
                 timeout=30.0
             )
-            
+
             if response.status_code not in [200, 201, 202, 204]:
                 logger.error(f"FedHub erro {response.status_code}: {response.text}")
                 return None
-            
+
             nome_arquivo = response.json().get("arquivo")
             if not nome_arquivo:
                 logger.error("Nome do arquivo não retornado pelo FedHub")
                 return None
-            
-            # Baixa e exclui o arquivo
+
             file_response = requests.delete(
                 f"{self.base_url}/api/pdf-generator/excluir-boleto/{nome_arquivo}",
                 headers=get_headers(),
                 timeout=30.0
             )
-            
+
             if file_response.status_code != 200:
                 logger.error(f"Erro ao baixar/excluir boleto {nome_arquivo}: {file_response.status_code}")
                 return None
-            
+
             return {
                 "status": "success",
                 "content": file_response.content,
                 "filename": nome_arquivo,
             }
-            
+
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar FedHub: {e}")
             return None
