@@ -613,6 +613,7 @@ class CancelarComissaoView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 class BuscarPessoasView(APIView):
     """
     Busca pessoas (favorecidos)
