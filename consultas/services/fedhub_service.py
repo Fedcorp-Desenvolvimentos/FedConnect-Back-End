@@ -935,7 +935,7 @@ class FedhubService:
                     )
 
             payload = json.dumps(normalized) if not isinstance(normalized, str) else normalized
-            
+                        
             response = requests.post(
                 f"{self.base_url}/api/pdf-generator/gerar-boleto/",
                 headers=get_headers(),
@@ -1447,25 +1447,21 @@ class FedhubService:
             return None
         
     # Segunda via de boleto
+
     def processar_dados_segunda_via_boleto(self, fatura: str):
-        """Este método já está síncrono"""
+        """Processa dados da segunda via do boleto"""
         try:
-            # ⚠️ IMPORTANTE: Validar se fatura não é None
             if not fatura:
                 logger.error("Fatura não informada")
                 return None
+            
+            logger.info(f"DADOS ANTES DE CHAMAR O FEDHUB: {fatura}")
                 
-            # Usando GET (não POST) como está no FastAPI
             response = requests.get(
                 f"{self.base_url}/api/faturamento/dados-segunda-via/{fatura}/",
                 headers=get_headers(),
                 timeout=30.0
             )
-
-            # Log mais detalhado
-            # logger.info(f"Chamando FedHub: {self.base_url}/api/faturamento/dados-segunda-via/{fatura}/")
-            # logger.info(f"Status code: {response.status_code}")
-            # logger.info(f"Response: {response.text}")
 
             if response.status_code != 200:
                 logger.error(f"Fedhub erro {response.status_code}: {response.text}")
@@ -1473,15 +1469,51 @@ class FedhubService:
 
             data = response.json()
             
+            # Log para debug
+            logger.info(f"DADOS DEPOIS DE CHAMAR O FEDHUB: {json.dumps(data, ensure_ascii=False)}")
+            
             # Verificar estrutura da resposta
-            if data.get("status") == "success":
-                return data.get("data")
-            else:
+            if data.get("status") != "success":
                 logger.error(f"Fedhub retornou status não-success: {data}")
                 return None
+            
+            # ⭐ CORREÇÃO: data é uma LISTA ⭐
+            dados_lista = data.get("data", [])
+            
+            if not dados_lista:
+                logger.error("Nenhum dado retornado pelo Fedhub")
+                return None
+            
+            # Pega o primeiro item da lista
+            primeiro_dado = dados_lista[0]
+            
+            # ⭐ CORREÇÃO: Acessar os campos do dicionário com keys em MAIÚSCULO ⭐
+            valor_total_str = primeiro_dado.get("VALOR_TOTAL", "0")
+            deducoes_str = primeiro_dado.get("DEDUCOES", "0")
+            
+            # ⭐ REMOVER PONTUAÇÃO E CONVERTER ⭐
+            # Os valores vêm como "33.469,82" (formato BR)
+            valor_total_float = float(valor_total_str.replace(".", "").replace(",", "."))
+            deducoes_float = float(deducoes_str.replace(".", "").replace(",", "."))
+            
+            valor_com_deducoes = valor_total_float + deducoes_float
+            
+            logger.info(f"VALOR TOTAL: {valor_total_str}")
+            logger.info(f"DEDUCOES: {deducoes_str}")
+            logger.info(f"VALOR TOTAL CALCULADO: {valor_com_deducoes}")
+            
+            # ⭐ Atualizar o valor no primeiro item ⭐
+            primeiro_dado["VALOR_DOCUMENTO"] = f"{valor_com_deducoes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            primeiro_dado["VALOR_TOTAL_COM_DEDUCOES"] = primeiro_dado["VALOR_DOCUMENTO"]
+            
+            # Retorna a lista completa com o valor atualizado
+            return dados_lista
 
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar Fedhub: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Erro ao processar dados: {e}", exc_info=True)
             return None
         
 
