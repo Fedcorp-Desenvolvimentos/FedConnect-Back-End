@@ -1318,7 +1318,6 @@ class FedhubService:
                         pass
 
                     if response.status_code in [404, 405] and url.endswith("/api/pessoas/criar-pessoa"):
-                        # Se o upstream mudar a rota, tenta o endpoint legado em seguida.
                         break
 
                     return {
