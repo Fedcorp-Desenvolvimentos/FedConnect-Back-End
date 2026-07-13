@@ -1446,7 +1446,6 @@ class FedhubService:
             return None
         
     # Segunda via de boleto
-
     def processar_dados_segunda_via_boleto(self, fatura: str):
         """Processa dados da segunda via do boleto"""
         try:
@@ -1454,7 +1453,7 @@ class FedhubService:
                 logger.error("Fatura não informada")
                 return None
             
-            logger.info(f"DADOS ANTES DE CHAMAR O FEDHUB: {fatura}")
+            # logger.info(f"DADOS ANTES DE CHAMAR O FEDHUB: {fatura}")
                 
             response = requests.get(
                 f"{self.base_url}/api/faturamento/dados-segunda-via/{fatura}/",
@@ -1468,44 +1467,55 @@ class FedhubService:
 
             data = response.json()
             
-            # Log para debug
-            logger.info(f"DADOS DEPOIS DE CHAMAR O FEDHUB: {json.dumps(data, ensure_ascii=False)}")
+            # logger.info(f"DADOS DEPOIS DE CHAMAR O FEDHUB: {json.dumps(data, ensure_ascii=False)}")
             
-            # Verificar estrutura da resposta
             if data.get("status") != "success":
                 logger.error(f"Fedhub retornou status não-success: {data}")
                 return None
             
-            # ⭐ CORREÇÃO: data é uma LISTA ⭐
             dados_lista = data.get("data", [])
             
             if not dados_lista:
                 logger.error("Nenhum dado retornado pelo Fedhub")
                 return None
             
-            # Pega o primeiro item da lista
-            primeiro_dado = dados_lista[0]
+            for dado in dados_lista:
+                try:
+                    valor_total_str = dado.get("VALOR_TOTAL", "0")
+                    deducoes_str = dado.get("DEDUCOES", "0")
+                    
+                    def parse_br_currency(val_str):
+                        if not val_str:
+                            return 0.0
+                        # Remove pontos de milhar e substitui vírgula por ponto
+                        cleaned = val_str.replace(".", "").replace(",", ".")
+                        try:
+                            return float(cleaned)
+                        except ValueError:
+                            return 0.0
+                    
+                    valor_total_float = parse_br_currency(valor_total_str)
+                    deducoes_float = parse_br_currency(deducoes_str)
+                    
+                    valor_com_deducoes = valor_total_float + deducoes_float
+                    
+                    # logger.info(f"Boleto {dado.get('NOSSO_NUMERO')}: "
+                    #         f"Total={valor_total_str}, "
+                    #         f"Deduções={deducoes_str}, "
+                    #         f"Resultado={valor_com_deducoes}")
+                    
+                    # Formata o valor calculado para string BR
+                    valor_formatado = f"{valor_com_deducoes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    
+                    dado["VALOR_DOCUMENTO"] = valor_formatado
+                    dado["VALOR_TOTAL_COM_DEDUCOES"] = valor_formatado
+                    
+                except Exception as e:
+                    logger.error(f"Erro ao processar boleto {dado.get('NOSSO_NUMERO')}: {e}")
+                    # Mantém o valor original se der erro
+                    dado["VALOR_DOCUMENTO"] = dado.get("VALOR_TOTAL", "0,00")
+                    dado["VALOR_TOTAL_COM_DEDUCOES"] = dado.get("VALOR_TOTAL", "0,00")
             
-            # ⭐ CORREÇÃO: Acessar os campos do dicionário com keys em MAIÚSCULO ⭐
-            valor_total_str = primeiro_dado.get("VALOR_TOTAL", "0")
-            deducoes_str = primeiro_dado.get("DEDUCOES", "0")
-            
-            # ⭐ REMOVER PONTUAÇÃO E CONVERTER ⭐
-            # Os valores vêm como "33.469,82" (formato BR)
-            valor_total_float = float(valor_total_str.replace(".", "").replace(",", "."))
-            deducoes_float = float(deducoes_str.replace(".", "").replace(",", "."))
-            
-            valor_com_deducoes = valor_total_float + deducoes_float
-            
-            logger.info(f"VALOR TOTAL: {valor_total_str}")
-            logger.info(f"DEDUCOES: {deducoes_str}")
-            logger.info(f"VALOR TOTAL CALCULADO: {valor_com_deducoes}")
-            
-            # ⭐ Atualizar o valor no primeiro item ⭐
-            primeiro_dado["VALOR_DOCUMENTO"] = f"{valor_com_deducoes:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            primeiro_dado["VALOR_TOTAL_COM_DEDUCOES"] = primeiro_dado["VALOR_DOCUMENTO"]
-            
-            # Retorna a lista completa com o valor atualizado
             return dados_lista
 
         except requests.RequestException as e:

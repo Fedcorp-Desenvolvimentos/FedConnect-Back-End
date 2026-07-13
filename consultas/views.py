@@ -1995,15 +1995,7 @@ class DadosSegundaViaBoletoView(APIView):
         try:
             logger.info(f"=== SEGUNDA VIA BOLETO ===")
             
-            # ⚠️ IMPORTANTE: Extrair fatura corretamente
-            # Sua URL é: /faturamento/dados-segunda-via-boleto/162028/
-            # O parâmetro está na URL, não no query_params!
-            
-            # Opção 1: Se for path parameter (recomendado)
-            fatura = kwargs.get('fatura')  # Pega da URL
-            
-            # Opção 2: Se for query string
-            # fatura = request.query_params.get("fatura")
+            fatura = kwargs.get('fatura')  
             
             if not fatura:
                 logger.error("Fatura não informada")
