@@ -1164,7 +1164,7 @@ class FedhubService:
                 f"{self.base_url}/api/vouchers/emitir-recibo",
                 json=payload,
                 headers=get_headers(),
-                timeout=60,
+                timeout=120,
             )
             
             if response.status_code not in [200, 201]:
@@ -1185,7 +1185,7 @@ class FedhubService:
                 f"{self.base_url}/api/vouchers/emitir-voucher",
                 json=payload,
                 headers=get_headers(),
-                timeout=60,  # Timeout maior para gerar PDF
+                timeout=120,  # Timeout maior para gerar PDF
             )
             if response.status_code not in [200, 201]:
                 logger.error(f"FastAPI erro {response.status_code}: {response.text}")
