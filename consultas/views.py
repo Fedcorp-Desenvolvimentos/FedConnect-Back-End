@@ -554,15 +554,16 @@ class CancelarComissaoView(APIView):
                 favorecido = comissao.get("favorecido")
                 tipo_comissao = comissao.get("tipo")
                 voucher = comissao.get("voucher")
+                fatura = comissao.get("fatura")
                 motivo_cancelamento = comissao.get("motivo_cancelamento", "Cancelamento solicitado pelo usuário")
 
                 # Valida dados obrigatórios
-                if not all([numero_comissao, documento, favorecido, voucher]):
+                if not all([numero_comissao, favorecido]):
                     logger.warning(f"Comissão ignorada devido a dados faltantes: {comissao}")
                     resultados.append({
                         "comissao": comissao,
                         "status": "erro",
-                        "mensagem": "Dados obrigatórios (voucher, documento, favorecido) faltando."
+                        "mensagem": "Dados obrigatórios (voucher, favorecido) faltando."
                     })
                     continue
 
@@ -573,6 +574,7 @@ class CancelarComissaoView(APIView):
                     "favorecido": favorecido,
                     "tipo_comissao": tipo_comissao,
                     "voucher": voucher,
+                    "fatura": fatura,
                     "motivo_cancelamento": motivo_cancelamento
                 }
 
