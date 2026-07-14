@@ -197,7 +197,8 @@ urlpatterns = [
     path('faturamento/emissao-segunda-via-boleto/<str:fatura>/', EmissaoSegundaViaBoletoView.as_view(), name='faturamento-emissao-segunda-via-boleto'),
     
     # Webhook do Santander
-    path('api/santander/webhook/', SantanderWebhookView.as_view(), name="santander_webhook"),
+    path('api/santander/fedcorp/webhook/', SantanderWebhookView.as_view(), name="santander_fedcorp_webhook"),
+    path('api/santander/condocorp/webhook/', SantanderWebhookView.as_view(), name="santander_condocorp_webhook"),
     
     # Comissões / Recibos / Vouchers
     path('comissoes/faturas/', BuscarFaturasComissoesView.as_view(), name='buscar-faturas-comissoes'),
