@@ -629,24 +629,78 @@ class BuscarPessoasView(APIView):
         try:
             service = FedhubService()
             limit = request.query_params.get("limit")
+            search = request.query_params.get("search", "").strip()
+            nome = request.query_params.get("nome", "").strip()
+            cnpj = request.query_params.get("cnpj", "").strip()
+            codigo = request.query_params.get("codigo", "").strip()
+
             params = {
                 "status": request.query_params.get("status", "A"),
                 "limit": limit if limit else 7000,
                 "offset": request.query_params.get("offset", 0),
             }
+            if search:
+                params["search"] = search
+            if nome:
+                params["nome"] = nome
+            if cnpj:
+                params["cnpj"] = cnpj
+            if codigo:
+                params["codigo"] = codigo
+
             dados = service.buscar_pessoas(params)
             if not dados:
                 return Response(
                     {"sucesso": False, "erro": "Erro ao consultar pessoas"},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
-            return Response(dados, status=status.HTTP_200_OK)
+
+            data = dados.get("data") if isinstance(dados, dict) else dados
+            total = dados.get("total", len(data)) if isinstance(dados, dict) else len(data) if isinstance(data, list) else 0
+
+            if search or nome or cnpj or codigo:
+                data = self._filter_locally(data, search, nome, cnpj, codigo)
+                total = len(data)
+
+            return Response({
+                "data": data,
+                "total": total,
+                "status": "success",
+            }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Erro em BuscarPessoasView: {e}")
             return Response(
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    def _filter_locally(self, data, search, nome, cnpj, codigo):
+        if not isinstance(data, list):
+            return data
+
+        filtered = data
+        term = search or nome
+        if term:
+            term_lower = term.lower()
+            filtered = [
+                p for p in filtered
+                if term_lower in (p.get("nome") or p.get("NOME") or "").lower()
+                or term_lower in (p.get("cpf_cnpj") or p.get("CPF_CNPJ") or "").lower()
+                or term_lower in str(p.get("codigo") or p.get("PESSOA") or "").lower()
+            ]
+        if cnpj:
+            cnpj_digits = "".join(filter(str.isdigit, cnpj))
+            filtered = [
+                p for p in filtered
+                if cnpj_digits in "".join(filter(str.isdigit, p.get("cpf_cnpj") or p.get("CPF_CNPJ") or ""))
+            ]
+        if codigo:
+            filtered = [
+                p for p in filtered
+                if codigo.lower() in str(p.get("codigo") or p.get("PESSOA") or "").lower()
+            ]
+
+        return filtered
 
     def post(self, request, *args, **kwargs):
         try:
@@ -925,32 +979,57 @@ class HistoricoConsultaDetailView(generics.RetrieveAPIView):
             )
 class BuscarTodasEmpresas(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         try:
+            nome = request.query_params.get("nome", "").strip()
+            cnpj = request.query_params.get("cnpj", "").strip()
+            codigo = request.query_params.get("codigo", "").strip()
+            page = int(request.query_params.get("page", 1))
+            page_size = int(request.query_params.get("page_size", 20))
+
             service = FedhubService()
             dados = asyncio.run(service.buscar_todas_empresas())
-            
-            # logger.info(
-            #     "DADOS DA REQUISIÇÃO:\n%s",
-            #     json.dumps(dados, indent=2, ensure_ascii=False)
-            # )
-            
+
             if not dados:
                 return Response({
                     "status": "not_found",
                     "message": "Empresa não encontrada",
                     "timestamp": datetime.now().isoformat()
                 }, status=status.HTTP_404_NOT_FOUND)
-                            
+
+            if nome:
+                dados = [
+                    e for e in dados
+                    if nome.lower() in (e.get("nome") or e.get("NOME") or "").lower()
+                ]
+            if cnpj:
+                cnpj_digits = "".join(filter(str.isdigit, cnpj))
+                dados = [
+                    e for e in dados
+                    if cnpj_digits in "".join(filter(str.isdigit, e.get("cnpj") or e.get("CNPJ") or ""))
+                ]
+            if codigo:
+                dados = [
+                    e for e in dados
+                    if codigo.lower() in str(e.get("codigo") or e.get("CODIGO") or e.get("id") or "").lower()
+                ]
+
+            total = len(dados)
+            start = (page - 1) * page_size
+            end = start + page_size
+            paginated = dados[start:end]
+
             return Response({
                 "status": "success",
-                "total_returned": len(dados),
-                "data": dados,
+                "total_returned": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": (total + page_size - 1) // page_size if total else 0,
+                "data": paginated,
                 "timestamp": datetime.now().isoformat()
             })
 
-            
         except Exception as e:
             logger.error(f"Erro ao buscar empresas: {str(e)}")
             return Response({"detail": str(e)}, status=500)

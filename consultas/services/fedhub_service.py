@@ -309,10 +309,15 @@ class FedhubService:
             logger.error(f"Erro ao buscar empresa {cnpj}: {str(e)}")
             return None
 
-    async def buscar_todas_empresas(self):
+    async def buscar_todas_empresas(self, params: Optional[Dict[str, Any]] = None):
         async with httpx.AsyncClient(timeout=30.0) as client:
+            query_params = {}
+            if params:
+                query_params = {k: v for k, v in params.items() if v not in [None, "", []]}
+
             response = await client.get(
                 f"{self.base_url}/api/empresas/",
+                params=query_params,
                 headers=get_headers(),
             )
 
@@ -1456,7 +1461,7 @@ class FedhubService:
             # logger.info(f"DADOS ANTES DE CHAMAR O FEDHUB: {fatura}")
                 
             response = requests.get(
-                f"{self.base_url}/api/faturamento/dados-segunda-via/{fatura}/",
+                f"{self.base_url}/api/faturamento/dados-segunda-via/{fatura}",
                 headers=get_headers(),
                 timeout=30.0
             )
