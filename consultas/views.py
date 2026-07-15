@@ -567,15 +567,18 @@ class CancelarComissaoView(APIView):
                     })
                     continue
 
+                # Envia como lista de comissoes para o FastAPI
                 payload_fedhub = {
-                    "numero_comissao": numero_comissao,
-                    "parcela": parcela,
-                    "documento": documento,
-                    "favorecido": favorecido,
-                    "tipo_comissao": tipo_comissao,
-                    "voucher": voucher,
-                    "fatura": fatura,
-                    "motivo_cancelamento": motivo_cancelamento
+                    "comissoes": [{
+                        "numero_comissao": numero_comissao,
+                        "parcela": parcela,
+                        "documento": documento,
+                        "favorecido": favorecido,
+                        "tipo_comissao": tipo_comissao,
+                        "voucher": voucher,
+                        "fatura": fatura,
+                        "motivo_cancelamento": motivo_cancelamento
+                    }]
                 }
 
                 logger.info(f"Cancelando comissão: {payload_fedhub}")
