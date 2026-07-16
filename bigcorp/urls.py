@@ -42,6 +42,9 @@ from consultas.views import (
     BuscarFaturasComissoesView,
     BuscarComissoesPorFaturaView,
     BuscarPessoasView,
+    BuscarPessoaPorCodigoView,
+    BuscarProdutosView,
+    BuscarGerentesComerciaisView,
     CancelarBoletoFedBnkView,
     ConverterBoletoCSVView,
     CriarPessoaView,
@@ -218,6 +221,8 @@ urlpatterns = [
     # Pessoas (favorecidos)
     path('pessoas/', BuscarPessoasView.as_view(), name='buscar-pessoas'),
     path('pessoas/criar/', CriarPessoaView.as_view(), name='criar-pessoa'),
+    path('pessoas/produtos/', BuscarProdutosView.as_view(), name='buscar-produtos'),
+    path('pessoas/gerentes-comerciais/', BuscarGerentesComerciaisView.as_view(), name='buscar-gerentes-comerciais'),
     path('pessoas/<str:codigo>/', BuscarPessoaPorCodigoView.as_view(), name='buscar-pessoa-por-codigo'),
     
     path('cedentes/', BuscarCedentesView.as_view(), name='buscar-cedentes'),

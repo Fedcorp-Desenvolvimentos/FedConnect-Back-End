@@ -1362,6 +1362,59 @@ class FedhubService:
             "http_status": 503,
         }
 
+    def buscar_produtos(self) -> Optional[Dict[str, Any]]:
+        """
+        Busca todos os produtos distintos do Firebird
+        GET /api/pessoas/produtos
+        """
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/pessoas/produtos",
+                headers=get_headers(),
+                timeout=30,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"FedHub erro ao buscar produtos: {response.status_code}")
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao buscar produtos no FedHub: {e}")
+            return None
+
+    def buscar_gerentes_comerciais(self) -> Optional[Dict[str, Any]]:
+        """
+        Busca gerentes comerciais ativos do Firebird
+        GET /api/pessoas/gerentes-comerciais
+        """
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/pessoas/gerentes-comerciais",
+                headers=get_headers(),
+                timeout=30,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"FedHub erro ao buscar gerentes comerciais: {response.status_code}")
+                return None
+
+            data = response.json()
+
+            if data.get("status") != "success":
+                return None
+
+            return data
+
+        except requests.RequestException as e:
+            logger.error(f"Erro ao buscar gerentes comerciais no FedHub: {e}")
+            return None
 
     def buscar_comissao_por_data_corte(self, data_corte: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         """

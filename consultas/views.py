@@ -787,6 +787,56 @@ class BuscarPessoaPorCodigoView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+class BuscarProdutosView(APIView):
+    """
+    Busca todos os produtos distintos do Firebird
+    GET /pessoas/produtos/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_produtos()
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar produtos"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarProdutosView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class BuscarGerentesComerciaisView(APIView):
+    """
+    Busca gerentes comerciais ativos do Firebird
+    GET /pessoas/gerentes-comerciais/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_gerentes_comerciais()
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar gerentes comerciais"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarGerentesComerciaisView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 class RealizarConsultaView(APIView):
 
     authentication_classes = [JWTAuthentication]
