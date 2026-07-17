@@ -235,6 +235,13 @@ REGIAO_URL = "https://minhareceita.org/"
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "AIzaSyCmVm2yu5jo-9793-4CSs78e4L9c-U6kNQ")
 
+FEDBNK_TOKEN_URL = os.environ.get("FEDBNK_TOKEN_URL", "https://pagamentos.fedbnk.com.br/PagamentosAPI/token")
+FEDBNK_USERNAME = os.environ.get("FEDBNK_USERNAME", "")
+FEDBNK_PASSWORD = os.environ.get("FEDBNK_PASSWORD", "")
+FEDBNK_GRANT_TYPE = os.environ.get("FEDBNK_GRANT_TYPE", "password")
+FEDBNK_AES_KEY = os.environ.get("FEDBNK_AES_KEY", "")
+CONSULTA_TRANSACAO_URL = os.environ.get("CONSULTA_TRANSACAO_URL", "https://pagamentos.fedbnk.com.br/PagamentosAPI/api/ConsultaTransacao")
+
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "API BigCorp",

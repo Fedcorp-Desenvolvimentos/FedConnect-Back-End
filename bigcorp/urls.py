@@ -58,7 +58,8 @@ from consultas.views import (
     HistoricoConsultaListView, 
     HistoricoConsultaDetailView, 
     HistoricoConsultaUserListView,
-    TratamentoDeErroView
+    TratamentoDeErroView,
+    SincronizarBoletosView
 )
 from planilha.views.cnpj_views import (baixar_planilha_modelo_drf_cnpj, ProcessarPlanilhaCnpjsView)
 from planilha.views.cep_views import (baixar_planilha_modelo_drf_cep,ProcessarPlanilhaCepsView)
@@ -185,6 +186,7 @@ urlpatterns = [
     
     # Boleto FedBNK
     path('boletofedbnk/cancelar/', CancelarBoletoFedBnkView.as_view(), name='cancelar-boleto-fedbnk'),
+    path('boletofedbnk/sincronizar/', SincronizarBoletosView.as_view(), name='sincronizar-boletos'),
     
     
     path('analytics/faturamento/', AnalyticsFaturamentoPeriodoView.as_view(), name='analytics-faturamento-periodo'),

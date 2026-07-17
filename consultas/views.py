@@ -10,6 +10,7 @@ import json
 
 from consultas.cache.cidade_cache import buscar_cidades_autocomplete_sync
 from consultas.services.analytics_service import AnalyticsService
+from consultas.services.fedbnk_sync_service import FedBnkSyncService
 from consultas.services.fedhub_service import FedhubService
 from consultas.utils.renderers import BinaryRenderer
 from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
@@ -3353,5 +3354,38 @@ class CancelarBoletoFedBnkView(APIView):
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            
-            
+
+
+class SincronizarBoletosView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        numero_fatura = request.data.get("numero_fatura")
+
+        if not numero_fatura:
+            return Response(
+                {"sucesso": False, "erro": "numero_fatura é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            service = FedBnkSyncService()
+            resultado = service.sincronizar_boletos(str(numero_fatura))
+
+            return Response({
+                "sucesso": True,
+                "total_pendentes": resultado.get("total_pendentes", 0),
+                "atualizados": resultado.get("atualizados", []),
+                "erros": resultado.get("erros", []),
+                "total_atualizados": resultado.get("total_atualizados", 0),
+                "total_erros": resultado.get("total_erros", 0),
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Erro na sincronização de boletos: {str(e)}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
