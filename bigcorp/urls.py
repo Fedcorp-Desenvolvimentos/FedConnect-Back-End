@@ -68,6 +68,16 @@ from empresas.views import EmpresaViewSet
 from consultas.comercial import ConsultaComercialAPIView, ConsultaContatoComercialAPIView, BulkConsultaComercialAPIView, ComercialRegiaoAPIView
 from consultas.segurados import RealizarConsultaSeguradosView, buscarAdms
 from consultas.faturas import RealizarConsultaFaturasView
+
+# Vistorias
+from fedhub.views.vistorias_view import (
+    ListarEstadosVistoria,
+    ListarVistoriadores,
+    ListarAdministradorasVistoria,
+    ConsultarVistorias,
+    ExportarVistoriasExcel,
+    ExportarVistoriasPDF
+)
 from agenda.views import ReservaViewSet
 from agenda_comercial.views import AgendamentoListCreateAPIView, AgendamentoRetrieveUpdateDestroyAPIView
 from django.urls import path
@@ -229,6 +239,14 @@ urlpatterns = [
     
     path('cedentes/', BuscarCedentesView.as_view(), name='buscar-cedentes'),
     path('cedentes/buscar/', BuscarCedentePorNomeView.as_view(), name='buscar-cedente-por-nome'),
+    
+    # Vistorias
+    path('vistorias/estados/', ListarEstadosVistoria.as_view(), name='listar-estados-vistoria'),
+    path('vistorias/vistoriadores/', ListarVistoriadores.as_view(), name='listar-vistoriadores'),
+    path('vistorias/administradoras/', ListarAdministradorasVistoria.as_view(), name='listar-administradoras-vistoria'),
+    path('vistorias/', ConsultarVistorias.as_view(), name='consultar-vistorias'),
+    path('vistorias/exportar/excel/', ExportarVistoriasExcel.as_view(), name='exportar-vistorias-excel'),
+    path('vistorias/exportar/pdf/', ExportarVistoriasPDF.as_view(), name='exportar-vistorias-pdf'),
     
     path("", include(router.urls)),
 ]
