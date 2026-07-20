@@ -92,8 +92,8 @@ class VistoriasService:
     def consultar_vistorias(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Consulta vistorias com filtros"""
         try:
-            # Remove filtros vazios
-            params_limpos = {k: v for k, v in params.items() if v not in [None, "", []]}
+            # Remove filtros vazios e undefined
+            params_limpos = {k: v for k, v in params.items() if v not in [None, "", [], "undefined"] and k != "undefined"}
 
             logger.info(f"Consultando vistorias com params: {params_limpos}")
 
@@ -122,8 +122,8 @@ class VistoriasService:
     def exportar_excel(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Exporta vistorias para Excel"""
         try:
-            # Remove filtros vazios
-            params_limpos = {k: v for k, v in params.items() if v not in [None, "", []]}
+            # Remove filtros vazios e undefined
+            params_limpos = {k: v for k, v in params.items() if v not in [None, "", [], "undefined"] and k != "undefined"}
 
             logger.info(f"Exportando vistorias para Excel com params: {params_limpos}")
 
@@ -155,8 +155,8 @@ class VistoriasService:
     def exportar_pdf(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Exporta vistorias para PDF"""
         try:
-            # Remove filtros vazios
-            params_limpos = {k: v for k, v in params.items() if v not in [None, "", []]}
+            # Remove filtros vazios e undefined
+            params_limpos = {k: v for k, v in params.items() if v not in [None, "", [], "undefined"] and k != "undefined"}
 
             logger.info(f"Exportando vistorias para PDF com params: {params_limpos}")
 
