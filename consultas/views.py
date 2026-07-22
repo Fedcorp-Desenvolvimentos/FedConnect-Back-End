@@ -620,224 +620,6 @@ class CancelarComissaoView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-class BuscarPessoasView(APIView):
-    """
-    Busca pessoas (favorecidos)
-    GET /pessoas/
-    POST /pessoas/
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            service = FedhubService()
-            limit = request.query_params.get("limit")
-            search = request.query_params.get("search", "").strip()
-            nome = request.query_params.get("nome", "").strip()
-            cnpj = request.query_params.get("cnpj", "").strip()
-            codigo = request.query_params.get("codigo", "").strip()
-
-            params = {
-                "status": request.query_params.get("status", "A"),
-                "limit": limit if limit else 7000,
-                "offset": request.query_params.get("offset", 0),
-            }
-            if search:
-                params["search"] = search
-            if nome:
-                params["nome"] = nome
-            if cnpj:
-                params["cnpj"] = cnpj
-            if codigo:
-                params["codigo"] = codigo
-
-            dados = service.buscar_pessoas(params)
-            if not dados:
-                return Response(
-                    {"sucesso": False, "erro": "Erro ao consultar pessoas"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-
-            data = dados.get("data") if isinstance(dados, dict) else dados
-            total = dados.get("total", len(data)) if isinstance(dados, dict) else len(data) if isinstance(data, list) else 0
-
-            if search or nome or cnpj or codigo:
-                data = self._filter_locally(data, search, nome, cnpj, codigo)
-                total = len(data)
-
-            return Response({
-                "data": data,
-                "total": total,
-                "status": "success",
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Erro em BuscarPessoasView: {e}")
-            return Response(
-                {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-    def _filter_locally(self, data, search, nome, cnpj, codigo):
-        if not isinstance(data, list):
-            return data
-
-        filtered = data
-        term = search or nome
-        if term:
-            term_lower = term.lower()
-            filtered = [
-                p for p in filtered
-                if term_lower in (p.get("nome") or p.get("NOME") or "").lower()
-                or term_lower in (p.get("cpf_cnpj") or p.get("CPF_CNPJ") or "").lower()
-                or term_lower in str(p.get("codigo") or p.get("PESSOA") or "").lower()
-            ]
-        if cnpj:
-            cnpj_digits = "".join(filter(str.isdigit, cnpj))
-            filtered = [
-                p for p in filtered
-                if cnpj_digits in "".join(filter(str.isdigit, p.get("cpf_cnpj") or p.get("CPF_CNPJ") or ""))
-            ]
-        if codigo:
-            filtered = [
-                p for p in filtered
-                if codigo.lower() in str(p.get("codigo") or p.get("PESSOA") or "").lower()
-            ]
-
-        return filtered
-
-    def post(self, request, *args, **kwargs):
-        try:
-            service = FedhubService()
-            dados_pessoa = request.data
-
-            logger.info(f"Dados recebidos para criar pessoa: {dados_pessoa}")
-
-            resultado = service.criar_pessoa(dados_pessoa)
-            if not resultado:
-                return Response(
-                    {
-                        "sucesso": False,
-                        "erro": "Erro ao criar pessoa no sistema",
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-
-            if resultado.get("status") == "timeout":
-                return Response(
-                    {
-                        "sucesso": False,
-                        "erro": resultado.get(
-                            "message", "Timeout ao criar pessoa no FedHub"
-                        ),
-                    },
-                    status=status.HTTP_504_GATEWAY_TIMEOUT,
-                )
-
-            if resultado.get("status") != "success":
-                http_status = resultado.get("http_status", status.HTTP_400_BAD_REQUEST)
-                return Response(
-                    {
-                        "sucesso": False,
-                        "erro": resultado.get("message", "Erro ao criar pessoa"),
-                    },
-                    status=http_status,
-                )
-
-            return Response(
-                {
-                    "sucesso": True,
-                    "mensagem": "Pessoa criada com sucesso",
-                    "data": resultado.get("data", {}),
-                },
-                status=status.HTTP_201_CREATED,
-            )
-
-        except Exception as e:
-            logger.error(f"Erro ao criar pessoa: {str(e)}", exc_info=True)
-            return Response(
-                {
-                    "sucesso": False,
-                    "erro": f"Erro interno: {str(e)}",
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-class BuscarPessoaPorCodigoView(APIView):
-    """
-    Busca pessoa (favorecido) por código
-    GET /pessoas/{codigo}/
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, codigo, *args, **kwargs):
-        try:
-            service = FedhubService()
-            dados = service.buscar_pessoa_por_codigo(codigo)
-            if not dados:
-                return Response(
-                    {"sucesso": False, "erro": "Erro ao consultar pessoa"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            return Response(dados, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Erro em BuscarPessoaPorCodigoView: {e}")
-            return Response(
-                {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-class BuscarProdutosView(APIView):
-    """
-    Busca todos os produtos distintos do Firebird
-    GET /pessoas/produtos/
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            service = FedhubService()
-            dados = service.buscar_produtos()
-            if not dados:
-                return Response(
-                    {"sucesso": False, "erro": "Erro ao consultar produtos"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            return Response(dados, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Erro em BuscarProdutosView: {e}")
-            return Response(
-                {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-class BuscarGerentesComerciaisView(APIView):
-    """
-    Busca gerentes comerciais ativos do Firebird
-    GET /pessoas/gerentes-comerciais/
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        try:
-            service = FedhubService()
-            dados = service.buscar_gerentes_comerciais()
-            if not dados:
-                return Response(
-                    {"sucesso": False, "erro": "Erro ao consultar gerentes comerciais"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            return Response(dados, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"Erro em BuscarGerentesComerciaisView: {e}")
-            return Response(
-                {"sucesso": False, "erro": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
 class RealizarConsultaView(APIView):
 
     authentication_classes = [JWTAuthentication]
@@ -980,10 +762,12 @@ class RealizarConsultaView(APIView):
 
         # Se o serializer não for válido (erros de validação de entrada).
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class StandardResultsPagination(PageNumberPagination):
     page_size = 10  # Deve ser o mesmo que intensPorPagina no frontend
     page_size_query_param = "page_size"
     max_page_size = 100
+
 class HistoricoConsultaListView(generics.ListAPIView):
 
     serializer_class = HistoricoConsultaSerializer
@@ -2215,7 +1999,175 @@ class EmissaoSegundaViaBoletoView(APIView):
             )
 
 
-# consultas/views.py
+# *******************************************#
+
+class BuscarPessoasView(APIView):
+    """
+    Busca pessoas (favorecidos)
+    GET /pessoas/
+    POST /pessoas/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            limit = request.query_params.get("limit")
+            search = request.query_params.get("search", "").strip()
+            nome = request.query_params.get("nome", "").strip()
+            cnpj = request.query_params.get("cnpj", "").strip()
+            codigo = request.query_params.get("codigo", "").strip()
+
+            params = {
+                "status": request.query_params.get("status", "A"),
+                "limit": limit if limit else 7000,
+                "offset": request.query_params.get("offset", 0),
+            }
+            if search:
+                params["search"] = search
+            if nome:
+                params["nome"] = nome
+            if cnpj:
+                params["cnpj"] = cnpj
+            if codigo:
+                params["codigo"] = codigo
+
+            dados = service.buscar_pessoas(params)
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar pessoas"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            data = dados.get("data") if isinstance(dados, dict) else dados
+            total = dados.get("total", len(data)) if isinstance(dados, dict) else len(data) if isinstance(data, list) else 0
+
+            if search or nome or cnpj or codigo:
+                data = self._filter_locally(data, search, nome, cnpj, codigo)
+                total = len(data)
+
+            return Response({
+                "data": data,
+                "total": total,
+                "status": "success",
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarPessoasView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def _filter_locally(self, data, search, nome, cnpj, codigo):
+        if not isinstance(data, list):
+            return data
+
+        filtered = data
+        term = search or nome
+        if term:
+            term_lower = term.lower()
+            filtered = [
+                p for p in filtered
+                if term_lower in (p.get("nome") or p.get("NOME") or "").lower()
+                or term_lower in (p.get("cpf_cnpj") or p.get("CPF_CNPJ") or "").lower()
+                or term_lower in str(p.get("codigo") or p.get("PESSOA") or "").lower()
+            ]
+        if cnpj:
+            cnpj_digits = "".join(filter(str.isdigit, cnpj))
+            filtered = [
+                p for p in filtered
+                if cnpj_digits in "".join(filter(str.isdigit, p.get("cpf_cnpj") or p.get("CPF_CNPJ") or ""))
+            ]
+        if codigo:
+            filtered = [
+                p for p in filtered
+                if codigo.lower() in str(p.get("codigo") or p.get("PESSOA") or "").lower()
+            ]
+
+        return filtered
+
+    def post(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados_pessoa = request.data
+
+            logger.info(f"Dados recebidos para criar pessoa: {dados_pessoa}")
+
+            resultado = service.criar_pessoa(dados_pessoa)
+            if not resultado:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao criar pessoa no sistema",
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            if resultado.get("status") == "timeout":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get(
+                            "message", "Timeout ao criar pessoa no FedHub"
+                        ),
+                    },
+                    status=status.HTTP_504_GATEWAY_TIMEOUT,
+                )
+
+            if resultado.get("status") != "success":
+                http_status = resultado.get("http_status", status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Erro ao criar pessoa"),
+                    },
+                    status=http_status,
+                )
+
+            return Response(
+                {
+                    "sucesso": True,
+                    "mensagem": "Pessoa criada com sucesso",
+                    "data": resultado.get("data", {}),
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as e:
+            logger.error(f"Erro ao criar pessoa: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class BuscarPessoaPorCodigoView(APIView):
+    """
+    Busca pessoa (favorecido) por código
+    GET /pessoas/{codigo}/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, codigo, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_pessoa_por_codigo(codigo)
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar pessoa"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarPessoaPorCodigoView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 class CriarPessoaView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -2281,6 +2233,60 @@ class CriarPessoaView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class BuscarGerentesComerciaisView(APIView):
+    """
+    Busca gerentes comerciais ativos do Firebird
+    GET /pessoas/gerentes-comerciais/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_gerentes_comerciais()
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar gerentes comerciais"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarGerentesComerciaisView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+# *******************************************#
+
+class BuscarProdutosView(APIView):
+    """
+    Busca todos os produtos distintos do Firebird
+    GET /pessoas/produtos/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_produtos()
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar produtos"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            return Response(dados, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Erro em BuscarProdutosView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+# *******************************************#
 
 class BuscarCedentesView(APIView):
     """
