@@ -2004,6 +2004,7 @@ class EmissaoSegundaViaBoletoView(APIView):
 # ============================================================
 # PESSOAS
 # ============================================================
+
 class BuscarPessoasView(APIView):
     """
     Busca pessoas (favorecidos)
@@ -2021,18 +2022,16 @@ class BuscarPessoasView(APIView):
             search = request.query_params.get("search", "").strip()
             offset = request.query_params.get("offset", 0)
 
-            # 🔥 IMPORTANTE: Passa o search para o FastAPI
             params = {
                 "status": "A",
                 "limit": int(limit),
                 "offset": int(offset),
             }
             
-            # Se tiver search, adiciona como parâmetro
             if search:
-                params["nome"] = search  # FastAPI espera 'nome' para busca
+                params["nome"] = search
 
-            # Chama o FastAPI com os parâmetros
+            # Chama o FastAPI
             dados = service.buscar_pessoas(params)
             
             if not dados:
@@ -2059,6 +2058,99 @@ class BuscarPessoasView(APIView):
             return Response(
                 {"sucesso": False, "erro": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class PessoaDetailView(APIView):
+    """
+    Busca e atualiza uma pessoa por código
+    GET /pessoas/{codigo}/
+    PUT /pessoas/{codigo}/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, codigo, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_pessoa_por_codigo(codigo)
+            
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Pessoa não encontrada"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            
+            return Response(
+                {
+                    "sucesso": True,
+                    "data": dados,
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro em PessoaDetailView.GET: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    def put(self, request, codigo, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados_pessoa = request.data
+            
+            logger.info(f"Dados recebidos para atualizar pessoa {codigo}: {dados_pessoa}")
+            
+            resultado = service.atualizar_pessoa(codigo, dados_pessoa)
+            
+            if not resultado:
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": "Erro ao atualizar pessoa no sistema"
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+
+            if resultado.get("status") == "timeout":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get(
+                            "message", "Timeout ao atualizar pessoa no FedHub"
+                        ),
+                    },
+                    status=status.HTTP_504_GATEWAY_TIMEOUT,
+                )
+            
+            if resultado.get("status") != "success":
+                http_status = resultado.get("http_status", status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": resultado.get("message", "Erro ao atualizar pessoa")
+                    },
+                    status=http_status
+                )
+            
+            return Response(
+                {
+                    "sucesso": True,
+                    "mensagem": "Pessoa atualizada com sucesso",
+                    "data": resultado.get("data", {})
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            logger.error(f"Erro em PessoaDetailView.PUT: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "sucesso": False,
+                    "erro": f"Erro interno: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class CriarPessoaView(APIView):
@@ -2193,7 +2285,117 @@ class BuscarGerentesComerciaisView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+
 # *******************************************#
+# BANCOS
+# *******************************************#
+
+class BuscarBancosView(APIView):
+    """
+    Busca bancos
+    GET /bancos/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            service = FedhubService()
+            
+            limit = request.query_params.get("limit", 100)
+            offset = request.query_params.get("offset", 0)
+            search = request.query_params.get("search", "").strip()
+            
+            params = {
+                "limit": int(limit),
+                "offset": int(offset),
+            }
+            
+            if search:
+                params["search"] = search
+            
+            dados = service.buscar_bancos(params)
+            
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Erro ao consultar bancos"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            
+            return Response(dados, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Erro em BuscarBancosView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class BuscarBancoPorCodigoView(APIView):
+    """
+    Busca banco por código
+    GET /bancos/{codigo}/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, codigo, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_banco_por_codigo(codigo)
+            
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Banco não encontrado"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            
+            return Response(
+                {
+                    "sucesso": True,
+                    "data": dados,
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Erro em BuscarBancoPorCodigoView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+class BuscarBancoPorNomeView(APIView):
+    """
+    Busca banco por nome
+    GET /bancos/nome/{nome}/
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, nome, *args, **kwargs):
+        try:
+            service = FedhubService()
+            dados = service.buscar_banco_por_nome(nome)
+            
+            if not dados:
+                return Response(
+                    {"sucesso": False, "erro": "Nenhum banco encontrado"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            
+            return Response(dados, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Erro em BuscarBancoPorNomeView: {e}")
+            return Response(
+                {"sucesso": False, "erro": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+# *******************************************#
+
 
 class BuscarProdutosView(APIView):
     """
