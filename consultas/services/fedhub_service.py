@@ -24,7 +24,7 @@ class FedhubService:
     def __init__(self):
         self.base_url = "https://fedhub-api-local.ngrok.app"
         # self.base_url = "https://enjoyably-cranial-twistable.ngrok-free.dev"
-        #self.base_url = "http://localhost:8001"
+        # self.base_url = "http://localhost:8090"
 
 
     # Faturas
@@ -1280,88 +1280,74 @@ class FedhubService:
         
     def criar_pessoa(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        Cria pessoa - proxy para FedHub
-        POST /api/pessoas/
+        Cria uma nova pessoa - proxy para FedHub
+        POST /api/pessoas/criar-pessoa
         """
-        urls = [
-            f"{self.base_url}/api/pessoas/criar-pessoa",
-            f"{self.base_url}/api/pessoas/",
-        ]
-        timeout_por_tentativa = [(10, 60), (10, 90)]
-        ultimo_erro = None
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/pessoas/criar-pessoa",
+                json=payload,
+                headers=get_headers(),
+                timeout=30,
+            )
 
-        for url in urls:
-            for tentativa, timeout_atual in enumerate(timeout_por_tentativa, start=1):
+            # Trata sucesso (200 ou 201)
+            if response.status_code in [200, 201]:
                 try:
-                    response = requests.post(
-                        url,
-                        json=payload,
-                        headers=get_headers(),
-                        timeout=timeout_atual,
-                    )
-
-                    if response.status_code in [200, 201]:
-                        try:
-                            return response.json()
-                        except ValueError:
-                            return {
-                                "status": "error",
-                                "message": "Resposta inválida do FedHub ao criar pessoa",
-                                "http_status": 502,
-                            }
-
-                    logger.error(
-                        f"FedHub erro ao criar pessoa | URL: {url} | tentativa: {tentativa} | "
-                        f"status: {response.status_code} | body: {response.text}"
-                    )
-
-                    mensagem = "Erro ao criar pessoa no FedHub"
-                    try:
-                        body = response.json()
-                        mensagem = body.get("message", mensagem)
-                    except ValueError:
-                        pass
-
-                    if response.status_code in [404, 405] and url.endswith("/api/pessoas/criar-pessoa"):
-                        break
-
+                    data = response.json()
+                    
+                    # Verifica se o FastAPI retornou sucesso
+                    if data.get("status") == "success":
+                        return data
+                    else:
+                        # FastAPI retornou erro
+                        logger.error(f"FastAPI retornou erro: {data}")
+                        return {
+                            "status": "error",
+                            "message": data.get("message", "Erro ao criar pessoa no FastAPI"),
+                            "http_status": response.status_code,
+                        }
+                except ValueError:
+                    logger.error(f"Resposta inválida do FastAPI: {response.text}")
                     return {
                         "status": "error",
-                        "message": mensagem,
-                        "http_status": response.status_code,
+                        "message": "Resposta inválida do FastAPI",
+                        "http_status": 502,
                     }
 
-                except requests.Timeout as e:
-                    ultimo_erro = e
-                    logger.error(
-                        f"Timeout ao criar pessoa | URL: {url} | tentativa: {tentativa} | erro: {e}",
-                        exc_info=True,
-                    )
+            # Trata erro 404 - rota não encontrada
+            if response.status_code == 404:
+                logger.error(f"Rota /api/pessoas/criar-pessoa não encontrada no FastAPI")
+                return {
+                    "status": "error",
+                    "message": "Rota de criação de pessoa não encontrada no FastAPI",
+                    "http_status": 404,
+                }
 
-                    if tentativa == len(timeout_por_tentativa):
-                        continue
+            # Trata outros erros HTTP
+            logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+            return {
+                "status": "error",
+                "message": f"Erro no FastAPI: {response.status_code}",
+                "http_status": response.status_code,
+            }
 
-                except requests.RequestException as e:
-                    ultimo_erro = e
-                    logger.error(
-                        f"Erro ao criar pessoa | URL: {url} | tentativa: {tentativa} | erro: {e}",
-                        exc_info=True,
-                    )
-                    break
-
-        if isinstance(ultimo_erro, requests.Timeout):
+        except requests.Timeout:
+            logger.error("Timeout ao criar pessoa no FastAPI")
             return {
                 "status": "timeout",
-                "message": "Timeout ao aguardar resposta do FedHub ao criar pessoa",
+                "message": "Timeout ao aguardar resposta do FastAPI",
                 "http_status": 504,
             }
 
-        return {
-            "status": "error",
-            "message": f"Erro de comunicação com FedHub: {ultimo_erro}" if ultimo_erro else "Erro de comunicação com FedHub",
-            "http_status": 503,
-        }
-
+        except requests.RequestException as e:
+            logger.error(f"Erro ao chamar FastAPI para criar pessoa: {e}")
+            return {
+                "status": "error",
+                "message": f"Erro de comunicação com FastAPI: {str(e)}",
+                "http_status": 503,
+            }
+            
     def buscar_gerentes_comerciais(self) -> Optional[Dict[str, Any]]:
         """
         Busca gerentes comerciais ativos do Firebird
@@ -1389,74 +1375,6 @@ class FedhubService:
             logger.error(f"Erro ao buscar gerentes comerciais no FedHub: {e}")
             return None
 
-    def buscar_comissao_por_data_corte(self, data_corte: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
-        """
-        Busca comissões por data de corte
-        Encaminha diretamente para o FastAPI /buscar-faturas-comissoes
-        
-        GET /api/vouchers/buscar-faturas-comissoes
-        Parâmetros:
-            - data_corte (obrigatório): YYYY-MM-DD
-            - favorecido: Código do favorecido
-            - fatura: Número da fatura
-            - vencimento_inicial: Data inicial
-            - vencimento_final: Data final
-            - status: todas, baixadas, pendentes
-            - tipo: Tipo de comissão (A, B, etc)
-            - co_estipulante: Co-estipulante
-            - apolice: Número da apólice
-            - recibo: Número do recibo/voucher
-            - com_voucher: true, false, null (todos)
-            - limit: Limite de registros (default: 100)
-            - offset: Offset para paginação (default: 0)
-        """
-        try:
-            # Valida formato da data
-            from datetime import datetime
-            datetime.strptime(data_corte, '%Y-%m-%d')
-            
-            # Monta os parâmetros da query (data_corte é fixo no backend)
-            query_params = {}
-            
-            # Adiciona todos os parâmetros opcionais
-            if params:
-                # Mapeamento direto dos parâmetros
-                for key, value in params.items():
-                    if value is not None and value != '' and value != 'null':
-                        query_params[key] = value
-            
-            logger.info(f"Chamando FastAPI com params: {query_params}")
-            
-            response = requests.get(
-                f"{self.base_url}/api/vouchers/buscar-faturas-comissoes",
-                params=query_params,
-                headers=get_headers(),
-                timeout=60,  # Timeout maior para queries complexas
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"FastAPI erro {response.status_code}: {response.text}")
-                return None
-                
-            data = response.json()
-            
-            # Verifica status da resposta
-            if data.get("status") != "success":
-                logger.error(f"FastAPI retornou erro: {data}")
-                return None
-                
-            return data
-            
-        except ValueError as e:
-            logger.error(f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD")
-            return {
-                "status": "error",
-                "message": f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD"
-            }
-        except requests.RequestException as e:
-            logger.error(f"Erro ao chamar FastAPI: {e}")
-            return None
-    
     def buscar_pessoa_por_codigo(self, codigo: str) -> Optional[Dict[str, Any]]:
         try: 
             response = requests.get(
@@ -1476,6 +1394,74 @@ class FedhubService:
             logger.error(f"Erro ao buscar pessoa por código: {e}")
             return None
         
+    
+    def buscar_comissao_por_data_corte(self, data_corte: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+            """
+            Busca comissões por data de corte
+            Encaminha diretamente para o FastAPI /buscar-faturas-comissoes
+            
+            GET /api/vouchers/buscar-faturas-comissoes
+            Parâmetros:
+                - data_corte (obrigatório): YYYY-MM-DD
+                - favorecido: Código do favorecido
+                - fatura: Número da fatura
+                - vencimento_inicial: Data inicial
+                - vencimento_final: Data final
+                - status: todas, baixadas, pendentes
+                - tipo: Tipo de comissão (A, B, etc)
+                - co_estipulante: Co-estipulante
+                - apolice: Número da apólice
+                - recibo: Número do recibo/voucher
+                - com_voucher: true, false, null (todos)
+                - limit: Limite de registros (default: 100)
+                - offset: Offset para paginação (default: 0)
+            """
+            try:
+                # Valida formato da data
+                from datetime import datetime
+                datetime.strptime(data_corte, '%Y-%m-%d')
+                
+                # Monta os parâmetros da query (data_corte é fixo no backend)
+                query_params = {}
+                
+                # Adiciona todos os parâmetros opcionais
+                if params:
+                    # Mapeamento direto dos parâmetros
+                    for key, value in params.items():
+                        if value is not None and value != '' and value != 'null':
+                            query_params[key] = value
+                
+                logger.info(f"Chamando FastAPI com params: {query_params}")
+                
+                response = requests.get(
+                    f"{self.base_url}/api/vouchers/buscar-faturas-comissoes",
+                    params=query_params,
+                    headers=get_headers(),
+                    timeout=60,  # Timeout maior para queries complexas
+                )
+                
+                if response.status_code != 200:
+                    logger.error(f"FastAPI erro {response.status_code}: {response.text}")
+                    return None
+                    
+                data = response.json()
+                
+                # Verifica status da resposta
+                if data.get("status") != "success":
+                    logger.error(f"FastAPI retornou erro: {data}")
+                    return None
+                    
+                return data
+                
+            except ValueError as e:
+                logger.error(f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD")
+                return {
+                    "status": "error",
+                    "message": f"Formato de data inválido: {data_corte}. Use YYYY-MM-DD"
+                }
+            except requests.RequestException as e:
+                logger.error(f"Erro ao chamar FastAPI: {e}")
+                return None
     
     def buscar_produtos(self) -> Optional[Dict[str, Any]]:
         """
