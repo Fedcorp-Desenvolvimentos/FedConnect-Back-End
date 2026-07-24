@@ -1223,7 +1223,7 @@ class FedhubService:
                 f"{self.base_url}/api/vouchers/cancelar-comissao",
                 json=payload,
                 headers=get_headers(),
-                timeout=60,
+                timeout=300,
             )
             
             if response.status_code not in [200, 201]:

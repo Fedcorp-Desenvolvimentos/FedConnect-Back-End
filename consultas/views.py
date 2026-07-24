@@ -545,60 +545,35 @@ class CancelarComissaoView(APIView):
             logger.info("========================================")
 
             service = FedhubService()
-            resultados = []
-            comissoes_canceladas = 0
 
+            comissoes_validas = []
             for comissao in lista_comissoes:
                 numero_comissao = comissao.get("voucher")
-                parcela = comissao.get("parcela")
-                documento = comissao.get("documento")
                 favorecido = comissao.get("favorecido")
-                tipo_comissao = comissao.get("tipo")
-                voucher = comissao.get("voucher")
-                fatura = comissao.get("fatura")
-                motivo_cancelamento = comissao.get("motivo_cancelamento", "Cancelamento solicitado pelo usuário")
-
-                # Valida dados obrigatórios
                 if not all([numero_comissao, favorecido]):
                     logger.warning(f"Comissão ignorada devido a dados faltantes: {comissao}")
-                    resultados.append({
-                        "comissao": comissao,
-                        "status": "erro",
-                        "mensagem": "Dados obrigatórios (voucher, favorecido) faltando."
-                    })
                     continue
+                comissoes_validas.append({
+                    "numero_comissao": comissao.get("voucher"),
+                    "parcela": comissao.get("parcela"),
+                    "documento": comissao.get("documento"),
+                    "favorecido": favorecido,
+                    "tipo_comissao": comissao.get("tipo"),
+                    "voucher": comissao.get("voucher"),
+                    "fatura": comissao.get("fatura"),
+                    "motivo_cancelamento": comissao.get("motivo_cancelamento", "Cancelamento solicitado pelo usuário")
+                })
 
-                # Envia como lista de comissoes para o FastAPI
-                payload_fedhub = {
-                    "comissoes": [{
-                        "numero_comissao": numero_comissao,
-                        "parcela": parcela,
-                        "documento": documento,
-                        "favorecido": favorecido,
-                        "tipo_comissao": tipo_comissao,
-                        "voucher": voucher,
-                        "fatura": fatura,
-                        "motivo_cancelamento": motivo_cancelamento
-                    }]
-                }
+            logger.info(f"Enviando {len(comissoes_validas)} comissões em lote para cancelamento")
 
-                logger.info(f"Cancelando comissão: {payload_fedhub}")
+            payload_fedhub = {"comissoes": comissoes_validas}
+            resultado = service.cancelar_comissao(payload_fedhub)
 
-                resultado = service.cancelar_comissao(payload_fedhub)
-
-                if resultado and resultado.get("status") == "success":
-                    comissoes_canceladas += 1
-                    resultados.append({
-                        "comissao": comissao,
-                        "status": "sucesso",
-                        "mensagem": resultado.get("message", "Cancelada com sucesso")
-                    })
-                else:
-                    resultados.append({
-                        "comissao": comissao,
-                        "status": "erro",
-                        "mensagem": resultado.get("message", "Erro ao cancelar comissão") if resultado else "Erro desconhecido"
-                    })
+            if resultado and resultado.get("status") == "success":
+                comissoes_canceladas = resultado.get("total_canceladas", len(comissoes_validas))
+            else:
+                comissoes_canceladas = 0
+                logger.error(f"Erro no cancelamento em lote: {resultado}")
 
             return Response(
                 {
@@ -606,7 +581,6 @@ class CancelarComissaoView(APIView):
                     "mensagem": f"{comissoes_canceladas} comissão(ões) cancelada(s) com sucesso.",
                     "total_processadas": len(lista_comissoes),
                     "total_canceladas": comissoes_canceladas,
-                    "resultados": resultados
                 },
                 status=status.HTTP_200_OK
             )
