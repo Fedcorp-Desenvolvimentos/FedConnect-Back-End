@@ -2137,13 +2137,56 @@ class CriarPessoaView(APIView):
 
     def post(self, request, *args, **kwargs):
         try:
-            service = FedhubService()
             dados_pessoa = request.data
             
-            logger.info(f"Dados recebidos para criar pessoa: {dados_pessoa}")
+            if not dados_pessoa.get('nome'):
+                return Response(
+                    {"sucesso": False, "erro": "Campo 'nome' é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            # Chama o FastAPI para criar a pessoa
-            resultado = service.criar_pessoa(dados_pessoa)
+            if not dados_pessoa.get('cpf_cnpj'):
+                return Response(
+                    {"sucesso": False, "erro": "Campo 'cpf_cnpj' é obrigatório"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            payload = {
+                'nome': dados_pessoa.get('nome', ''),
+                'cpf_cnpj': dados_pessoa.get('cpf_cnpj', '').replace('.', '').replace('/', '').replace('-', ''),
+                'tipo': dados_pessoa.get('tipo', 'J'),  # J ou F
+                'sexo': dados_pessoa.get('sexo', 'J'),
+                'data_cadastro': dados_pessoa.get('data_cadastro', datetime.now().strftime('%Y-%m-%d')),
+                'cep': dados_pessoa.get('cep', '').replace('-', ''),
+                'uf': dados_pessoa.get('uf', ''),
+                'cidade': dados_pessoa.get('cidade', ''),
+                'bairro': dados_pessoa.get('bairro', ''),
+                'endereco': dados_pessoa.get('endereco', ''),
+                'telefone1_ddd': dados_pessoa.get('telefone1_ddd', ''),
+                'telefone1_numero': dados_pessoa.get('telefone1_numero', '').replace('-', ''),
+                'telefone2_ddd': dados_pessoa.get('telefone2_ddd', ''),
+                'telefone2_numero': dados_pessoa.get('telefone2_numero', '').replace('-', ''),
+                'email': dados_pessoa.get('email', ''),
+                'contato': dados_pessoa.get('contato', ''),
+                'observacoes': dados_pessoa.get('observacoes', ''),
+                'banco': dados_pessoa.get('banco', ''),
+                'agencia': dados_pessoa.get('agencia', ''),
+                'conta': dados_pessoa.get('conta', ''),
+                'favorecido': dados_pessoa.get('favorecido', ''),
+                'chave_pix': dados_pessoa.get('chave_pix', ''),
+                'emite_nota_fiscal': 'S' if dados_pessoa.get('emite_nota_fiscal') else 'N',
+                'melhor_dia_pagamento': dados_pessoa.get('melhor_dia_pagamento', '0'),
+                'cedente': dados_pessoa.get('cedente', ''),
+                'optante_simples': 'S' if dados_pessoa.get('optante_simples') else 'N',
+                'possui_portal': 'S' if dados_pessoa.get('possui_portal') else 'N',
+                'portal': dados_pessoa.get('portal', ''),
+                'gerente_comercial': dados_pessoa.get('gerente_comercial', ''),
+            }
+            
+            logger.info(f"Dados mapeados para criar pessoa: {payload}")
+            
+            service = FedhubService()
+            resultado = service.criar_pessoa(payload)
             
             if not resultado:
                 return Response(
@@ -2154,7 +2197,6 @@ class CriarPessoaView(APIView):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
 
-            # Trata timeout
             if resultado.get("status") == "timeout":
                 return Response(
                     {
@@ -2166,7 +2208,6 @@ class CriarPessoaView(APIView):
                     status=status.HTTP_504_GATEWAY_TIMEOUT,
                 )
             
-            # Trata erro do FastAPI
             if resultado.get("status") != "success":
                 http_status = resultado.get("http_status", status.HTTP_400_BAD_REQUEST)
                 return Response(
@@ -2177,7 +2218,6 @@ class CriarPessoaView(APIView):
                     status=http_status
                 )
             
-            # Retorna sucesso
             return Response(
                 {
                     "sucesso": True,
@@ -2455,7 +2495,7 @@ class BuscarCedentesView(APIView):
 class BuscarCedentePorNomeView(APIView):
     """
     Busca cedente por nome via FastAPI
-    GET /cedentes/buscar/?nome=termo
+    GET /cedentes/por-nome?nome=termo
     """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -2475,7 +2515,6 @@ class BuscarCedentePorNomeView(APIView):
             
             service = FedhubService()
             
-            # Busca cedente por nome no FastAPI
             resultado = service.buscar_cedente_por_nome(nome)
             
             if not resultado:
@@ -2487,7 +2526,16 @@ class BuscarCedentePorNomeView(APIView):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
             
-            if resultado.get("status") != "success":
+            if resultado.get("status") == "success":
+                return Response(
+                    {
+                        "sucesso": True,
+                        "data": resultado.get("data", []),
+                        "total": resultado.get("total", 0)
+                    },
+                    status=status.HTTP_200_OK
+                )
+            else:
                 return Response(
                     {
                         "sucesso": False,
@@ -2495,15 +2543,6 @@ class BuscarCedentePorNomeView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            return Response(
-                {
-                    "sucesso": True,
-                    "data": resultado.get("data", []),
-                    "total": resultado.get("total", 0)
-                },
-                status=status.HTTP_200_OK
-            )
             
         except Exception as e:
             logger.error(f"Erro ao buscar cedente por nome: {str(e)}")
