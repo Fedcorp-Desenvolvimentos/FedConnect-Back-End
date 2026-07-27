@@ -8,6 +8,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.http import HttpResponse
 
 from fedhub.services.vistorias_service import VistoriasService
+from users.permissions import IsAdminOrModerador
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class ListarEstadosVistoria(APIView):
 class ListarVistoriadores(APIView):
     """Lista vistoriadores ativos"""
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrModerador]
 
     def get(self, request, *args, **kwargs):
         service = VistoriasService()
@@ -84,13 +85,21 @@ class ConsultarVistorias(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        # Validação: filtro de vistoriador apenas para admin e moderador
+        cod_vistoriador = request.query_params.get("cod_vistoriador")
+        if cod_vistoriador and request.user.nivel_acesso not in ('admin', 'moderador'):
+            return Response(
+                {"sucesso": False, "erro": "Filtro de vistoriador disponível apenas para administradores e moderadores"},
+                status=403
+            )
+
         # Parâmetros de filtro
         params = {
             "dt_inicio": request.query_params.get("dt_inicio"),
             "dt_fim": request.query_params.get("dt_fim"),
             "estado": request.query_params.get("estado"),
             "administradora": request.query_params.get("administradora"),
-            "cod_vistoriador": request.query_params.get("cod_vistoriador"),
+            "cod_vistoriador": cod_vistoriador,
             "fatura": request.query_params.get("fatura"),
             "limit": request.query_params.get("limit", 5000),
             "offset": request.query_params.get("offset", 0),
@@ -120,13 +129,21 @@ class ExportarVistoriasExcel(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        # Validação: filtro de vistoriador apenas para admin e moderador
+        cod_vistoriador = request.query_params.get("cod_vistoriador")
+        if cod_vistoriador and request.user.nivel_acesso not in ('admin', 'moderador'):
+            return Response(
+                {"sucesso": False, "erro": "Filtro de vistoriador disponível apenas para administradores e moderadores"},
+                status=403
+            )
+
         # Parâmetros de filtro
         params = {
             "dt_inicio": request.query_params.get("dt_inicio"),
             "dt_fim": request.query_params.get("dt_fim"),
             "estado": request.query_params.get("estado"),
             "administradora": request.query_params.get("administradora"),
-            "cod_vistoriador": request.query_params.get("cod_vistoriador"),
+            "cod_vistoriador": cod_vistoriador,
             "fatura": request.query_params.get("fatura"),
         }
 
@@ -156,13 +173,21 @@ class ExportarVistoriasPDF(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        # Validação: filtro de vistoriador apenas para admin e moderador
+        cod_vistoriador = request.query_params.get("cod_vistoriador")
+        if cod_vistoriador and request.user.nivel_acesso not in ('admin', 'moderador'):
+            return Response(
+                {"sucesso": False, "erro": "Filtro de vistoriador disponível apenas para administradores e moderadores"},
+                status=403
+            )
+
         # Parâmetros de filtro
         params = {
             "dt_inicio": request.query_params.get("dt_inicio"),
             "dt_fim": request.query_params.get("dt_fim"),
             "estado": request.query_params.get("estado"),
             "administradora": request.query_params.get("administradora"),
-            "cod_vistoriador": request.query_params.get("cod_vistoriador"),
+            "cod_vistoriador": cod_vistoriador,
             "fatura": request.query_params.get("fatura"),
         }
 

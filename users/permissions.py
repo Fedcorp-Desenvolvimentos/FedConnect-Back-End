@@ -10,6 +10,16 @@ class IsAdmin(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.nivel_acesso == 'admin'
 
 
+class IsAdminOrModerador(permissions.BasePermission):
+    """
+    Permissão personalizada para permitir apenas usuários com nível de acesso 'admin' ou 'moderador'.
+    """
+
+    def has_permission(self, request, view):
+        return (request.user and request.user.is_authenticated
+                and request.user.nivel_acesso in ('admin', 'moderador'))
+
+
 class IsOwnerOrAdmin(permissions.BasePermission):
     """
     Permissão personalizada para permitir que usuários vejam apenas seus próprios recursos,
