@@ -17,7 +17,7 @@ class IsAdminOrModerador(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return (request.user and request.user.is_authenticated
-                and request.user.nivel_acesso in ('admin', 'moderador'))
+                and request.user.nivel_acesso in ('admin', 'moderador', 'vistoria'))
 
 
 class IsOwnerOrAdmin(permissions.BasePermission):
