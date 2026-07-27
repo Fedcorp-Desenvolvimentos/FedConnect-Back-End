@@ -2226,6 +2226,15 @@ class CriarPessoaView(APIView):
                 },
                 status=status.HTTP_201_CREATED
             )
+            
+            # return Response(
+            #     {
+            #         "sucesso": True,
+            #         "mensagem": "Pessoa criada com sucesso",
+            #         "data": payload
+            #     },
+            #     status=status.HTTP_201_CREATED
+            # )
 
         except Exception as e:
             logger.error(f"Erro ao criar pessoa: {str(e)}", exc_info=True)
