@@ -1,16 +1,17 @@
-# fedhub/services/nfse_service.py
+# consultas/services/firebird.py
 
 import requests
 import logging
-from decouple import config
+
 from consultas.utils.get_headers import get_headers
 
 logger = logging.getLogger(__name__)
 
-class NFSeService:
+class FedhubService:
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")  # URL do serviço Fedhub
+        pass
     
+    # Nota Fiscal
     def buscar_nfse_por_boleto(self, documento: str):
         try:
             # 1. Buscar ID da NFSE no Firebird
@@ -69,3 +70,4 @@ class NFSeService:
             logger.error(f"Erro ao chamar serviços: {e}")
             return None
 
+    

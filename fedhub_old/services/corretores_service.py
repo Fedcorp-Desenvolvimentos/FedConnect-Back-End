@@ -2,14 +2,15 @@
 
 import requests
 import logging
-from decouple import config
+
 from consultas.utils.get_headers import get_headers
+
 logger = logging.getLogger(__name__)
 
-class CorretoresService:
+class FedhubService:
     def __init__(self):
-            self.base_url = config("FEDHUB_URL", default="http://localhost:8090")  # URL do serviço Fedhub
-            
+        pass
+
     # Corretores
     def buscar_corretor_por_codigo(self, codigo: str):
         try:

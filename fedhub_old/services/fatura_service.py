@@ -9,7 +9,7 @@ from consultas.utils.get_headers import get_headers
 
 logger = logging.getLogger(__name__)
 
-class FaturaService:
+class FedhubService:
     def __init__(self):
         pass
 

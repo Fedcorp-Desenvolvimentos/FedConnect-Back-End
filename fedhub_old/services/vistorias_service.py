@@ -1,6 +1,5 @@
 # fedhub/services/vistorias_service.py
 
-from decouple import config
 import requests
 import logging
 from typing import Any, Dict, Optional
@@ -14,7 +13,9 @@ class VistoriasService:
     """Service para consulta de vistorias via FedHub"""
 
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")  # URL do serviço Fedhub
+        from consultas.services.fedhub_service import FedhubService
+        self.fedhub = FedhubService()
+        self.base_url = self.fedhub.base_url
 
     def listar_estados(self) -> Optional[Dict[str, Any]]:
         """Lista estados das vistorias"""
