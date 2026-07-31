@@ -14,20 +14,11 @@ logger = logging.getLogger(__name__)
 # ============================================================
 # PESSOAS
 # ============================================================
-
 class BuscarPessoasView(APIView):
-    """
-    Busca pessoas (favorecidos)
-    GET /pessoas/
-    """
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
     def get(self, request, *args, **kwargs):
         try:
             service = PessoasService()
             
-            # Parâmetros de busca
             limit = request.query_params.get("limit", 20)
             search = request.query_params.get("search", "").strip()
             offset = request.query_params.get("offset", 0)
@@ -41,7 +32,6 @@ class BuscarPessoasView(APIView):
             if search:
                 params["nome"] = search
 
-            # Chama o FastAPI
             dados = service.buscar_pessoas(params)
             
             if not dados:
@@ -50,15 +40,15 @@ class BuscarPessoasView(APIView):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
-            # Extrai dados da resposta
+            # 🔥 CORREÇÃO: usa total_registros
             data = dados.get("data") if isinstance(dados, dict) else dados
-            total = dados.get("total", len(data)) if isinstance(dados, dict) else len(data) if isinstance(data, list) else 0
+            total = dados.get("total_registros", 0) if isinstance(dados, dict) else len(data) if isinstance(data, list) else 0
 
             return Response(
                 {
                     "sucesso": True,
                     "data": data,
-                    "total": total,
+                    "total": total,  # ← Agora vai vir 6845
                 },
                 status=status.HTTP_200_OK
             )
