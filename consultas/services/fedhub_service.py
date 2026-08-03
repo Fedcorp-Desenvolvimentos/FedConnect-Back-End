@@ -1097,8 +1097,11 @@ class FedhubService:
             from datetime import datetime
             datetime.strptime(data_corte, '%Y-%m-%d')
             
-            # Monta os parâmetros da query (data_corte é fixo no backend)
+            # Monta os parâmetros da query (inclui data_corte)
             query_params = {}
+            
+            # Adiciona data_corte como parâmetro
+            query_params['data_corte'] = data_corte
             
             # Limpa parâmetros vazios
             for key, value in params.items():
