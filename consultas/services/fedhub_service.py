@@ -1097,11 +1097,8 @@ class FedhubService:
             from datetime import datetime
             datetime.strptime(data_corte, '%Y-%m-%d')
             
-            # Monta os parâmetros da query (inclui data_corte)
+            # Monta os parâmetros da query (data_corte é fixo no backend)
             query_params = {}
-            
-            # Adiciona data_corte como parâmetro
-            query_params['data_corte'] = data_corte
             
             # Limpa parâmetros vazios
             for key, value in params.items():
@@ -1242,8 +1239,7 @@ class FedhubService:
             if data.get("status") == "success":
                 return {
                     "status": "success",
-                    "message": data.get("message") or data.get("mensagem", "Comissão cancelada com sucesso"),
-                    "total_canceladas": data.get("total_canceladas", 0),
+                    "message": data.get("message", "Comissão cancelada com sucesso"),
                     "data": data.get("data", {})
                 }
             else:
@@ -1398,150 +1394,6 @@ class FedhubService:
             logger.error(f"Erro ao buscar pessoa por código: {e}")
             return None
         
-    def atualizar_pessoa(self, codigo: str, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Atualiza uma pessoa existente - proxy para FedHub
-        PUT /api/pessoas/{codigo}
-        """
-        try:
-            response = requests.put(
-                f"{self.base_url}/api/pessoas/{codigo}",
-                json=payload,
-                headers=get_headers(),
-                timeout=30,
-            )
-
-            if response.status_code in [200, 201]:
-                try:
-                    data = response.json()
-                    
-                    if data.get("status") == "success":
-                        return data
-                    else:
-                        logger.error(f"FastAPI retornou erro: {data}")
-                        return {
-                            "status": "error",
-                            "message": data.get("message", "Erro ao atualizar pessoa no FastAPI"),
-                            "http_status": response.status_code,
-                        }
-                except ValueError:
-                    logger.error(f"Resposta inválida do FastAPI: {response.text}")
-                    return {
-                        "status": "error",
-                        "message": "Resposta inválida do FastAPI",
-                        "http_status": 502,
-                    }
-
-            logger.error(f"FastAPI erro {response.status_code}: {response.text}")
-            return {
-                "status": "error",
-                "message": f"Erro no FastAPI: {response.status_code}",
-                "http_status": response.status_code,
-            }
-
-        except requests.Timeout:
-            logger.error("Timeout ao atualizar pessoa no FastAPI")
-            return {
-                "status": "timeout",
-                "message": "Timeout ao aguardar resposta do FastAPI",
-                "http_status": 504,
-            }
-
-        except requests.RequestException as e:
-            logger.error(f"Erro ao chamar FastAPI para atualizar pessoa: {e}")
-            return {
-                "status": "error",
-                "message": f"Erro de comunicação com FastAPI: {str(e)}",
-                "http_status": 503,
-            }
-                  
-    # BANCOS
-    def buscar_bancos(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Busca bancos - proxy para FedHub
-        GET /api/bancos/
-        """
-        try:
-            params_limpos = {k: v for k, v in params.items() if v not in [None, "", []]}
-            response = requests.get(
-                f"{self.base_url}/api/bancos/",
-                params=params_limpos,
-                headers=get_headers(),
-                timeout=30,
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"FedHub erro ao buscar bancos: {response.status_code} - {response.text}")
-                return None
-            
-            data = response.json()
-            
-            if data.get("status") != "success":
-                logger.error(f"FedHub retornou erro: {data}")
-                return None
-            
-            return data
-            
-        except requests.RequestException as e:
-            logger.error(f"Erro ao buscar bancos no FedHub: {e}")
-            return None
-    
-    def buscar_banco_por_codigo(self, codigo: str) -> Optional[Dict[str, Any]]:
-        """
-        Busca banco por código - proxy para FedHub
-        GET /api/bancos/{codigo}
-        """
-        try:
-            response = requests.get(
-                f"{self.base_url}/api/bancos/{codigo}",
-                headers=get_headers(),
-                timeout=30,
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"FedHub erro ao buscar banco {codigo}: {response.status_code} - {response.text}")
-                return None
-            
-            data = response.json()
-            
-            if data.get("status") != "success":
-                logger.error(f"FedHub retornou erro: {data}")
-                return None
-            
-            return data.get("data")
-            
-        except requests.RequestException as e:
-            logger.error(f"Erro ao buscar banco {codigo} no FedHub: {e}")
-            return None
-    
-    def buscar_banco_por_nome(self, nome: str) -> Optional[Dict[str, Any]]:
-        """
-        Busca banco por nome - proxy para FedHub
-        GET /api/bancos/nome/{nome}
-        """
-        try:
-            response = requests.get(
-                f"{self.base_url}/api/bancos/nome/{nome}",
-                headers=get_headers(),
-                timeout=30,
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"FedHub erro ao buscar banco por nome {nome}: {response.status_code} - {response.text}")
-                return None
-            
-            data = response.json()
-            
-            if data.get("status") != "success":
-                logger.error(f"FedHub retornou erro: {data}")
-                return None
-            
-            return data
-            
-        except requests.RequestException as e:
-            logger.error(f"Erro ao buscar banco por nome {nome} no FedHub: {e}")
-            return None
-    
     
     def buscar_comissao_por_data_corte(self, data_corte: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
             """
