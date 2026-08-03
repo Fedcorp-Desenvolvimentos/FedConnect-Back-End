@@ -556,6 +556,7 @@ class CancelarComissaoView(APIView):
                 comissoes_validas.append({
                     "numero_comissao": comissao.get("voucher"),
                     "parcela": comissao.get("parcela"),
+                    "tipo_fat": comissao.get("tipo_fat"),
                     "documento": comissao.get("documento"),
                     "favorecido": favorecido,
                     "tipo_comissao": comissao.get("tipo"),
@@ -574,6 +575,15 @@ class CancelarComissaoView(APIView):
             else:
                 comissoes_canceladas = 0
                 logger.error(f"Erro no cancelamento em lote: {resultado}")
+
+            if not resultado or resultado.get("status") != "success":
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": (resultado or {}).get("message", "Falha ao cancelar comissões."),
+                    },
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
 
             return Response(
                 {

@@ -1242,7 +1242,8 @@ class FedhubService:
             if data.get("status") == "success":
                 return {
                     "status": "success",
-                    "message": data.get("message", "Comissão cancelada com sucesso"),
+                    "message": data.get("message") or data.get("mensagem", "Comissão cancelada com sucesso"),
+                    "total_canceladas": data.get("total_canceladas", 0),
                     "data": data.get("data", {})
                 }
             else:
