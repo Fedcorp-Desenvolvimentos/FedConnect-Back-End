@@ -49,14 +49,11 @@ class CancelarBoletoFedBnkView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            logger.info(f"Cancelamento {metodo} - Fatura: {fatura}, Documento: {documento}")
+            logger.info(f"Cancelamento {metodo} - Fatura: {fatura}, Documento: {documento}, Solicitante: {mail}")
             
-            # Payload para o FedHub (sempre com fatura, documento pode ser None)
             payload = {
                 "fatura": fatura,
                 "documento": documento if metodo == "INDIVIDUAL" else None,
-                "motivo": motivo,
-                "mail": mail
             }
             
             # Chamar o FedhubService

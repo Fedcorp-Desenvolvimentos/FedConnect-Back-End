@@ -57,7 +57,6 @@ def consultar_boleto(request):
     
        
 def cancelar_boleto(request):
-    # 1. Pegar o parâmetro 'numero' que veio na requisição para o Django
     method = request.GET.get('method')
     numero_fatura = request.GET.get('numero')
 
@@ -66,11 +65,11 @@ def cancelar_boleto(request):
 
     try:
         response = requests.post(
-            f"https://fedhub-api-local.ngrok.app/api/fedbnk/cancelamento",
+            f"https://fedhub-api-local.ngrok.app/api/fedpay/cancelamento",
             json={
-                'numero': numero_fatura,
-                'method': method
-                  },
+                'fatura': int(numero_fatura),
+                'documento': None,
+            },
             timeout=10
         )
 

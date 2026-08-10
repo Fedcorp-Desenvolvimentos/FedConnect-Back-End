@@ -806,13 +806,17 @@ class FedhubService:
     def cancelar_boleto_fedbnk(self, payload: dict) -> Optional[Dict[str, Any]]:
         """Cancela boleto(s) no FedHub"""
         try:
-            # URL correta do FedHub (única rota para cancelamento)
-            url = f"{self.base_url}/api/fedbnk/cancelar/"
+            url = f"{self.base_url}/api/fedpay/cancelamento"
+
+            fedhub_payload = {
+                "fatura": int(payload["fatura"]),
+                "documento": payload.get("documento"),
+            }
 
             response = requests.post(
                 url,
                 headers=get_headers(),
-                json=payload,  # Payload: {fatura, documento, motivo, mail}
+                json=fedhub_payload,
                 timeout=30,
             )
 
