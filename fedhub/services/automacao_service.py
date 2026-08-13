@@ -4,6 +4,8 @@
 from decouple import config
 from typing import Any, Dict, Optional
 import requests
+
+from consultas.utils.get_headers import get_auth_headers
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,7 @@ class AutomacaoService:
 
             response = requests.post(
                 f"{self.base_url}/api/automate/separar-pdf",
+                headers=get_auth_headers(),
                 files=files,
                 data=data,
                 timeout=300,
@@ -81,6 +84,7 @@ class AutomacaoService:
 
             response = requests.post(
                 f"{self.base_url}/api/automate/upload-pdfs-bbz",
+                headers=get_auth_headers(),
                 files=files_to_send,
                 timeout=300,
             )
@@ -110,6 +114,7 @@ class AutomacaoService:
 
             response = requests.post(
                 f"{self.base_url}/api/automate/processar-pdfs-bbz",
+                headers=get_auth_headers(),
                 data=data,
                 timeout=300,
             )

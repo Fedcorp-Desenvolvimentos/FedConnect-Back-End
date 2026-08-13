@@ -6,6 +6,8 @@ import secrets
 from django.utils import timezone
 from typing import Any
 import httpx
+
+from consultas.utils.get_headers import get_headers
 import requests
 import logging
 
@@ -64,6 +66,7 @@ class FedhubService:
 
                 response = client.post(
                     f"{self.base_url}/api/email/send/gmail",
+                    headers=get_headers(),
                     json={
                         "to_email": email,
                         "subject": "Redefinição de Senha - FedConnect",
