@@ -490,6 +490,7 @@ class EmitirVoucherComissaoView(APIView):
                     "numero_documento": resultado.get("numero_documento"),
                     "nome_arquivo": resultado.get("nome_arquivo"),
                     "pdf_base64": resultado.get("pdf_base64"),
+                    "registros_atualizados": resultado.get("registros_atualizados"),
                     "mensagem": "Voucher gerado com sucesso"
                 }, status=status.HTTP_200_OK)
             
@@ -581,6 +582,7 @@ class CancelarComissaoView(APIView):
                     "mensagem": f"{comissoes_canceladas} comissão(ões) cancelada(s) com sucesso.",
                     "total_processadas": len(lista_comissoes),
                     "total_canceladas": comissoes_canceladas,
+                    "vouchers_cancelados": (resultado or {}).get("vouchers_cancelados", {}),
                 },
                 status=status.HTTP_200_OK
             )
