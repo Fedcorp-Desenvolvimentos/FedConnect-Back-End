@@ -47,6 +47,7 @@ from fedhub.views.empresas_view import BuscarTodasEmpresas
 
 from fedhub.views.faturas_view import BuscarFaturaPorNumero, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF
 from fedhub.views.fedbnk_view import CancelarBoletoFedBnkView, SincronizarBoletosView
+from fedhub.views.fedpay_view import ConsultarFedPayView, TratamentoFedPayView
 from fedhub.views.pessoas_view import (
     BuscarPessoasView,
     CriarPessoaView,
@@ -246,6 +247,8 @@ urlpatterns = [
     path('faturamento/formato-arquivos/converter-boleto-csv/', ConverterBoletoCSVView.as_view(), name='faturamento-converter-boleto-csv'),
     path('faturamento/dados-segunda-via-boleto/<str:fatura>/', DadosSegundaViaBoletoView.as_view(), name='faturamento-dados-segunda-via-boleto'),
     path('faturamento/emissao-segunda-via-boleto/<str:fatura>/', EmissaoSegundaViaBoletoView.as_view(), name='faturamento-emissao-segunda-via-boleto'),
+    path('fedpay/consulta/<str:fatura>/', ConsultarFedPayView.as_view(), name='fedpay-consulta'),
+    path('fedpay/tratamento/', TratamentoFedPayView.as_view(), name='fedpay-tratamento'),
     
     # COMISSÕES / RECIBOS / VOUCHERS *******
     path('comissoes/faturas/', BuscarFaturasComissoesView.as_view(), name='buscar-faturas-comissoes'),

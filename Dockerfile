@@ -28,4 +28,4 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # Usamos o comando 'python -m gunicorn' que é mais confiável para encontrar o módulo
-CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--timeout", "120", "bigcorp.wsgi:application"]
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--timeout", "360", "bigcorp.wsgi:application"]

@@ -22,9 +22,10 @@ class CancelarBoletoFedBnkView(APIView):
         """
         Payload esperado:
         {
-            "metodo": "INDIVIDUAL" ou "TODOS",
+            "metodo": "INDIVIDUAL", "SELECIONADOS" ou "TODOS",
             "fatura": "167455",  # obrigatório
-            "documento": "0001482774",  # opcional - para INDIVIDUAL
+            "documento": "0001482774",  # para INDIVIDUAL
+            "documentos": ["0001482774", "0001482775"],  # para SELECIONADOS
             "motivo": "motivo do cancelamento",
             "mail": "email@exemplo.com"
         }
@@ -34,21 +35,63 @@ class CancelarBoletoFedBnkView(APIView):
             metodo = data.get("metodo")
             fatura = data.get("fatura")
             documento = data.get("documento")
+            documentos = data.get("documentos") or []
             motivo = data.get("motivo", f"Cancelamento solicitado por {request.user.email}")
             mail = data.get("mail", request.user.email)
-            
+
             if not fatura:
                 return Response(
                     {"sucesso": False, "erro": "Número da fatura é obrigatório"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             if not metodo:
                 return Response(
-                    {"sucesso": False, "erro": "Metodo (INDIVIDUAL ou TODOS) é obrigatório"},
+                    {"sucesso": False, "erro": "Metodo (INDIVIDUAL, SELECIONADOS ou TODOS) é obrigatório"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
+            if metodo == "SELECIONADOS":
+                if not documentos:
+                    return Response(
+                        {"sucesso": False, "erro": "Lista de documentos é obrigatória para o metodo SELECIONADOS"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                logger.info(f"Cancelamento SELECIONADOS - Fatura: {fatura}, {len(documentos)} documento(s), Solicitante: {mail}")
+
+                # O FedHub só cancela um documento por chamada — o lote é resolvido aqui
+                service = FedhubService()
+                cancelados = []
+                falhas = []
+                for doc in documentos:
+                    resultado = service.cancelar_boleto_fedbnk({"fatura": fatura, "documento": doc})
+                    if resultado and resultado.get("status") == "sucesso":
+                        cancelados.append(doc)
+                    else:
+                        falhas.append({
+                            "documento": doc,
+                            "message": resultado.get("message", "Erro desconhecido") if resultado else "Erro desconhecido",
+                        })
+
+                if not falhas:
+                    status_geral, http_status = "success", status.HTTP_200_OK
+                    message = f"{len(cancelados)} boleto(s) cancelado(s) com sucesso"
+                elif cancelados:
+                    status_geral, http_status = "partial", status.HTTP_200_OK
+                    message = f"{len(cancelados)} boleto(s) cancelado(s); {len(falhas)} falharam"
+                else:
+                    status_geral, http_status = "error", status.HTTP_400_BAD_REQUEST
+                    message = "Nenhum boleto pôde ser cancelado"
+
+                return Response({
+                    "sucesso": bool(cancelados),
+                    "status": status_geral,
+                    "message": message,
+                    "cancelados": cancelados,
+                    "falhas": falhas,
+                }, status=http_status)
+
             logger.info(f"Cancelamento {metodo} - Fatura: {fatura}, Documento: {documento}, Solicitante: {mail}")
             
             payload = {
