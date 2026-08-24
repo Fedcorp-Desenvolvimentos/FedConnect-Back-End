@@ -57,6 +57,7 @@ from fedhub.views.pessoas_view import (
 
 from fedhub.views.produtos_view import BuscarProdutosView, BuscarNFSEPorBoleto
 
+from rest_framework_simplejwt.views import TokenRefreshView
 from users.views import (
     GoogleLoginView,
     ResetarSenhaView, 
@@ -135,7 +136,7 @@ urlpatterns = [
     # ROTA DE AUTENTICAÇÃO / LOGIN / LOGOUT
     path("login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     
-    #path("login/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("login/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path('google-login/', GoogleLoginView.as_view(), name='google-login'),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("users/me/", UsuarioViewSet.as_view({"get": "me"}), name="usuario-me"),

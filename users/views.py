@@ -101,8 +101,15 @@ class LogoutView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # Com a autenticação via localStorage, não há cookies para deletar no backend.
-        # O logout é gerenciado inteiramente no frontend, limpando o localStorage.
+        # Blacklista o refresh token quando enviado (spec auth-refresh-token).
+        # O logout local do front nunca pode travar: token ausente/inválido
+        # ainda responde 200.
+        refresh = request.data.get("refresh")
+        if refresh:
+            try:
+                RefreshToken(refresh).blacklist()
+            except Exception:
+                pass
         return Response(
             {"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK
         )
