@@ -48,6 +48,10 @@ from fedhub.views.empresas_view import BuscarTodasEmpresas
 from fedhub.views.faturas_view import BuscarFaturaPorNumero, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF
 from fedhub.views.fedbnk_view import CancelarBoletoFedBnkView, SincronizarBoletosView
 from fedhub.views.fedpay_view import ConsultarFedPayView, TratamentoFedPayView
+from fedhub.views.envio_porto_view import (
+    GerarAssistenciaView, ListarJobsView, JobView, DownloadJobView, EnviarSftpView,
+    VidaSubgruposView, VidaGerarView, VidaInconsistenciasView, DentalView,
+)
 from fedhub.views.pessoas_view import (
     BuscarPessoasView,
     CriarPessoaView,
@@ -250,6 +254,17 @@ urlpatterns = [
     path('faturamento/emissao-segunda-via-boleto/<str:fatura>/', EmissaoSegundaViaBoletoView.as_view(), name='faturamento-emissao-segunda-via-boleto'),
     path('fedpay/consulta/<str:fatura>/', ConsultarFedPayView.as_view(), name='fedpay-consulta'),
     path('fedpay/tratamento/', TratamentoFedPayView.as_view(), name='fedpay-tratamento'),
+
+    # ENVIO PORTO (proxy da API /api/envio-porto/* do FedHub) *******
+    path('envio-porto/assistencia/gerar/', GerarAssistenciaView.as_view(), name='envio-porto-assistencia-gerar'),
+    path('envio-porto/jobs/', ListarJobsView.as_view(), name='envio-porto-jobs'),
+    path('envio-porto/jobs/<str:job_id>/', JobView.as_view(), name='envio-porto-job'),
+    path('envio-porto/jobs/<str:job_id>/download/', DownloadJobView.as_view(), name='envio-porto-job-download'),
+    path('envio-porto/jobs/<str:job_id>/enviar-sftp/', EnviarSftpView.as_view(), name='envio-porto-job-enviar-sftp'),
+    path('envio-porto/vida/subgrupos/', VidaSubgruposView.as_view(), name='envio-porto-vida-subgrupos'),
+    path('envio-porto/vida/gerar/', VidaGerarView.as_view(), name='envio-porto-vida-gerar'),
+    path('envio-porto/vida/inconsistencias/', VidaInconsistenciasView.as_view(), name='envio-porto-vida-inconsistencias'),
+    path('envio-porto/dental/<path:rota>/', DentalView.as_view(), name='envio-porto-dental'),
     
     # COMISSÕES / RECIBOS / VOUCHERS *******
     path('comissoes/faturas/', BuscarFaturasComissoesView.as_view(), name='buscar-faturas-comissoes'),
