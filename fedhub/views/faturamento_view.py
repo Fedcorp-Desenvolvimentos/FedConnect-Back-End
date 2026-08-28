@@ -339,9 +339,9 @@ class DadosSegundaViaBoletoView(APIView):
             logger.info(f"Buscando dados para fatura: {fatura}")
             
             service = FaturamentoService()
-            dados = service.processar_dados_segunda_via_boleto(fatura)
+            resultado = service.processar_dados_segunda_via_boleto(fatura)
             
-            if not dados:
+            if resultado is None:
                 logger.error(f"Erro ao gerar segunda via do boleto para fatura {fatura}")
                 return Response(
                     {
@@ -350,11 +350,36 @@ class DadosSegundaViaBoletoView(APIView):
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+
+            dados = resultado.get("dados") or []
+            sem_registro = resultado.get("sem_registro") or []
+
+            if resultado.get("nao_encontrada"):
+                return Response(
+                    {"sucesso": False, "erro": f"Fatura {fatura} não encontrada ou sem boleto ativo."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            if not dados:
+                # FedHub: nenhum boleto desta fatura foi enviado ao banco (API ou remessa)
+                docs = ", ".join(b.get("documento") or "?" for b in sem_registro)
+                return Response(
+                    {
+                        "sucesso": False,
+                        "erro": (
+                            f"Nenhum boleto da fatura {fatura} consta como enviado ao banco "
+                            f"({len(sem_registro)} sem registro: {docs}). Não há 2ª via a emitir."
+                        ),
+                        "sem_registro": sem_registro,
+                    },
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                )
             
             return Response(
                 {
                     "sucesso": True,
-                    "dados": dados
+                    "dados": dados,
+                    "sem_registro": sem_registro,
                 },
                 status=status.HTTP_200_OK
             )
@@ -386,6 +411,13 @@ class EmissaoSegundaViaBoletoView(APIView):
         try:
             service = FaturamentoService()
             resultado = service.emitir_segunda_via_boleto(fatura, boletos)
+
+            if resultado and resultado.get("status") == "rejeitado":
+                # FedHub recusou o lote: boleto(s) sem registro no banco (422)
+                return Response(
+                    {"sucesso": False, "erro": resultado.get("erro"), "rejeitados": resultado.get("rejeitados") or []},
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY
+                )
 
             if not resultado or resultado.get("status") != "success":
                 return Response(

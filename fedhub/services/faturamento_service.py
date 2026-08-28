@@ -10,6 +10,39 @@ import json
 
 logger = logging.getLogger(__name__)
 
+MOTIVOS_REJEICAO = {
+    "sem_registro": "não consta como enviado ao banco",
+    "nao_localizado": "não encontrado na fatura",
+    "inativo": "cancelado ou baixado",
+    "chave_ausente": "sem fatura/nosso número",
+}
+
+
+def _detalhe_fedhub(response) -> dict:
+    """Corpo de erro do FedHub: FastAPI embrulha o HTTPException em {"detail": {...}}."""
+    try:
+        corpo = response.json()
+    except ValueError:
+        return {}
+    detalhe = corpo.get("detail", corpo) if isinstance(corpo, dict) else {}
+    return detalhe if isinstance(detalhe, dict) else {}
+
+
+def mensagem_rejeicao(rejeitados: list) -> str:
+    """Texto para o operador a partir de `rejeitados` do FedHub (spec fedpay-pdf-somente-registrados)."""
+    if not rejeitados:
+        return "O FedHub recusou a emissão da 2ª via: boleto(s) sem registro no banco. Reconsulte a fatura."
+    partes = []
+    for r in rejeitados:
+        motivo = MOTIVOS_REJEICAO.get(r.get("motivo"), r.get("motivo") or "recusado")
+        partes.append(f"nosso número {r.get('nosso_numero') or '?'} ({motivo})")
+    n = len(rejeitados)
+    return (
+        f"{n} boleto(s) não podem ter 2ª via: {'; '.join(partes)}. "
+        "Reconsulte a fatura — só boletos enviados ao banco (API ou remessa) são emitidos."
+    )
+
+
 class FaturamentoService:
     def __init__(self):
             self.base_url = config("FEDHUB_URL", default="http://localhost:8090")
@@ -201,19 +234,30 @@ class FaturamentoService:
                 timeout=30.0
             )
 
+            # FedHub (spec fedpay-pdf-somente-registrados): boletos que nunca foram
+            # ao banco não entram em `data`; vêm em `sem_registro`. Todos fora → 422.
+            if response.status_code == 422:
+                detalhe = _detalhe_fedhub(response)
+                sem_registro = detalhe.get("sem_registro") or []
+                logger.warning(f"Fedhub 422 na fatura {fatura}: {len(sem_registro)} boleto(s) sem envio ao banco")
+                return {"dados": [], "sem_registro": sem_registro}
+
+            if response.status_code == 404:
+                logger.warning(f"Fedhub 404 na fatura {fatura}: sem boleto ativo")
+                return {"dados": [], "sem_registro": [], "nao_encontrada": True}
+
             if response.status_code != 200:
                 logger.error(f"Fedhub erro {response.status_code}: {response.text}")
                 return None
 
             data = response.json()
             
-            # logger.info(f"DADOS DEPOIS DE CHAMAR O FEDHUB: {json.dumps(data, ensure_ascii=False)}")
-            
             if data.get("status") != "success":
                 logger.error(f"Fedhub retornou status não-success: {data}")
                 return None
             
             dados_lista = data.get("data", [])
+            sem_registro = data.get("sem_registro") or []
             
             if not dados_lista:
                 logger.error("Nenhum dado retornado pelo Fedhub")
@@ -256,7 +300,7 @@ class FaturamentoService:
                     dado["VALOR_DOCUMENTO"] = dado.get("VALOR_TOTAL", "0,00")
                     dado["VALOR_TOTAL_COM_DEDUCOES"] = dado.get("VALOR_TOTAL", "0,00")
             
-            return dados_lista
+            return {"dados": dados_lista, "sem_registro": sem_registro}
 
         except requests.RequestException as e:
             logger.error(f"Erro ao chamar Fedhub: {e}")
@@ -343,6 +387,14 @@ class FaturamentoService:
                 data=payload,
                 timeout=30.0
             )
+
+            if response.status_code == 422:
+                # FedHub conferiu o lote no Firebird e recusou (tudo-ou-nada):
+                # item inexistente, cancelado ou nunca enviado ao banco.
+                detalhe = _detalhe_fedhub(response)
+                rejeitados = detalhe.get("rejeitados") or []
+                logger.warning(f"FedHub recusou a 2ª via da fatura {fatura}: {rejeitados}")
+                return {"status": "rejeitado", "erro": mensagem_rejeicao(rejeitados), "rejeitados": rejeitados}
 
             if response.status_code not in [200, 201, 202, 204]:
                 logger.error(f"FedHub erro {response.status_code}: {response.text}")
