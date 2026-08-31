@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "cotacao",
     "bank",
     "questionarios",
+    "condomed",
 ]
 
 MIDDLEWARE = [
