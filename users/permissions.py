@@ -40,3 +40,14 @@ class IsOwnerOrAdmin(permissions.BasePermission):
         
         # Para outros casos, verifica se o próprio objeto é o usuário
         return obj == request.user
+
+
+class IsCondomedOrAdmin(permissions.BasePermission):
+    """
+    Permissão para os endpoints da Condomed (cursos CIPA): apenas os níveis
+    'condomed' e 'admin' (RF-CIP-004).
+    """
+
+    def has_permission(self, request, view):
+        return (request.user and request.user.is_authenticated
+                and request.user.nivel_acesso in ('condomed', 'admin'))

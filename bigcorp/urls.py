@@ -96,6 +96,7 @@ from fedhub.views.vistorias_view import (
     ExportarVistoriasPDF
 )
 from agenda.views import ReservaViewSet
+from condomed.views import TurmaCipaViewSet
 
 from cotacao.views import calcular_cotacao_incendio
 from questionarios.views import QuestionarioProcessoViewSet
@@ -119,6 +120,7 @@ router.register(r"users", UsuarioViewSet, basename="users")
 router.register(r'empresas', EmpresaViewSet)
 router.register(r'agenda', ReservaViewSet)
 router.register(r'questionarios', QuestionarioProcessoViewSet)
+router.register(r'cursos-cipa', TurmaCipaViewSet, basename='cursos-cipa')
 
 urlpatterns = [
     path("admin/", admin.site.urls),

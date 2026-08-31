@@ -45,7 +45,8 @@ class Usuario(AbstractUser):
         ("ti", "TI"),
         ("faturamento", "Faturista"),
         ("financeiro", "Financeiro"),
-        ("vistoria", "Vistoria")
+        ("vistoria", "Vistoria"),
+        ("condomed", "Condomed"),
     ]
 
     username = None

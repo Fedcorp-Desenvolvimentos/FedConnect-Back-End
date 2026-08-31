@@ -368,6 +368,9 @@ class EmitirReciboComissaoView(APIView):
                 "comissoes": dados.get("comissoes", []),
                 "retencoes": dados.get("retencoes", []),
                 "resumo": dados.get("resumo", {}),
+                # Empresa pagadora do "Recebemos de" (seletor da tela de emissão)
+                "empresa_pagadora_nome": dados.get("empresa_pagadora_nome"),
+                "empresa_pagadora_cnpj": dados.get("empresa_pagadora_cnpj"),
             }
             
             # Chama o FastAPI para gerar o PDF
@@ -448,6 +451,9 @@ class EmitirVoucherComissaoView(APIView):
                 "comissoes": dados.get("comissoes", []),
                 "retencoes": dados.get("retencoes", []),
                 "resumo": dados.get("resumo", {}),
+                # Empresa pagadora do "Recebemos de" (seletor da tela de emissão)
+                "empresa_pagadora_nome": dados.get("empresa_pagadora_nome"),
+                "empresa_pagadora_cnpj": dados.get("empresa_pagadora_cnpj"),
             }
             
             # Chama o FastAPI para gerar o PDF
