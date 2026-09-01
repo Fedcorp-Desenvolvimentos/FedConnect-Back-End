@@ -14,7 +14,7 @@ class VistoriasService:
     """Service para consulta de vistorias via FedHub"""
 
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")  # URL do serviço Fedhub
+        self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")  # URL do serviço Fedhub
 
     def listar_estados(self) -> Optional[Dict[str, Any]]:
         """Lista estados das vistorias"""

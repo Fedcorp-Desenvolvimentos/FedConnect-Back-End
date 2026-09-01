@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class EmpresasService:
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")  # URL do serviço Fedhub
+        self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")  # URL do serviço Fedhub
 
     # Empresas
     async def buscar_empresa_por_cnpj(

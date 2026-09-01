@@ -45,7 +45,7 @@ def mensagem_rejeicao(rejeitados: list) -> str:
 
 class FaturamentoService:
     def __init__(self):
-            self.base_url = config("FEDHUB_URL", default="http://localhost:8090")
+            self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")
             
     def buscar_faturamento(self, filtros: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """

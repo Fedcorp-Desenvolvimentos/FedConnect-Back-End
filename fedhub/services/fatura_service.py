@@ -5,13 +5,15 @@ import httpx
 import requests
 import logging
 
+from decouple import config
+
 from consultas.utils.get_headers import get_headers
 
 logger = logging.getLogger(__name__)
 
 class FaturaService:
     def __init__(self):
-        pass
+        self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")
 
     # Faturas
     def buscar_fatura_por_numero(self, numero_fatura: str):

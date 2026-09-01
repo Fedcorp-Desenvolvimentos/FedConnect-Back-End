@@ -7,6 +7,7 @@ import httpx
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from consultas.utils.get_headers import get_headers
 from .models import QuestionarioProcesso
 from .serializers import QuestionarioProcessoSerializer
 
@@ -134,11 +135,12 @@ class QuestionarioProcessoViewSet(viewsets.ModelViewSet):
             # Email destinatário - pode vir do settings
             email_to = getattr(settings, "QUESTIONARIO_EMAIL_TO", "novosnegocios@grupofedcorp.com.br")
             
-            base_url = getattr(settings, "FEDHUB_URL", "http://localhost:8090")
-            
+            base_url = getattr(settings, "FEDHUB_URL", "http://localhost:8090").rstrip("/")
+
             with httpx.Client() as client:
                 response = client.post(
                     f"{base_url}/api/email/send/gmail",
+                    headers=get_headers(),
                     json={
                         "to_email": email_to,
                         "subject": assunto,

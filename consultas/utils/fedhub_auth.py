@@ -15,6 +15,8 @@ import time
 import requests
 from decouple import config
 
+from consultas.utils.kong_auth import gateway_headers
+
 logger = logging.getLogger(__name__)
 
 _MARGEM_RENOVACAO = 60  # renova 60s antes de expirar
@@ -29,13 +31,18 @@ class FedHubAuth:
         self._nao_tentar_antes_de = 0.0
 
     def _renovar(self) -> None:
-        base_url = config("FEDHUB_URL")
+        # rstrip: FEDHUB_URL com barra final gera "//api/..." que, depois do
+        # strip_path do Kong, chega ao FedHub como path inválido (GATEWAY.md)
+        base_url = config("FEDHUB_URL").rstrip("/")
         resposta = requests.post(
             f"{base_url}/api/auth/token",
             json={
                 "client_id": config("FEDHUB_CLIENT_ID", default=""),
                 "client_secret": config("FEDHUB_CLIENT_SECRET", default=""),
             },
+            # o próprio /api/auth/token do FedHub passa pelo gateway,
+            # então também precisa do JWT do Kong
+            headers=gateway_headers(),
             timeout=10,
         )
         resposta.raise_for_status()

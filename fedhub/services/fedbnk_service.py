@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class FedhubService:
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")  # URL do serviço Fedhub
+        self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")  # URL do serviço Fedhub
         self.webhook_url = config("WEBHOOK_URL", default="http://localhost:8000")  # URL do webhook para sincronização
         
     def cancelar_boleto_fedbnk(self, payload: dict) -> Optional[Dict[str, Any]]:

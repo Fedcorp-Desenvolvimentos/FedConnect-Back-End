@@ -23,7 +23,7 @@ TIMEOUT_TRATAMENTO = 300
 
 class FedPayService:
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")
+        self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")
 
     def _headers(self, isfedcob: bool = False) -> Dict[str, str]:
         headers = get_headers()

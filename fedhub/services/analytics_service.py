@@ -14,7 +14,7 @@ class AnalyticsService:
     """Serviço para comunicação com o microserviço de Analytics (FastAPI)"""
     
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")
+        self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")
     
     async def get_faturamento_periodo(
         self, 

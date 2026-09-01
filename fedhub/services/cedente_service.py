@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class CedenteService:
     def __init__(self):
-        self.base_url = config("FEDHUB_URL", default="http://localhost:8090")  # URL do serviço Fedhub
+        self.base_url = config("FEDHUB_URL", default="http://localhost:8090").rstrip("/")  # URL do serviço Fedhub
 
     # Cedentes
     def buscar_todos_cedentes(self) -> Optional[Dict[str, Any]]:
