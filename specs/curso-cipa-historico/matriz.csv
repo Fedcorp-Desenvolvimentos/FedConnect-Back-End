@@ -1,0 +1,4 @@
+requisito;origem;design;invariantes;tarefas;testes;questoes
+RF-HIS-001;ADR-0004|condomed/views.py pagination_class None;Arquitetura|Modelo de Dados e Contratos|Decisões;;T-HIS-1.1|T-HIS-1.2|T-HIS-1.4;CT-HIS-001|CT-HIS-002;PA-007
+RF-HIS-002;MAPEAMENTO_CIPA_FASE2.md secao 3;Arquitetura|Modelo de Dados e Contratos|Fluxo Principal;;T-HIS-1.3|T-HIS-1.4;CT-HIS-003;PA-007
+RNF-HIS-001;condomed/views.py PaginacaoHistorico;Tratamento de Erros;;T-HIS-1.1;CT-HIS-002;

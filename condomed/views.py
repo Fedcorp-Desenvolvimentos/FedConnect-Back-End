@@ -4,9 +4,11 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from users.permissions import IsCondomedOrAdmin
@@ -17,9 +19,24 @@ from .serializers import (
     CPF_DUPLICADO,
     ImportarTurmaSerializer,
     InscricaoCipaSerializer,
+    InscricaoComTurmaSerializer,
     TurmaCipaSerializer,
+    TurmaResumoSerializer,
 )
 from .validators import cpf_valido, normalizar_cpf
+
+
+class PaginacaoHistorico(PageNumberPagination):
+    """Paginação das consultas de histórico (RF-HIS-001, RF-HIS-002).
+
+    O calendário continua sem paginação (pede o mês inteiro); só as listas
+    abertas por período paginam. 25 por página cabe numa tela sem rolagem
+    infinita; `page_size` deixa a tela pedir mais quando fizer sentido.
+    """
+
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 # Colunas da planilha modelo, na ordem. O cabeçalho é o contrato com a tela:
 # o parser do frontend casa por este texto, então mudar aqui é mudar lá.
@@ -101,6 +118,98 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
         return Response([
             {"codigo": codigo, **dados} for codigo, dados in LOCAIS_CIPA.items()
         ])
+
+    @action(detail=False, methods=["get"], url_path="historico")
+    def historico(self, request):
+        """Turmas por período, paginadas, com filtros que o calendário não tem.
+
+        Rota separada de `GET cursos-cipa/` de propósito: o calendário depende
+        daquela devolver o mês inteiro como lista, sem envelope de paginação.
+        """
+        params = request.query_params
+        queryset = (
+            TurmaCipa.objects.select_related("reserva_sala")
+            .prefetch_related("inscricoes")
+            .order_by("-data", "local")
+        )
+
+        if params.get("data_inicio"):
+            queryset = queryset.filter(data__gte=params["data_inicio"])
+        if params.get("data_fim"):
+            queryset = queryset.filter(data__lte=params["data_fim"])
+        if params.get("local"):
+            queryset = queryset.filter(local=params["local"])
+        if params.get("status"):
+            queryset = queryset.filter(status=params["status"])
+        # Vínculo é do inscrito (ADR-0004): filtrar turma por administradora ou
+        # condomínio é "turmas que têm gente de lá".
+        if params.get("administradora"):
+            queryset = queryset.filter(
+                inscricoes__administradora_codigo=params["administradora"]
+            )
+        if params.get("condominio"):
+            queryset = queryset.filter(
+                inscricoes__condominio_nome__icontains=params["condominio"]
+            )
+        if params.get("busca"):
+            termo = params["busca"].strip()
+            queryset = queryset.filter(
+                Q(inscricoes__nome__icontains=termo)
+                | Q(inscricoes__cpf=normalizar_cpf(termo))
+                | Q(inscricoes__condominio_nome__icontains=termo)
+                | Q(inscricoes__administradora_nome__icontains=termo)
+                | Q(observacao__icontains=termo)
+            )
+        queryset = queryset.distinct()
+
+        paginador = PaginacaoHistorico()
+        pagina = paginador.paginate_queryset(queryset, request, view=self)
+        return paginador.get_paginated_response(
+            TurmaResumoSerializer(pagina, many=True).data
+        )
+
+    @action(detail=False, methods=["get"], url_path="participantes")
+    def participantes(self, request):
+        """Inscrições em todas as turmas: onde cada pessoa esteve.
+
+        Generaliza o `verificar-cpf`, que segue existindo para a tela de
+        inscrição. Uma linha por inscrição — a mesma pessoa em três turmas são
+        três linhas, porque presença e certificado (fases seguintes) são por
+        inscrição.
+        """
+        params = request.query_params
+        queryset = InscricaoCipa.objects.select_related("turma").order_by(
+            "-turma__data", "condominio_nome", "nome"
+        )
+
+        if params.get("cpf"):
+            queryset = queryset.filter(cpf=normalizar_cpf(params["cpf"]))
+        if params.get("administradora"):
+            queryset = queryset.filter(administradora_codigo=params["administradora"])
+        if params.get("condominio"):
+            queryset = queryset.filter(condominio_nome__icontains=params["condominio"])
+        if params.get("data_inicio"):
+            queryset = queryset.filter(turma__data__gte=params["data_inicio"])
+        if params.get("data_fim"):
+            queryset = queryset.filter(turma__data__lte=params["data_fim"])
+        if params.get("busca"):
+            termo = params["busca"].strip()
+            digitos = normalizar_cpf(termo)
+            filtro = (
+                Q(nome__icontains=termo)
+                | Q(condominio_nome__icontains=termo)
+                | Q(administradora_nome__icontains=termo)
+            )
+            # Só compara CPF quando o termo tem dígitos: "Maria" não é CPF.
+            if digitos:
+                filtro |= Q(cpf__startswith=digitos)
+            queryset = queryset.filter(filtro)
+
+        paginador = PaginacaoHistorico()
+        pagina = paginador.paginate_queryset(queryset, request, view=self)
+        return paginador.get_paginated_response(
+            InscricaoComTurmaSerializer(pagina, many=True).data
+        )
 
     @action(detail=False, methods=["get"], url_path="planilha-modelo")
     def planilha_modelo(self, request):

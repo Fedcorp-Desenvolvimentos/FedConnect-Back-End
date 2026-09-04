@@ -913,3 +913,150 @@ class DuplicidadeDeCpfNaTurmaTests(CipaTestBase):
         )
 
         self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+
+
+class HistoricoEConsultaTests(CipaTestBase):
+    """CT-HIS-001..004: histórico paginado de turmas e consulta de participantes."""
+
+    def setUp(self):
+        super().setUp()
+        # Três turmas em meses diferentes, com gente de duas administradoras.
+        self.antiga = TurmaCipa.objects.create(
+            local=AUDITORIO, data=date(2026, 6, 10), status="realizada",
+            criado_por=self.operador,
+        )
+        self.recente = TurmaCipa.objects.create(
+            local=SALA_REUNIAO, data=date(2026, 9, 15), criado_por=self.operador,
+        )
+        self.cancelada = TurmaCipa.objects.create(
+            local=AUDITORIO, data=date(2026, 9, 20), status="cancelada",
+            criado_por=self.operador,
+        )
+        InscricaoCipa.objects.create(
+            turma=self.antiga, nome="Maria Aparecida", cpf=CPF_A,
+            **dados_vinculo(),
+        )
+        InscricaoCipa.objects.create(
+            turma=self.recente, nome="Maria Aparecida", cpf=CPF_A,
+            **dados_vinculo(condominio_nome="Edifício Bem-Te-Vi"),
+        )
+        InscricaoCipa.objects.create(
+            turma=self.recente, nome="João Batista", cpf=CPF_B,
+            administradora_codigo="002", administradora_nome="Habitar Imóveis",
+            condominio_nome="Residencial Aurora",
+        )
+
+    # --- histórico de turmas -------------------------------------------------
+
+    def test_ct_his_001_historico_lista_paginado_do_mais_recente_ao_mais_antigo(self):
+        resposta = self.client.get("/cursos-cipa/historico/")
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(resposta.data["count"], 3)
+        datas = [turma["data"] for turma in resposta.data["results"]]
+        self.assertEqual(datas, ["2026-09-20", "2026-09-15", "2026-06-10"])
+        # Sem a lista de inscritos: o histórico traz só contagens e derivados.
+        self.assertNotIn("inscricoes", resposta.data["results"][0])
+        self.assertEqual(resposta.data["results"][1]["total_inscritos"], 2)
+        self.assertEqual(len(resposta.data["results"][1]["administradoras"]), 2)
+
+    def test_ct_his_001_historico_filtra_por_periodo_local_e_situacao(self):
+        por_periodo = self.client.get(
+            "/cursos-cipa/historico/",
+            {"data_inicio": "2026-09-01", "data_fim": "2026-09-30"},
+        )
+        self.assertEqual(por_periodo.data["count"], 2)
+
+        por_local = self.client.get("/cursos-cipa/historico/", {"local": SALA_REUNIAO})
+        self.assertEqual(por_local.data["count"], 1)
+        self.assertEqual(por_local.data["results"][0]["id"], self.recente.id)
+
+        por_status = self.client.get("/cursos-cipa/historico/", {"status": "cancelada"})
+        self.assertEqual(por_status.data["count"], 1)
+
+    def test_ct_his_001_historico_filtra_por_administradora_e_condominio_dos_inscritos(self):
+        por_adm = self.client.get("/cursos-cipa/historico/", {"administradora": "002"})
+        self.assertEqual(por_adm.data["count"], 1)
+        self.assertEqual(por_adm.data["results"][0]["id"], self.recente.id)
+
+        por_cond = self.client.get("/cursos-cipa/historico/", {"condominio": "teste"})
+        # "Condomínio Teste" só na turma antiga (a recente tem outro condomínio).
+        self.assertEqual(por_cond.data["count"], 1)
+        self.assertEqual(por_cond.data["results"][0]["id"], self.antiga.id)
+
+    def test_ct_his_001_busca_livre_nao_duplica_turma_com_varios_inscritos_casando(self):
+        # "Maria" casa em duas turmas; "a" casaria em vários inscritos da mesma
+        # turma — o distinct evita a turma repetida.
+        resposta = self.client.get("/cursos-cipa/historico/", {"busca": "a"})
+
+        ids = [turma["id"] for turma in resposta.data["results"]]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_ct_his_001_busca_por_cpf_com_mascara(self):
+        resposta = self.client.get("/cursos-cipa/historico/", {"busca": "529.982.247-25"})
+
+        self.assertEqual(resposta.data["count"], 2)
+
+    def test_ct_his_002_paginacao_respeita_page_size_e_teto(self):
+        resposta = self.client.get("/cursos-cipa/historico/", {"page_size": 2})
+        self.assertEqual(len(resposta.data["results"]), 2)
+        self.assertIsNotNone(resposta.data["next"])
+
+        acima_do_teto = self.client.get("/cursos-cipa/historico/", {"page_size": 999})
+        self.assertLessEqual(len(acima_do_teto.data["results"]), 100)
+
+    def test_ct_his_002_calendario_continua_sem_paginacao(self):
+        """A rota nova não pode mudar o contrato da agenda."""
+        resposta = self.client.get("/cursos-cipa/", {"mes": 9, "ano": 2026})
+
+        self.assertIsInstance(resposta.data, list)
+        self.assertEqual(len(resposta.data), 2)
+
+    # --- consulta de participantes -------------------------------------------
+
+    def test_ct_his_003_participantes_uma_linha_por_inscricao_com_a_turma(self):
+        resposta = self.client.get("/cursos-cipa/participantes/", {"cpf": CPF_A})
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(resposta.data["count"], 2)
+        linha = resposta.data["results"][0]
+        self.assertEqual(linha["nome"], "Maria Aparecida")
+        self.assertEqual(linha["turma"]["id"], self.recente.id)
+        self.assertEqual(linha["turma"]["local_nome"], "Sala de reunião")
+        self.assertEqual(linha["turma"]["status"], "agendada")
+
+    def test_ct_his_003_participantes_busca_por_nome_condominio_e_administradora(self):
+        por_nome = self.client.get("/cursos-cipa/participantes/", {"busca": "joão"})
+        self.assertEqual(por_nome.data["count"], 1)
+
+        por_cond = self.client.get("/cursos-cipa/participantes/", {"busca": "aurora"})
+        self.assertEqual(por_cond.data["count"], 1)
+
+        por_adm = self.client.get("/cursos-cipa/participantes/", {"busca": "habitar"})
+        self.assertEqual(por_adm.data["count"], 1)
+        self.assertEqual(por_adm.data["results"][0]["nome"], "João Batista")
+
+    def test_ct_his_003_participantes_busca_por_inicio_de_cpf(self):
+        resposta = self.client.get("/cursos-cipa/participantes/", {"busca": "529.98"})
+
+        self.assertEqual(resposta.data["count"], 2)
+
+    def test_ct_his_003_participantes_filtra_por_periodo(self):
+        resposta = self.client.get(
+            "/cursos-cipa/participantes/", {"cpf": CPF_A, "data_inicio": "2026-09-01"}
+        )
+
+        self.assertEqual(resposta.data["count"], 1)
+        self.assertEqual(resposta.data["results"][0]["turma"]["id"], self.recente.id)
+
+    def test_ct_his_004_historico_e_participantes_exigem_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        self.assertEqual(
+            self.client.get("/cursos-cipa/historico/").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.get("/cursos-cipa/participantes/").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )

@@ -46,3 +46,9 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Trava:** o modelo de dados de `TurmaCipa` e `InscricaoCipa`.
 - **Questão:** o levantamento inicial tratou a turma como "o curso de um condomínio", com administradora e condomínio na turma. Uma turma pode receber funcionários de administradoras diferentes?
 - **Resposta:** sim, e é a regra, não a exceção. A turma é um dia de curso em um local; as vagas são preenchidas com funcionários de várias administradoras e condomínios. Administradora e condomínio passam para a inscrição, obrigatórios (ADR-0004). A turma deixa de ter nome e passa a ser identificada por local + ocupação.
+
+## PA-007 — Presença e certificado: regras que só o solicitante pode dar
+
+- **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Trava:** fases C (presença) e D (certificado) do `MAPEAMENTO_CIPA_FASE2.md`. Não trava a fase A (`specs/curso-cipa-historico/`).
+- **Questão:** carga horária do certificado; texto e base legal; quem assina (reabre o instrutor da turma, retirado em PA-002); numeração; layout; prazo para marcar presença; presença parcial; quem pode marcar; envio por e-mail; linhas extras na lista de presença. Lista completa na seção 7 do mapeamento.

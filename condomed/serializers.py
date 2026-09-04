@@ -289,3 +289,40 @@ class ImportarTurmaSerializer(serializers.Serializer):
             InscricaoCipa(turma=turma, **linha) for linha in dados["inscricoes"]
         ])
         return turma
+
+
+class TurmaResumoSerializer(TurmaCipaSerializer):
+    """Turma sem a lista de inscritos, para o histórico paginado.
+
+    O histórico pode listar centenas de turmas; carregar os inscritos de cada
+    uma só para mostrar contagens seria pagar por dados que a tela não usa. As
+    contagens e as listas derivadas (`administradoras`, `condominios`) ficam.
+    """
+
+    class Meta(TurmaCipaSerializer.Meta):
+        fields = [
+            campo for campo in TurmaCipaSerializer.Meta.fields if campo != "inscricoes"
+        ]
+
+
+class InscricaoComTurmaSerializer(InscricaoCipaSerializer):
+    """Inscrição com o resumo da turma, para a consulta de participantes.
+
+    A consulta responde "onde esta pessoa esteve": cada linha é uma inscrição,
+    e a turma vem junto para a tela não fazer uma requisição por linha.
+    """
+
+    turma = serializers.SerializerMethodField(read_only=True)
+
+    class Meta(InscricaoCipaSerializer.Meta):
+        fields = InscricaoCipaSerializer.Meta.fields
+
+    def get_turma(self, obj):
+        turma = obj.turma
+        return {
+            "id": turma.id,
+            "data": turma.data,
+            "local": turma.local,
+            "local_nome": LOCAIS_CIPA.get(turma.local, {}).get("nome", turma.local),
+            "status": turma.status,
+        }
