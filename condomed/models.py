@@ -4,6 +4,17 @@ from datetime import time
 from django.conf import settings
 from django.db import models
 
+# Unidade da Condomed que emite os documentos da turma. Vem do local, não é
+# digitada: os dois modelos de certificado em uso traziam São Paulo na frente
+# e Rio no verso — defeito do modelo, confirmado pelo dono em 2026-09-04.
+UNIDADE_RIO = {
+    "nome": "CondoMed Rio",
+    "endereco": "Rua da Alfândega, 108, 7º andar, Centro/RJ",
+    "telefone": "(21) 2516-6001",
+    "email": "condocorp@grupofedcorp.com.br",
+    "cidade": "Rio de Janeiro",
+}
+
 # Locais onde a Condomed ministra o curso CIPA (PA-001, fechada em 2026-08-31).
 AUDITORIO = "AUDITORIO"
 SALA_REUNIAO = "SALA_REUNIAO"
@@ -13,15 +24,39 @@ LOCAIS_CIPA = {
         "nome": "Auditório",
         "predio": "Prédio ao lado da matriz",
         "capacidade": 30,
+        "unidade": UNIDADE_RIO,
     },
     SALA_REUNIAO: {
         "nome": "Sala de reunião",
         "predio": "Matriz",
         "capacidade": 10,
+        "unidade": UNIDADE_RIO,
     },
 }
 
 LOCAL_CHOICES = [(codigo, dados["nome"]) for codigo, dados in LOCAIS_CIPA.items()]
+
+# Instrutores que assinam o certificado. Fixos no código por decisão do dono
+# (2026-09-04): sem cadastro editável, não há como cadastrar errado. Um
+# instrutor novo é uma entrada aqui e uma imagem em `condomed/assets/`.
+INSTRUTORES_CIPA = {
+    "FELIPE": {
+        "nome": "Felipe Barboza de Oliveira",
+        "titulo": "Técnico em Segurança no Trabalho",
+        "registro_mte": "0060169",
+        "registro_uf": "RJ",
+        "assinatura": "assinatura-felipe.png",
+    },
+    "VINICIUS": {
+        "nome": "Vinicius dos Santos Pinto",
+        "titulo": "Técnico em Segurança no Trabalho",
+        "registro_mte": "0056876",
+        "registro_uf": "RJ",
+        "assinatura": "assinatura-vinicius.jpeg",
+    },
+}
+
+INSTRUTOR_CHOICES = [(codigo, dados["nome"]) for codigo, dados in INSTRUTORES_CIPA.items()]
 
 # A turma ocupa o dia inteiro (RF-CIP-001).
 HORA_INICIO_PADRAO = time(9, 0)
@@ -46,6 +81,11 @@ class TurmaCipa(models.Model):
     # A turma não tem cliente: administradora e condomínio são de cada
     # inscrito, porque um mesmo dia recebe funcionários de várias
     # administradoras e vários condomínios (ADR-0004).
+    # Quem ministra e assina o certificado. Opcional na criação — a turma pode
+    # ser marcada antes de se saber quem vai dar o curso — e obrigatório para
+    # emitir certificado (fase D).
+    instrutor = models.CharField(max_length=20, choices=INSTRUTOR_CHOICES, blank=True)
+
     observacao = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="agendada")
     criado_por = models.ForeignKey(
@@ -98,6 +138,10 @@ class InscricaoCipa(models.Model):
     administradora_codigo = models.CharField(max_length=20)
     administradora_nome = models.CharField(max_length=150, blank=True)
     condominio_nome = models.CharField(max_length=150)
+    # O certificado cita o condomínio com CNPJ. Opcional para inscrever (o
+    # extra de última hora entra sem ele) e obrigatório para emitir o
+    # certificado — decisão do dono em 2026-09-04. 14 dígitos, sem máscara.
+    condominio_cnpj = models.CharField(max_length=14, blank=True)
 
     criado_em = models.DateTimeField(auto_now_add=True)
 

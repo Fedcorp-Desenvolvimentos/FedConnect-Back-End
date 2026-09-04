@@ -794,6 +794,7 @@ class ImportacaoPorPlanilhaTests(CipaTestBase):
             [
                 "administradora",
                 "condominio",
+                "cnpj_condominio",
                 "nome",
                 "cpf",
                 "funcao",
@@ -1060,3 +1061,117 @@ class HistoricoEConsultaTests(CipaTestBase):
             self.client.get("/cursos-cipa/participantes/").status_code,
             status.HTTP_403_FORBIDDEN,
         )
+
+
+class CadastroParaCertificadoTests(CipaTestBase):
+    """CT-CIP-020: CNPJ do condomínio na inscrição e instrutor na turma."""
+
+    def setUp(self):
+        super().setUp()
+        resposta = self.client.post("/cursos-cipa/", dados_turma(), format="json")
+        self.turma = TurmaCipa.objects.get(pk=resposta.data["id"])
+
+    def inscrever(self, **overrides):
+        dados = {"nome": "Fulano de Tal", "cpf": CPF_A, "funcao": "Zelador"}
+        dados.update(dados_vinculo())
+        dados.update(overrides)
+        return self.client.post(
+            "/cursos-cipa/%s/inscricoes/" % self.turma.id, dados, format="json"
+        )
+
+    def test_ct_cip_020_cnpj_e_opcional_e_gravado_so_com_digitos(self):
+        sem = self.inscrever()
+        self.assertEqual(sem.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(sem.data["condominio_cnpj"], "")
+
+        com = self.inscrever(cpf=CPF_B, condominio_cnpj="01.998.690/0001-82")
+        self.assertEqual(com.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(com.data["condominio_cnpj"], "01998690000182")
+
+    def test_ct_cip_020_cnpj_invalido_da_400(self):
+        resposta = self.inscrever(condominio_cnpj="01.998.690/0001-83")
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("condominio_cnpj", resposta.data)
+
+    def test_ct_cip_020_turma_aceita_instrutor_da_lista_e_recusa_fora_dela(self):
+        ok = self.client.patch(
+            "/cursos-cipa/%s/" % self.turma.id, {"instrutor": "FELIPE"}, format="json"
+        )
+        self.assertEqual(ok.status_code, status.HTTP_200_OK)
+        self.assertEqual(ok.data["instrutor_nome"], "Felipe Barboza de Oliveira")
+
+        fora = self.client.patch(
+            "/cursos-cipa/%s/" % self.turma.id, {"instrutor": "QUALQUER"}, format="json"
+        )
+        self.assertEqual(fora.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_ct_cip_020_turma_sem_instrutor_continua_valida(self):
+        resposta = self.client.get("/cursos-cipa/%s/" % self.turma.id)
+
+        self.assertEqual(resposta.data["instrutor"], "")
+        self.assertEqual(resposta.data["instrutor_nome"], "")
+
+    def test_ct_cip_020_lista_de_instrutores_sem_expor_arquivo_de_assinatura(self):
+        resposta = self.client.get("/cursos-cipa/instrutores/")
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        codigos = {item["codigo"] for item in resposta.data}
+        self.assertEqual(codigos, {"FELIPE", "VINICIUS"})
+        self.assertEqual(resposta.data[0]["registro"], "MTE/RJ 0060169")
+        self.assertNotIn("assinatura", resposta.data[0])
+
+    def test_ct_cip_020_locais_trazem_a_unidade_emissora(self):
+        resposta = self.client.get("/cursos-cipa/locais/")
+
+        for local in resposta.data:
+            self.assertEqual(local["unidade"]["cidade"], "Rio de Janeiro")
+            self.assertIn("Alfândega", local["unidade"]["endereco"])
+
+    def test_ct_cip_020_importacao_aceita_cnpj_e_instrutor(self):
+        resposta = self.client.post(
+            "/cursos-cipa/importar/",
+            {
+                "local": AUDITORIO,
+                "data": date(2026, 9, 16).isoformat(),
+                "instrutor": "VINICIUS",
+                "inscricoes": [
+                    {
+                        "nome": "Fulano de Tal",
+                        "cpf": CPF_A,
+                        "funcao": "Zelador",
+                        "condominio_cnpj": "01580092000199",
+                        **dados_vinculo(),
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resposta.data["instrutor"], "VINICIUS")
+        turma = TurmaCipa.objects.get(pk=resposta.data["id"])
+        self.assertEqual(turma.inscricoes.get().condominio_cnpj, "01580092000199")
+
+    def test_ct_cip_020_importacao_com_cnpj_invalido_nao_grava_nada(self):
+        resposta = self.client.post(
+            "/cursos-cipa/importar/",
+            {
+                "local": AUDITORIO,
+                "data": date(2026, 9, 16).isoformat(),
+                "inscricoes": [
+                    {
+                        "nome": "Fulano de Tal",
+                        "cpf": CPF_A,
+                        "funcao": "Zelador",
+                        "condominio_cnpj": "123",
+                        **dados_vinculo(),
+                    }
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("condominio_cnpj", resposta.data["inscricoes"]["0"])
+        self.assertEqual(TurmaCipa.objects.count(), 1)  # só a do setUp

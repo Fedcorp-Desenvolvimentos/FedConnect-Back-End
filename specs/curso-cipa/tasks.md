@@ -1,6 +1,6 @@
 # Tarefas — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..005 · CT: CT-CIP-001..019
+> **Rastreabilidade** — RF: RF-CIP-001..005 · CT: CT-CIP-001..020
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 > **Baseado em:** `design.md` (aprovado)
 
@@ -51,10 +51,18 @@
 - [x] T-CIP-7.2 `CPF_DUPLICADO` como frase única, no serializer, importada pela view _(RF-CIP-003 · CT-CIP-019)_
 - [x] T-CIP-7.3 Cobrir CT-CIP-019, inclusive a corrida com a validação neutralizada _(RNF-CIP-001 · CT-CIP-019)_
 
+## Fase 8 — Cadastro para o certificado (PA-008)
+
+- [x] T-CIP-8.1 `INSTRUTORES_CIPA` fixo, `TurmaCipa.instrutor` (choices, em branco), `instrutor_nome` na resposta e `GET cursos-cipa/instrutores/` _(RF-CIP-001 · CT-CIP-020)_
+- [x] T-CIP-8.2 `InscricaoCipa.condominio_cnpj` opcional com validador de dígitos; aceita máscara e grava 14 dígitos _(RF-CIP-003 · CT-CIP-020)_
+- [x] T-CIP-8.3 Coluna `cnpj_condominio` na planilha modelo (como texto) e `instrutor` na importação _(RF-CIP-005 · CT-CIP-020)_
+- [x] T-CIP-8.4 Unidade emissora em `LOCAIS_CIPA`; assets (logos, selo, assinaturas) em `condomed/assets/` com README _(RF-CIP-001 · CT-CIP-020)_
+- [x] T-CIP-8.5 Migração `0003` aditiva _(RF-CIP-001, RF-CIP-003)_
+
 ## Verificação Final
 
 - [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 29 testes, OK em 2026-09-01 (local, SQLite: sem Postgres na máquina)
-- [x] Fases 4 a 7 verificadas: 59 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
+- [x] Fases 4 a 8 verificadas: 79 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
 - [ ] Reverificar em Postgres antes do merge
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem; STATUS.md atualizado

@@ -1,6 +1,6 @@
 # Design — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · INV: INV-CIP-001..003 · ADR: ADR-0001, ADR-0003..0006 · Questões: PA-001..002, PA-006
+> **Rastreabilidade** — RF: RF-CIP-001..004 · INV: INV-CIP-001..003 · ADR: ADR-0001, ADR-0003..0006 · Questões: PA-001..002, PA-006, PA-008
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 > **Baseado em:** `requirements.md` (aprovado)
 
@@ -36,10 +36,11 @@ flowchart LR
 
 ## Modelo de Dados e Contratos
 
-- `TurmaCipa`: `local` (choices `AUDITORIO`, `SALA_REUNIAO`), `data` (DateField), `hora_inicio`/`hora_fim` (TimeField, defaults 09:00/17:30), `observacao`, `status` (choices `agendada`/`realizada`/`cancelada`), `criado_por` (FK), `reserva_sala` (OneToOne `agenda.Reserva`, nullable, `on_delete=SET_NULL`), `criado_em`. Índice `(local, data)`. **Sem cliente** (ADR-0004).
-- `InscricaoCipa`: FK `turma`, `nome`, `cpf` (11 dígitos), `funcao`, `email`, `telefone`, `administradora_codigo` + `administradora_nome` (do Firebird via FedHub, nome desnormalizado), `condominio_nome` (digitado — não há código de condomínio), `criado_em`; `unique_together (turma, cpf)`. Índice `(administradora_codigo,)` para a consulta por administradora.
+- `TurmaCipa`: `local` (choices `AUDITORIO`, `SALA_REUNIAO`), `data` (DateField), `hora_inicio`/`hora_fim` (TimeField, defaults 09:00/17:30), `instrutor` (choices de `INSTRUTORES_CIPA`, em branco até definir — PA-008), `observacao`, `status` (choices `agendada`/`realizada`/`cancelada`), `criado_por` (FK), `reserva_sala` (OneToOne `agenda.Reserva`, nullable, `on_delete=SET_NULL`), `criado_em`. Índice `(local, data)`. **Sem cliente** (ADR-0004).
+- `InscricaoCipa`: FK `turma`, `nome`, `cpf` (11 dígitos), `funcao`, `email`, `telefone`, `administradora_codigo` + `administradora_nome` (do Firebird via FedHub, nome desnormalizado), `condominio_nome` (digitado — não há código de condomínio), `condominio_cnpj` (14 dígitos, em branco se não informado — PA-008), `criado_em`; `unique_together (turma, cpf)`. Índice `(administradora_codigo,)` para a consulta por administradora.
 - `LOCAIS_CIPA`: `{AUDITORIO: {nome, predio, capacidade}, SALA_REUNIAO: {...}}` — capacidades: auditório 30, sala de reunião 10 (PA-001, fechada em 2026-08-31).
-- Importação: `POST cursos-cipa/importar/` recebe `{local, data, observacao, inscricoes: [...]}` e devolve a turma criada; `GET cursos-cipa/planilha-modelo/` devolve o `.xlsx` modelo. Cabeçalhos do modelo em `COLUNAS_MODELO` (`condomed/views.py`) — é o contrato com o parser da tela.
+- Cadastro fixo: `INSTRUTORES_CIPA` (código → nome, título, registro MTE/UF, arquivo de assinatura em `condomed/assets/`) e `LOCAIS_CIPA[...]["unidade"]` (CondoMed Rio; cabeçalho e cidade dos documentos). `GET cursos-cipa/instrutores/` lista os instrutores sem o nome do arquivo.
+- Importação: `POST cursos-cipa/importar/` recebe `{local, data, instrutor, observacao, inscricoes: [...]}` e devolve a turma criada; `GET cursos-cipa/planilha-modelo/` devolve o `.xlsx` modelo. Cabeçalhos do modelo em `COLUNAS_MODELO` (`condomed/views.py`) — é o contrato com o parser da tela.
 - Contrato: `GET/POST cursos-cipa/?mes&ano&local` (sem paginação — o calendário pede o mês inteiro), `GET cursos-cipa/locais/`, `GET cursos-cipa/verificar-cpf/?cpf&excluir_turma` (onde mais o CPF está inscrito; a tela usa para avisar antes de gravar), `GET/PATCH/DELETE cursos-cipa/{id}/`, `GET/POST cursos-cipa/{id}/inscricoes/`, `PATCH/DELETE cursos-cipa/{id}/inscricoes/{iid}/` (o PATCH é parcial: o CPF não enviado é preservado, e a checagem de capacidade não se aplica à edição de quem já está na lista). Resposta da turma inclui `capacidade`, `total_inscritos`, `acima_da_capacidade` (quantos passam da capacidade; 0 quando dentro) e as listas derivadas `administradoras` (`[{codigo, nome}]`) e `condominios` (`[nome]`), sem repetição e somente-leitura — é o que permite rotular, filtrar e buscar o mês sem baixar todos os inscritos (ADR-0004). Erros: 409 `{"detail", "conflito": {...}}`; 400 DRF padrão.
 
 ## Invariantes
@@ -94,6 +95,7 @@ flowchart LR
 | CT-CIP-003 | RF-CIP-002 | Turma na sala cria Reserva espelho vinculada; excluir turma remove a Reserva |
 | CT-CIP-004 | RF-CIP-002 | Reserva existente na sala (ex: 10:00, 120 min) no dia → turma na sala 409 |
 | CT-CIP-005 | RF-CIP-003 | Inscrição válida → 201; CPF repetido → 400; CPF inválido → 400 |
+| CT-CIP-020 | RF-CIP-001, RF-CIP-003, RF-CIP-005 | CNPJ opcional, gravado só com dígitos, inválido → 400; instrutor da lista → 200 com `instrutor_nome`, fora dela → 400; `instrutores/` sem arquivo de assinatura; `locais/` com unidade; importação aceita CNPJ e instrutor e recusa CNPJ inválido sem gravar |
 | CT-CIP-019 | RF-CIP-003 | CPF repetido na turma → 400 (com e sem máscara); corrida com a validação neutralizada → 400 e um único registro; editar mantendo o próprio CPF → 200; editar para o CPF de outro inscrito → 400; mesmo CPF em outra turma → 201 |
 | CT-CIP-006 | RF-CIP-003 | Inscrição além da capacidade → 201 e `acima_da_capacidade` com o excesso; turma dentro da capacidade → 0 |
 | CT-CIP-007 | RF-CIP-004 | Usuário `usuario` → 403; `condomed` e `admin` → 200 |

@@ -1,6 +1,6 @@
 # Requisitos — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · RNF: RNF-CIP-001..003 · ADR: ADR-0001, ADR-0003..0006 · Questões: PA-001..006
+> **Rastreabilidade** — RF: RF-CIP-001..004 · RNF: RNF-CIP-001..003 · ADR: ADR-0001, ADR-0003..0006 · Questões: PA-001..006, PA-008
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 
 ## Contexto e Problema
@@ -31,6 +31,9 @@
 **Como** operador da Condomed, **quero** agendar uma turma CIPA em um local e dia, **para** organizar a operação dos cursos.
 
 - **QUANDO** informo local e data válidos, **ENTÃO** o sistema **DEVE** criar a turma com `hora_inicio=09:00` e `hora_fim=17:30` e status `agendada`. A turma não tem cliente: administradora e condomínio são de cada inscrito. `[D]` ADR-0004
+- **QUANDO** informo o instrutor da turma, **ENTÃO** o sistema **DEVE** aceitar apenas os da lista fixa em `INSTRUTORES_CIPA` (sem cadastro editável) e **DEVE** aceitar a turma sem instrutor — ele é obrigatório só para emitir o certificado. `[D]` PA-008
+- **QUANDO** consulto `cursos-cipa/instrutores/`, **ENTÃO** o sistema **DEVE** listar nome, título e registro MTE de cada instrutor, **sem** expor o arquivo de assinatura. `[D]` PA-008
+- **QUANDO** consulto `cursos-cipa/locais/`, **ENTÃO** cada local **DEVE** trazer a unidade emissora (nome, endereço, telefone, e-mail, cidade) — é dela que saem cabeçalho e cidade dos documentos. `[D]` PA-008
 - **SE** já existe turma ativa no mesmo local e dia com horário sobreposto, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 409 indicando a turma conflitante. `[D]` ADR-0001
 - **QUANDO** consulto turmas por mês/ano e local, **ENTÃO** o sistema **DEVE** listar apenas as turmas daquele local no período, cada uma com as administradoras e os condomínios dos seus inscritos, sem repetição. `[D]` ADR-0004
 
@@ -50,6 +53,7 @@
 
 - **QUANDO** informo nome, CPF, função, e-mail e telefone de um inscrito, **ENTÃO** o sistema **DEVE** gravá-lo vinculado à turma. `[P]` PA-002
 - **QUANDO** informo a administradora (da lista do Firebird) e o nome do condomínio do inscrito, **ENTÃO** o sistema **DEVE** gravá-los na inscrição, e **DEVE** recusar a inscrição sem esses dois campos. `[D]` ADR-0004
+- **QUANDO** informo o CNPJ do condomínio do inscrito, **ENTÃO** o sistema **DEVE** aceitar com ou sem máscara, gravar só os 14 dígitos e recusar CNPJ inválido; **SE** não informo, **ENTÃO** a inscrição **DEVE** ser aceita — o CNPJ é obrigatório só para emitir o certificado. `[D]` PA-008
 - **SE** o mesmo CPF aparece em outra turma, **ENTÃO** a resposta de `verificar-cpf` **DEVE** informar também a administradora e o condomínio de cada inscrição encontrada. `[D]` ADR-0004
 - **SE** o CPF já está inscrito na mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400 — a tela avisa antes, mas o servidor é a garantia, inclusive quando duas requisições chegam ao mesmo tempo. `[D]` ADR-0001
 - **SE** edito um inscrito e informo o CPF de outra pessoa da mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400; informar o CPF dele mesmo **DEVE** ser aceito. `[D]` ADR-0001
@@ -95,3 +99,4 @@ Os dados dos inscritos (CPF, e-mail, telefone) só são expostos aos níveis aut
 - PA-001: **fechada (2026-08-31)** — auditório 30, sala de reunião 10. Reaberta e fechada de novo em 2026-09-04: os números seguem, mas como referência, não limite (ADR-0006)
 - PA-002: **fechada (2026-08-31)** — cinco campos do inscrito; o campo de técnico instrutor foi retirado do escopo pelo dono em 2026-08-31, junto com o código do condomínio
 - PA-003, PA-004, PA-005: fora do escopo inicial (registradas)
+- PA-008: **fechada (2026-09-04)** — os modelos de certificado em uso exigem CNPJ do condomínio e instrutor com registro MTE e assinatura; reabre em parte a PA-002 (instrutor volta, mas como lista fixa no código, sem cadastro editável)

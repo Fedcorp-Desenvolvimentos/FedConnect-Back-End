@@ -6,13 +6,14 @@ from .exceptions import ConflitoAgendamento
 from .models import (
     HORA_FIM_PADRAO,
     HORA_INICIO_PADRAO,
+    INSTRUTORES_CIPA,
     LOCAIS_CIPA,
     LOCAL_CHOICES,
     SALA_REUNIAO,
     InscricaoCipa,
     TurmaCipa,
 )
-from .validators import cpf_valido, normalizar_cpf
+from .validators import cnpj_valido, cpf_valido, normalizar_cnpj, normalizar_cpf
 
 # Frase única da duplicidade de CPF: sai igual desta validação e da tradução
 # da constraint do banco em `views.salvar_inscricao`.
@@ -22,6 +23,11 @@ CPF_DUPLICADO = "Este CPF já está inscrito nesta turma."
 class InscricaoCipaSerializer(serializers.ModelSerializer):
     # Aceita CPF formatado; normalizado para 11 dígitos em validate_cpf.
     cpf = serializers.CharField(max_length=14)
+    # Idem para o CNPJ (18 com máscara, 14 gravados). Declarado aqui porque o
+    # max_length herdado do model barraria a máscara antes do normalizador.
+    condominio_cnpj = serializers.CharField(
+        max_length=18, required=False, allow_blank=True, default=""
+    )
 
     class Meta:
         model = InscricaoCipa
@@ -36,6 +42,7 @@ class InscricaoCipaSerializer(serializers.ModelSerializer):
             "administradora_codigo",
             "administradora_nome",
             "condominio_nome",
+            "condominio_cnpj",
             "criado_em",
         ]
         read_only_fields = ["id", "turma", "criado_em"]
@@ -45,6 +52,15 @@ class InscricaoCipaSerializer(serializers.ModelSerializer):
             "administradora_codigo": {"required": True, "allow_blank": False},
             "condominio_nome": {"required": True, "allow_blank": False},
         }
+
+    def validate_condominio_cnpj(self, valor):
+        """Opcional; quando vem, tem de ser um CNPJ válido, gravado só com dígitos."""
+        cnpj = normalizar_cnpj(valor)
+        if not cnpj:
+            return ""
+        if not cnpj_valido(cnpj):
+            raise serializers.ValidationError("CNPJ inválido.")
+        return cnpj
 
     def validate_condominio_nome(self, valor):
         nome = (valor or "").strip()
@@ -86,6 +102,7 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
     # precisa rotular, filtrar e buscar o mês sem baixar todos os inscritos.
     administradoras = serializers.SerializerMethodField(read_only=True)
     condominios = serializers.SerializerMethodField(read_only=True)
+    instrutor_nome = serializers.SerializerMethodField(read_only=True)
     inscricoes = InscricaoCipaSerializer(many=True, read_only=True)
 
     class Meta:
@@ -97,6 +114,8 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
             "data",
             "hora_inicio",
             "hora_fim",
+            "instrutor",
+            "instrutor_nome",
             "observacao",
             "status",
             "capacidade",
@@ -112,6 +131,9 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
 
     def get_local_nome(self, obj):
         return LOCAIS_CIPA.get(obj.local, {}).get("nome", obj.local)
+
+    def get_instrutor_nome(self, obj):
+        return INSTRUTORES_CIPA.get(obj.instrutor, {}).get("nome", "")
 
     def get_capacidade(self, obj):
         return services.capacidade_do_local(obj.local)
@@ -232,6 +254,9 @@ class ImportarTurmaSerializer(serializers.Serializer):
 
     local = serializers.ChoiceField(choices=LOCAL_CHOICES)
     data = serializers.DateField()
+    instrutor = serializers.ChoiceField(
+        choices=list(INSTRUTORES_CIPA.keys()), required=False, allow_blank=True, default=""
+    )
     observacao = serializers.CharField(required=False, allow_blank=True, default="")
     inscricoes = serializers.ListField(
         child=serializers.DictField(), allow_empty=False
@@ -277,6 +302,7 @@ class ImportarTurmaSerializer(serializers.Serializer):
             data={
                 "local": dados["local"],
                 "data": dados["data"],
+                "instrutor": dados.get("instrutor", ""),
                 "observacao": dados.get("observacao", ""),
             }
         )

@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from users.permissions import IsCondomedOrAdmin
 
 from . import services
-from .models import LOCAIS_CIPA, InscricaoCipa, TurmaCipa
+from .models import INSTRUTORES_CIPA, LOCAIS_CIPA, InscricaoCipa, TurmaCipa
 from .serializers import (
     CPF_DUPLICADO,
     ImportarTurmaSerializer,
@@ -62,6 +62,7 @@ def salvar_inscricao(serializer, **kwargs):
 COLUNAS_MODELO = [
     ("administradora", 28, "Delforte Administração"),
     ("condominio", 28, "Residencial Aurora"),
+    ("cnpj_condominio", 20, "01.998.690/0001-82"),
     ("nome", 30, "Maria Aparecida da Silva"),
     ("cpf", 16, "529.982.247-25"),
     ("funcao", 20, "Zeladora"),
@@ -231,10 +232,16 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
             aba.cell(row=2, column=indice, value=exemplo)
 
         aba.freeze_panes = "A2"
-        # O CPF fica como texto: formatado como número, o Excel come o zero à
-        # esquerda e a linha volta inválida.
+        # CPF e CNPJ ficam como texto: formatados como número, o Excel come o
+        # zero à esquerda e a linha volta inválida.
+        colunas_texto = [
+            indice
+            for indice, (cabecalho, _, _) in enumerate(COLUNAS_MODELO, 1)
+            if cabecalho in ("cpf", "cnpj_condominio")
+        ]
         for linha in range(2, 200):
-            aba.cell(row=linha, column=4).number_format = "@"
+            for coluna in colunas_texto:
+                aba.cell(row=linha, column=coluna).number_format = "@"
 
         resposta = HttpResponse(
             content_type=(
@@ -264,6 +271,24 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
         return Response(
             TurmaCipaSerializer(turma).data, status=status.HTTP_201_CREATED
         )
+
+    @action(detail=False, methods=["get"], url_path="instrutores")
+    def instrutores(self, request):
+        """Instrutores que assinam o certificado, para o select da turma.
+
+        Lista fixa no código (decisão do dono, 2026-09-04): sem cadastro
+        editável não há como cadastrar errado. A assinatura fica só no
+        servidor — o nome do arquivo não sai daqui.
+        """
+        return Response([
+            {
+                "codigo": codigo,
+                "nome": dados["nome"],
+                "titulo": dados["titulo"],
+                "registro": f"MTE/{dados['registro_uf']} {dados['registro_mte']}",
+            }
+            for codigo, dados in INSTRUTORES_CIPA.items()
+        ])
 
     @action(detail=False, methods=["get"], url_path="verificar-cpf")
     def verificar_cpf(self, request):
