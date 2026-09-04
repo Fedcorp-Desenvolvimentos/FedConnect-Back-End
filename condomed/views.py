@@ -94,7 +94,11 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
                 "local_nome": LOCAIS_CIPA.get(inscricao.turma.local, {}).get(
                     "nome", inscricao.turma.local
                 ),
-                "condominio_nome": inscricao.turma.condominio_nome,
+                # O vínculo é da inscrição (ADR-0004): é o que distingue
+                # "repetiu a pessoa" de "a mesma pessoa vem por dois condomínios".
+                "administradora_codigo": inscricao.administradora_codigo,
+                "administradora_nome": inscricao.administradora_nome,
+                "condominio_nome": inscricao.condominio_nome,
                 "status": inscricao.turma.status,
             }
             for inscricao in inscricoes

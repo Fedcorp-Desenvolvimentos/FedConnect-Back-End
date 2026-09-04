@@ -1,5 +1,5 @@
 # condomed/tests.py
-"""Cobre CT-CIP-001..008 da matriz de specs/curso-cipa/matriz.csv."""
+"""Cobre CT-CIP-001..013 da matriz de specs/curso-cipa/matriz.csv."""
 from datetime import date, time
 from unittest.mock import patch
 
@@ -19,9 +19,18 @@ CPF_B = "16899535009"
 
 
 def dados_turma(**overrides):
+    """Turma: local e dia. O cliente é de cada inscrito (ADR-0004)."""
     base = {
         "local": AUDITORIO,
         "data": DIA.isoformat(),
+    }
+    base.update(overrides)
+    return base
+
+
+def dados_vinculo(**overrides):
+    """Administradora e condomínio de um participante (obrigatórios)."""
+    base = {
         "administradora_codigo": "001",
         "administradora_nome": "Administradora Teste",
         "condominio_nome": "Condomínio Teste",
@@ -188,6 +197,7 @@ class InscricaoCipaTests(CipaTestBase):
             "funcao": "Zelador",
             "email": "fulano@teste.com",
             "telefone": "11999999999",
+            **dados_vinculo(),
         }
         dados.update(overrides)
         return self.client.post(
@@ -217,17 +227,19 @@ class InscricaoCipaTests(CipaTestBase):
         turma_sala = TurmaCipa.objects.create(
             local=SALA_REUNIAO,
             data=DIA,
-            administradora_codigo="001",
             criado_por=self.operador,
         )
         for i in range(10):
             InscricaoCipa.objects.create(
-                turma=turma_sala, nome="Inscrito %s" % i, cpf="%011d" % i
+                turma=turma_sala,
+                nome="Inscrito %s" % i,
+                cpf="%011d" % i,
+                **dados_vinculo(),
             )
 
         resposta = self.client.post(
             "/cursos-cipa/%s/inscricoes/" % turma_sala.id,
-            {"nome": "Excedente", "cpf": CPF_B},
+            {"nome": "Excedente", "cpf": CPF_B, **dados_vinculo()},
             format="json",
         )
 
@@ -290,13 +302,14 @@ class InscricaoCipaTests(CipaTestBase):
         turma_sala = TurmaCipa.objects.create(
             local=SALA_REUNIAO,
             data=DIA,
-            administradora_codigo="001",
-            condominio_nome="Condomínio Lotado",
             criado_por=self.operador,
         )
         for i in range(10):
             InscricaoCipa.objects.create(
-                turma=turma_sala, nome="Inscrito %s" % i, cpf="%011d" % i
+                turma=turma_sala,
+                nome="Inscrito %s" % i,
+                cpf="%011d" % i,
+                **dados_vinculo(),
             )
         alvo = turma_sala.inscricoes.first()
 
@@ -314,8 +327,6 @@ class InscricaoCipaTests(CipaTestBase):
         outra = TurmaCipa.objects.create(
             local=SALA_REUNIAO,
             data=DIA,
-            administradora_codigo="001",
-            condominio_nome="Outro Condomínio",
             criado_por=self.operador,
         )
 
@@ -332,11 +343,14 @@ class InscricaoCipaTests(CipaTestBase):
         outra = TurmaCipa.objects.create(
             local=SALA_REUNIAO,
             data=date(2026, 9, 22),
-            administradora_codigo="001",
-            condominio_nome="Condomínio Vizinho",
             criado_por=self.operador,
         )
-        InscricaoCipa.objects.create(turma=outra, nome="Fulano de Tal", cpf=CPF_A)
+        InscricaoCipa.objects.create(
+            turma=outra,
+            nome="Fulano de Tal",
+            cpf=CPF_A,
+            **dados_vinculo(condominio_nome="Condomínio Vizinho"),
+        )
 
         resposta = self.client.get(
             "/cursos-cipa/verificar-cpf/",
@@ -347,6 +361,9 @@ class InscricaoCipaTests(CipaTestBase):
         self.assertEqual(len(resposta.data), 1)
         self.assertEqual(resposta.data[0]["turma_id"], outra.id)
         self.assertEqual(resposta.data[0]["condominio_nome"], "Condomínio Vizinho")
+        self.assertEqual(
+            resposta.data[0]["administradora_nome"], "Administradora Teste"
+        )
         self.assertEqual(resposta.data[0]["local_nome"], "Sala de reunião")
 
     def test_verificar_cpf_sem_outras_turmas_volta_vazio(self):
@@ -384,14 +401,17 @@ class InscricaoCipaTests(CipaTestBase):
         outra = TurmaCipa.objects.create(
             local=SALA_REUNIAO,
             data=date(2026, 9, 22),
-            administradora_codigo="001",
-            condominio_nome="Condomínio Vizinho",
             criado_por=self.operador,
         )
 
         resposta = self.client.post(
             "/cursos-cipa/%s/inscricoes/" % outra.id,
-            {"nome": "Fulano de Tal", "cpf": CPF_A, "funcao": "Zelador"},
+            {
+                "nome": "Fulano de Tal",
+                "cpf": CPF_A,
+                "funcao": "Zelador",
+                **dados_vinculo(condominio_nome="Condomínio Vizinho"),
+            },
             format="json",
         )
 
@@ -436,3 +456,134 @@ class AcessoCipaTests(CipaTestBase):
             self.client.get("/cursos-cipa/").status_code,
             (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
         )
+
+
+class VinculoDoInscritoTests(CipaTestBase):
+    """Fase 4 / ADR-0004: o cliente é do participante, não da turma."""
+
+    def setUp(self):
+        super().setUp()
+        resposta = self.client.post("/cursos-cipa/", dados_turma(), format="json")
+        self.turma = TurmaCipa.objects.get(pk=resposta.data["id"])
+
+    def inscrever(self, **overrides):
+        dados = {"nome": "Fulano de Tal", "cpf": CPF_A, "funcao": "Zelador"}
+        dados.update(dados_vinculo())
+        dados.update(overrides)
+        return self.client.post(
+            "/cursos-cipa/%s/inscricoes/" % self.turma.id, dados, format="json"
+        )
+
+    def test_ct_cip_011_inscricao_sem_administradora_da_400(self):
+        resposta = self.inscrever(administradora_codigo="")
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("administradora_codigo", resposta.data)
+        self.assertEqual(self.turma.inscricoes.count(), 0)
+
+    def test_ct_cip_011_inscricao_sem_condominio_da_400(self):
+        resposta = self.inscrever(condominio_nome="   ")
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("condominio_nome", resposta.data)
+        self.assertEqual(self.turma.inscricoes.count(), 0)
+
+    def test_ct_cip_011_vinculo_e_gravado_na_inscricao(self):
+        resposta = self.inscrever(condominio_nome="  Condomínio Girassol  ")
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        inscricao = self.turma.inscricoes.get()
+        self.assertEqual(inscricao.administradora_codigo, "001")
+        self.assertEqual(inscricao.administradora_nome, "Administradora Teste")
+        # O nome do condomínio é digitado: espaços nas pontas não entram.
+        self.assertEqual(inscricao.condominio_nome, "Condomínio Girassol")
+
+    def test_ct_cip_012_turma_deriva_administradoras_e_condominios(self):
+        self.inscrever()
+        self.inscrever(
+            nome="Beltrano",
+            cpf=CPF_B,
+            administradora_codigo="002",
+            administradora_nome="Outra Administradora",
+            condominio_nome="Condomínio Bem-Te-Vi",
+        )
+        # Terceiro pela mesma administradora do primeiro: não deve repetir.
+        self.inscrever(nome="Ciclano", cpf="11144477735")
+
+        resposta = self.client.get("/cursos-cipa/%s/" % self.turma.id)
+
+        self.assertEqual(
+            resposta.data["administradoras"],
+            [
+                {"codigo": "001", "nome": "Administradora Teste"},
+                {"codigo": "002", "nome": "Outra Administradora"},
+            ],
+        )
+        self.assertEqual(
+            resposta.data["condominios"],
+            ["Condomínio Bem-Te-Vi", "Condomínio Teste"],
+        )
+        self.assertEqual(resposta.data["total_inscritos"], 3)
+
+    def test_ct_cip_012_turma_vazia_deriva_listas_vazias(self):
+        resposta = self.client.get("/cursos-cipa/%s/" % self.turma.id)
+
+        self.assertEqual(resposta.data["administradoras"], [])
+        self.assertEqual(resposta.data["condominios"], [])
+
+    def test_ct_cip_013_turma_ignora_vinculo_enviado_por_engano(self):
+        """Cliente antigo mandando administradora na turma não cria campo nem quebra."""
+        resposta = self.client.post(
+            "/cursos-cipa/",
+            dados_turma(
+                data=date(2026, 9, 16),
+                administradora_codigo="001",
+                condominio_nome="Condomínio Fantasma",
+            ),
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("condominio_nome", resposta.data)
+        self.assertNotIn("administradora_codigo", resposta.data)
+
+    def test_conflito_409_identifica_a_turma_por_local_e_ocupacao(self):
+        self.inscrever()
+
+        resposta = self.client.post("/cursos-cipa/", dados_turma(), format="json")
+
+        self.assertEqual(resposta.status_code, status.HTTP_409_CONFLICT)
+        conflito = resposta.data["conflito"]
+        self.assertEqual(conflito["local_nome"], "Auditório")
+        self.assertEqual(conflito["ocupacao"], "1/30")
+        self.assertNotIn("condominio_nome", conflito)
+
+    def test_espelho_na_agenda_tem_tema_por_local(self):
+        turma_sala = self.client.post(
+            "/cursos-cipa/",
+            dados_turma(local=SALA_REUNIAO, data=date(2026, 9, 17).isoformat()),
+            format="json",
+        )
+
+        reserva = TurmaCipa.objects.get(pk=turma_sala.data["id"]).reserva_sala
+        self.assertEqual(reserva.tema, "Curso CIPA — Sala de reunião")
+
+    def test_edicao_troca_o_vinculo_do_inscrito(self):
+        criada = self.inscrever()
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (self.turma.id, criada.data["id"]),
+            {
+                "administradora_codigo": "003",
+                "administradora_nome": "Terceira Administradora",
+                "condominio_nome": "Condomínio Novo",
+            },
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        inscricao = self.turma.inscricoes.get()
+        self.assertEqual(inscricao.administradora_codigo, "003")
+        self.assertEqual(inscricao.condominio_nome, "Condomínio Novo")
+        # O CPF não enviado é preservado (PATCH parcial).
+        self.assertEqual(inscricao.cpf, CPF_A)

@@ -62,7 +62,7 @@ def criar_reserva_espelho(turma, usuario):
     Chamado dentro de transaction.atomic() pela view.
     """
     return Reserva.objects.create(
-        tema=f"Curso CIPA — {turma.condominio_nome}",
+        tema=f"Curso CIPA — {LOCAIS_CIPA[turma.local]['nome']}",
         participantes="Curso CIPA (Condomed)",
         data=turma.data,
         horario=turma.hora_inicio.strftime("%H:%M"),
@@ -83,7 +83,7 @@ def sincronizar_espelho(turma, usuario):
         reserva = turma.reserva_sala
         reserva.data = turma.data
         reserva.horario = turma.hora_inicio.strftime("%H:%M")
-        reserva.tema = f"Curso CIPA — {turma.condominio_nome}"
+        reserva.tema = f"Curso CIPA — {LOCAIS_CIPA[turma.local]['nome']}"
         reserva.save(update_fields=["data", "horario", "tema"])
     return turma.reserva_sala
 

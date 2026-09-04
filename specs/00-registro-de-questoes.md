@@ -39,3 +39,10 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** baixa
 - **Trava:** nada no escopo inicial.
 - **Questão:** o curso CIPA é produto vendido — a turma precisa se ligar a proposta/contrato/fatura (Firebird) para controle de faturamento? Fora do escopo até decisão.
+
+## PA-006 — Uma turma atende um condomínio ou vários?
+
+- **Status:** fechada (2026-09-04) · **Dono:** Ingrid Aylana · **Severidade:** bloqueia
+- **Trava:** o modelo de dados de `TurmaCipa` e `InscricaoCipa`.
+- **Questão:** o levantamento inicial tratou a turma como "o curso de um condomínio", com administradora e condomínio na turma. Uma turma pode receber funcionários de administradoras diferentes?
+- **Resposta:** sim, e é a regra, não a exceção. A turma é um dia de curso em um local; as vagas são preenchidas com funcionários de várias administradoras e condomínios. Administradora e condomínio passam para a inscrição, obrigatórios (ADR-0004). A turma deixa de ter nome e passa a ser identificada por local + ocupação.

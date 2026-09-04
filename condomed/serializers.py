@@ -28,9 +28,24 @@ class InscricaoCipaSerializer(serializers.ModelSerializer):
             "funcao",
             "email",
             "telefone",
+            "administradora_codigo",
+            "administradora_nome",
+            "condominio_nome",
             "criado_em",
         ]
         read_only_fields = ["id", "turma", "criado_em"]
+        extra_kwargs = {
+            # O vínculo é obrigatório (INV-CIP-004): sem ele não se sabe de
+            # quem é o participante, que é a razão da inscrição existir.
+            "administradora_codigo": {"required": True, "allow_blank": False},
+            "condominio_nome": {"required": True, "allow_blank": False},
+        }
+
+    def validate_condominio_nome(self, valor):
+        nome = (valor or "").strip()
+        if not nome:
+            raise serializers.ValidationError("Informe o condomínio do participante.")
+        return nome
 
     def validate_cpf(self, valor):
         cpf = normalizar_cpf(valor)
@@ -67,6 +82,10 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
     capacidade = serializers.SerializerMethodField(read_only=True)
     total_inscritos = serializers.SerializerMethodField(read_only=True)
     tem_espelho = serializers.SerializerMethodField(read_only=True)
+    # Derivados dos inscritos (ADR-0004): a turma não tem cliente, mas a tela
+    # precisa rotular, filtrar e buscar o mês sem baixar todos os inscritos.
+    administradoras = serializers.SerializerMethodField(read_only=True)
+    condominios = serializers.SerializerMethodField(read_only=True)
     inscricoes = InscricaoCipaSerializer(many=True, read_only=True)
 
     class Meta:
@@ -78,13 +97,12 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
             "data",
             "hora_inicio",
             "hora_fim",
-            "administradora_codigo",
-            "administradora_nome",
-            "condominio_nome",
             "observacao",
             "status",
             "capacidade",
             "total_inscritos",
+            "administradoras",
+            "condominios",
             "tem_espelho",
             "inscricoes",
             "criado_em",
@@ -99,6 +117,23 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
 
     def get_total_inscritos(self, obj):
         return obj.inscricoes.count()
+
+    def get_administradoras(self, obj):
+        """Administradoras presentes na turma, sem repetição, ordenadas por nome."""
+        vistas = {}
+        for inscricao in obj.inscricoes.all():
+            vistas.setdefault(
+                inscricao.administradora_codigo,
+                {
+                    "codigo": inscricao.administradora_codigo,
+                    "nome": inscricao.administradora_nome,
+                },
+            )
+        return sorted(vistas.values(), key=lambda a: (a["nome"] or "", a["codigo"]))
+
+    def get_condominios(self, obj):
+        """Condomínios presentes na turma, sem repetição."""
+        return sorted({i.condominio_nome for i in obj.inscricoes.all()})
 
     def get_tem_espelho(self, obj):
         """False sinaliza INV-CIP-002 violado (espelho apagado pela agenda atual)."""
@@ -140,7 +175,15 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
                     "data": str(conflito.data),
                     "hora_inicio": str(conflito.hora_inicio),
                     "hora_fim": str(conflito.hora_fim),
-                    "condominio_nome": conflito.condominio_nome,
+                    "local_nome": LOCAIS_CIPA.get(conflito.local, {}).get(
+                        "nome", conflito.local
+                    ),
+                    # A turma é identificada por local + ocupação (ADR-0004);
+                    # texto pronto porque o corpo do 409 vira string no DRF.
+                    "ocupacao": (
+                        f"{conflito.inscricoes.count()}"
+                        f"/{services.capacidade_do_local(conflito.local)}"
+                    ),
                 },
             )
 

@@ -43,12 +43,9 @@ class TurmaCipa(models.Model):
     hora_inicio = models.TimeField(default=HORA_INICIO_PADRAO)
     hora_fim = models.TimeField(default=HORA_FIM_PADRAO)
 
-    # Cliente da turma: a administradora vem do Firebird (código + nome
-    # desnormalizado); o condomínio é digitado — não há cadastro para ele.
-    administradora_codigo = models.CharField(max_length=20)
-    administradora_nome = models.CharField(max_length=150, blank=True)
-    condominio_nome = models.CharField(max_length=150)
-
+    # A turma não tem cliente: administradora e condomínio são de cada
+    # inscrito, porque um mesmo dia recebe funcionários de várias
+    # administradoras e vários condomínios (ADR-0004).
     observacao = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="agendada")
     criado_por = models.ForeignKey(
@@ -74,7 +71,7 @@ class TurmaCipa(models.Model):
         verbose_name_plural = "turmas CIPA"
 
     def __str__(self):
-        return f"CIPA {self.get_local_display()} em {self.data} — {self.condominio_nome}"
+        return f"CIPA {self.get_local_display()} em {self.data}"
 
     @property
     def capacidade(self):
@@ -86,7 +83,7 @@ class TurmaCipa(models.Model):
 
 
 class InscricaoCipa(models.Model):
-    """Funcionário do condomínio inscrito em uma turma (não há cadastro; é digitado)."""
+    """Participante de uma turma, com o próprio vínculo (não há cadastro; é digitado)."""
 
     turma = models.ForeignKey(TurmaCipa, on_delete=models.CASCADE, related_name="inscricoes")
     nome = models.CharField(max_length=150)
@@ -94,13 +91,26 @@ class InscricaoCipa(models.Model):
     funcao = models.CharField(max_length=100, blank=True)
     email = models.EmailField(blank=True)
     telefone = models.CharField(max_length=20, blank=True)
+
+    # De quem é este participante (ADR-0004): a administradora vem do Firebird
+    # (código + nome desnormalizado) e o condomínio é digitado — não há
+    # cadastro de condomínios.
+    administradora_codigo = models.CharField(max_length=20)
+    administradora_nome = models.CharField(max_length=150, blank=True)
+    condominio_nome = models.CharField(max_length=150)
+
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["nome"]
+        ordering = ["condominio_nome", "nome"]
         unique_together = [("turma", "cpf")]
+        indexes = [
+            models.Index(
+                fields=["administradora_codigo"], name="condomed_insc_adm_idx"
+            )
+        ]
         verbose_name = "inscrição CIPA"
         verbose_name_plural = "inscrições CIPA"
 
     def __str__(self):
-        return f"{self.nome} — turma {self.turma_id}"
+        return f"{self.nome} ({self.condominio_nome}) — turma {self.turma_id}"
