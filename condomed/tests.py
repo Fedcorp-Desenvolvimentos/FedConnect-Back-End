@@ -587,3 +587,67 @@ class VinculoDoInscritoTests(CipaTestBase):
         self.assertEqual(inscricao.condominio_nome, "Condomínio Novo")
         # O CPF não enviado é preservado (PATCH parcial).
         self.assertEqual(inscricao.cpf, CPF_A)
+
+
+class ExclusaoDeTurmaTests(CipaTestBase):
+    """CT-CIP-014: apagar a turma inteira leva inscritos e reserva com ela."""
+
+    def setUp(self):
+        super().setUp()
+        resposta = self.client.post(
+            "/cursos-cipa/",
+            dados_turma(local=SALA_REUNIAO),
+            format="json",
+        )
+        self.turma = TurmaCipa.objects.get(pk=resposta.data["id"])
+        for indice, cpf in enumerate((CPF_A, CPF_B)):
+            InscricaoCipa.objects.create(
+                turma=self.turma,
+                nome="Inscrito %s" % indice,
+                cpf=cpf,
+                **dados_vinculo(),
+            )
+
+    def test_ct_cip_014_exclusao_remove_inscritos_e_reserva(self):
+        reserva_id = self.turma.reserva_sala_id
+        self.assertIsNotNone(reserva_id)
+
+        resposta = self.client.delete("/cursos-cipa/%s/" % self.turma.id)
+
+        self.assertEqual(resposta.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(TurmaCipa.objects.filter(pk=self.turma.id).exists())
+        self.assertFalse(InscricaoCipa.objects.filter(turma_id=self.turma.id).exists())
+        self.assertFalse(Reserva.objects.filter(pk=reserva_id).exists())
+
+    def test_ct_cip_014_cancelar_preserva_inscritos_e_libera_a_sala(self):
+        """A alternativa que a tela oferece: cancelar em vez de apagar."""
+        reserva_id = self.turma.reserva_sala_id
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/" % self.turma.id, {"status": "cancelada"}, format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.turma.refresh_from_db()
+        self.assertEqual(self.turma.status, "cancelada")
+        self.assertEqual(self.turma.inscricoes.count(), 2)
+        # A sala volta a ficar livre na agenda.
+        self.assertIsNone(self.turma.reserva_sala_id)
+        self.assertFalse(Reserva.objects.filter(pk=reserva_id).exists())
+
+    def test_ct_cip_014_exclusao_exige_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        resposta = self.client.delete("/cursos-cipa/%s/" % self.turma.id)
+
+        self.assertEqual(resposta.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(TurmaCipa.objects.filter(pk=self.turma.id).exists())
+
+    def test_ct_cip_014_dia_fica_livre_para_nova_turma_depois_da_exclusao(self):
+        self.client.delete("/cursos-cipa/%s/" % self.turma.id)
+
+        resposta = self.client.post(
+            "/cursos-cipa/", dados_turma(local=SALA_REUNIAO), format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)

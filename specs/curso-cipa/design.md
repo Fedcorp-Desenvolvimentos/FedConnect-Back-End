@@ -95,6 +95,7 @@ flowchart LR
 | CT-CIP-011 | RF-CIP-003 | Inscrição sem administradora ou sem condomínio → 400 (INV-CIP-004) |
 | CT-CIP-012 | RF-CIP-001 | Turma com inscritos de duas administradoras → resposta traz as duas em `administradoras`, sem repetição, e os dois condomínios |
 | CT-CIP-013 | RF-CIP-001 | POST de turma com `administradora_codigo`/`condominio_nome` → campos ignorados (não existem mais no contrato da turma) |
+| CT-CIP-014 | RF-CIP-002 | DELETE da turma: 204, inscrições apagadas em cascata, Reserva espelho removida, dia liberado; `usuario` → 403; cancelar preserva as inscrições e ainda libera a sala |
 
 ## Impacto e Riscos
 

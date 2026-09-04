@@ -40,6 +40,8 @@
 - **QUANDO** uma turma é criada com `local=SALA_REUNIAO`, **ENTÃO** o sistema **DEVE** criar, na mesma transação, uma `agenda.Reserva` vinculada cobrindo 09:00–17:30 daquele dia. `[D]` ADR-0001
 - **SE** existe `agenda.Reserva` no dia cujo intervalo sobrepõe 09:00–17:30, **ENTÃO** a criação da turma na sala **DEVE** ser rejeitada com HTTP 409. `[D]` ADR-0001
 - **QUANDO** a turma na sala é cancelada ou excluída, **ENTÃO** a Reserva espelho **DEVE** ser removida na mesma transação. `[D]` ADR-0001
+- **QUANDO** excluo uma turma, **ENTÃO** o sistema **DEVE** remover em cascata as inscrições dela e liberar o dia do local para uma turma nova. `[D]` ADR-0001
+- **QUANDO** marco a turma como cancelada, **ENTÃO** o sistema **DEVE** preservar as inscrições e ainda assim liberar a sala na agenda — é a alternativa não destrutiva à exclusão. `[D]` ADR-0001
 
 ### RF-CIP-003: Inscritos da turma
 

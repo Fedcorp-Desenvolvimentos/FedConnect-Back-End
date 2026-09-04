@@ -1,6 +1,6 @@
 # Tarefas — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · CT: CT-CIP-001..013
+> **Rastreabilidade** — RF: RF-CIP-001..004 · CT: CT-CIP-001..014
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 > **Baseado em:** `design.md` (aprovado)
 
@@ -29,11 +29,12 @@
 - [x] T-CIP-4.3 Tema do espelho na agenda por local; 409 sem citar condomínio da turma _(RF-CIP-002 · CT-CIP-003)_
 - [x] T-CIP-4.4 `verificar-cpf` devolvendo administradora e condomínio de cada inscrição _(RF-CIP-003 · CT-CIP-009)_
 - [x] T-CIP-4.5 Numerar e cobrir CT-CIP-009 a CT-CIP-013 em `condomed/tests.py`, ajustando os testes que hoje criam turma com cliente _(RNF-CIP-001 · CT-CIP-009..013)_
+- [x] T-CIP-4.6 Cobrir a exclusão da turma inteira: cascata das inscrições, remoção do espelho, dia liberado, 403 e a alternativa de cancelar _(RF-CIP-002 · CT-CIP-014)_
 
 ## Verificação Final
 
 - [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 29 testes, OK em 2026-09-01 (local, SQLite: sem Postgres na máquina)
-- [x] Fase 4 verificada: 38 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
+- [x] Fase 4 verificada: 42 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
 - [ ] Reverificar em Postgres antes do merge
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem; STATUS.md atualizado
