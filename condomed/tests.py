@@ -10,6 +10,7 @@ from rest_framework.test import APITestCase
 from agenda.models import Reserva
 
 from .models import AUDITORIO, SALA_REUNIAO, InscricaoCipa, TurmaCipa
+from .serializers import InscricaoCipaSerializer
 
 Usuario = get_user_model()
 
@@ -814,3 +815,101 @@ class ImportacaoPorPlanilhaTests(CipaTestBase):
         self.assertEqual(
             self.importar([self.linha()]).status_code, status.HTTP_403_FORBIDDEN
         )
+
+
+class DuplicidadeDeCpfNaTurmaTests(CipaTestBase):
+    """CT-CIP-019: o mesmo CPF nunca fica duas vezes na mesma turma."""
+
+    def setUp(self):
+        super().setUp()
+        resposta = self.client.post("/cursos-cipa/", dados_turma(), format="json")
+        self.turma = TurmaCipa.objects.get(pk=resposta.data["id"])
+
+    def inscrever(self, **overrides):
+        dados = {"nome": "Fulano de Tal", "cpf": CPF_A, "funcao": "Zelador"}
+        dados.update(dados_vinculo())
+        dados.update(overrides)
+        return self.client.post(
+            "/cursos-cipa/%s/inscricoes/" % self.turma.id, dados, format="json"
+        )
+
+    def test_ct_cip_019_segunda_inscricao_do_mesmo_cpf_da_400(self):
+        self.assertEqual(self.inscrever().status_code, status.HTTP_201_CREATED)
+
+        repetida = self.inscrever(nome="Outro Nome")
+
+        self.assertEqual(repetida.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cpf", repetida.data)
+        self.assertEqual(self.turma.inscricoes.count(), 1)
+
+    def test_ct_cip_019_mascara_nao_burla_a_duplicidade(self):
+        """CPF com e sem pontuação é o mesmo CPF: normaliza antes de comparar."""
+        self.inscrever()
+
+        repetida = self.inscrever(cpf="529.982.247-25", nome="Com máscara")
+
+        self.assertEqual(repetida.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(self.turma.inscricoes.count(), 1)
+
+    def test_ct_cip_019_corrida_recebe_400_e_nao_500(self):
+        """Duas requisições simultâneas: a validação não vê, o banco vê.
+
+        Sem o `select_for_update` (removido no ADR-0006, que era de
+        capacidade), as duas passam pela checagem do serializer. O
+        `unique_together` continua barrando — e o erro tem de chegar como 400,
+        não como um 500 de IntegrityError.
+        """
+        self.inscrever()
+
+        # Simula a janela da corrida: a validação passa, o banco recusa.
+        with patch.object(
+            InscricaoCipaSerializer, "validate", side_effect=lambda attrs: attrs
+        ):
+            repetida = self.inscrever(nome="Chegou junto")
+
+        self.assertEqual(repetida.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cpf", repetida.data)
+        self.assertEqual(self.turma.inscricoes.count(), 1)
+
+    def test_ct_cip_019_edicao_nao_acusa_o_proprio_cpf(self):
+        criada = self.inscrever()
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (self.turma.id, criada.data["id"]),
+            {"funcao": "Porteiro", "cpf": CPF_A},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+
+    def test_ct_cip_019_edicao_para_cpf_de_outro_inscrito_da_400(self):
+        primeira = self.inscrever()
+        self.inscrever(nome="Beltrano", cpf=CPF_B)
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (self.turma.id, primeira.data["id"]),
+            {"cpf": CPF_B},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cpf", resposta.data)
+
+    def test_ct_cip_019_mesmo_cpf_em_outra_turma_continua_permitido(self):
+        self.inscrever()
+        outra = TurmaCipa.objects.create(
+            local=SALA_REUNIAO, data=DIA, criado_por=self.operador
+        )
+
+        resposta = self.client.post(
+            "/cursos-cipa/%s/inscricoes/" % outra.id,
+            {
+                "nome": "Fulano de Tal",
+                "cpf": CPF_A,
+                "funcao": "Zelador",
+                **dados_vinculo(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)

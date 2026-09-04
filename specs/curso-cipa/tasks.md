@@ -1,6 +1,6 @@
 # Tarefas — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..005 · CT: CT-CIP-001..018
+> **Rastreabilidade** — RF: RF-CIP-001..005 · CT: CT-CIP-001..019
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 > **Baseado em:** `design.md` (aprovado)
 
@@ -45,10 +45,16 @@
 - [x] T-CIP-6.3 Remover `travar_turma`/`select_for_update`, que existia só para a trava _(RF-CIP-003)_
 - [x] T-CIP-6.4 Ajustar CT-CIP-006 e CT-CIP-017 e acrescentar `cpf_sintetico` para listas grandes nos testes _(RNF-CIP-001 · CT-CIP-006, CT-CIP-017)_
 
+## Fase 7 — Duplicidade de CPF à prova de corrida
+
+- [x] T-CIP-7.1 `views.salvar_inscricao` traduz o `unique_together` em 400 e isola a falha em `atomic` _(RF-CIP-003 · CT-CIP-019)_
+- [x] T-CIP-7.2 `CPF_DUPLICADO` como frase única, no serializer, importada pela view _(RF-CIP-003 · CT-CIP-019)_
+- [x] T-CIP-7.3 Cobrir CT-CIP-019, inclusive a corrida com a validação neutralizada _(RNF-CIP-001 · CT-CIP-019)_
+
 ## Verificação Final
 
 - [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 29 testes, OK em 2026-09-01 (local, SQLite: sem Postgres na máquina)
-- [x] Fases 4 a 6 verificadas: 53 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
+- [x] Fases 4 a 7 verificadas: 59 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
 - [ ] Reverificar em Postgres antes do merge
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem; STATUS.md atualizado

@@ -51,7 +51,8 @@
 - **QUANDO** informo nome, CPF, função, e-mail e telefone de um inscrito, **ENTÃO** o sistema **DEVE** gravá-lo vinculado à turma. `[P]` PA-002
 - **QUANDO** informo a administradora (da lista do Firebird) e o nome do condomínio do inscrito, **ENTÃO** o sistema **DEVE** gravá-los na inscrição, e **DEVE** recusar a inscrição sem esses dois campos. `[D]` ADR-0004
 - **SE** o mesmo CPF aparece em outra turma, **ENTÃO** a resposta de `verificar-cpf` **DEVE** informar também a administradora e o condomínio de cada inscrição encontrada. `[D]` ADR-0004
-- **SE** o CPF já está inscrito na mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400 — a tela avisa antes, mas o servidor é a garantia. `[D]` ADR-0001
+- **SE** o CPF já está inscrito na mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400 — a tela avisa antes, mas o servidor é a garantia, inclusive quando duas requisições chegam ao mesmo tempo. `[D]` ADR-0001
+- **SE** edito um inscrito e informo o CPF de outra pessoa da mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400; informar o CPF dele mesmo **DEVE** ser aceito. `[D]` ADR-0001
 - **SE** o CPF já está inscrito em **outra** turma, **ENTÃO** o sistema **DEVE** aceitar a inscrição e informar em quais turmas ele consta — o bloqueio é só dentro da mesma turma. `[D]` ADR-0003
 - **SE** a turma já atingiu a capacidade do local, **ENTÃO** o sistema **DEVE** aceitar a inscrição e informar quantas pessoas passam da capacidade — chegam funcionários extras de última hora, e recusar deixaria fora da lista quem fez o curso. `[D]` ADR-0006
 - **SE** o CPF é inválido (dígitos verificadores), **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400. `[D]` ADR-0001

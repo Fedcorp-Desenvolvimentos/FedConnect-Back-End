@@ -14,6 +14,10 @@ from .models import (
 )
 from .validators import cpf_valido, normalizar_cpf
 
+# Frase única da duplicidade de CPF: sai igual desta validação e da tradução
+# da constraint do banco em `views.salvar_inscricao`.
+CPF_DUPLICADO = "Este CPF já está inscrito nesta turma."
+
 
 class InscricaoCipaSerializer(serializers.ModelSerializer):
     # Aceita CPF formatado; normalizado para 11 dígitos em validate_cpf.
@@ -64,9 +68,7 @@ class InscricaoCipaSerializer(serializers.ModelSerializer):
         if self.instance:
             duplicados = duplicados.exclude(pk=self.instance.pk)
         if duplicados.exists():
-            raise serializers.ValidationError(
-                {"cpf": "Este CPF já está inscrito nesta turma."}
-            )
+            raise serializers.ValidationError({"cpf": CPF_DUPLICADO})
 
         # A capacidade do local é referência, não trava (ADR-0006): chega
         # funcionário extra de última hora e a turma recebe. Quem sinaliza o

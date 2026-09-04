@@ -48,6 +48,7 @@ flowchart LR
 |---|---|---|
 | INV-CIP-001 | Duas turmas ativas nunca ocupam o mesmo local com intervalos sobrepostos no mesmo dia | aplicação (serializer) + banco (índice `(local, data)`; unicidade por dia pode virar constraint enquanto a hora for fixa) |
 | INV-CIP-002 | Toda turma ativa com `local=SALA_REUNIAO` tem exatamente uma `agenda.Reserva` espelho no mesmo dia e intervalo | aplicação (`transaction.atomic()` em create/destroy) |
+| INV-CIP-005 | Duas inscrições com o mesmo CPF nunca coexistem na mesma turma, mesmo em requisições simultâneas | banco (`unique_together (turma, cpf)`) + aplicação (validação do serializer e tradução da constraint em `views.salvar_inscricao`) |
 | INV-CIP-003 | O excesso sobre a capacidade do local é sempre visível na resposta da turma (`acima_da_capacidade`) — a capacidade é referência, não limite (ADR-0006) | aplicação (serializer da turma) |
 | INV-CIP-004 | Toda inscrição tem administradora e condomínio preenchidos | aplicação (serializer) + banco (campos não nulos, sem default) |
 
@@ -68,6 +69,7 @@ flowchart LR
 | Falha ao gravar o espelho | rollback da turma (atomic) | RNF-CIP-002 |
 | Reserva espelho excluída pela agenda atual | INV-CIP-002 violado: listagem marca turma como "sem espelho" e oferece recriar (ação admin) | RF-CIP-002 |
 | Duas inscrições simultâneas na última vaga | ambas entram; a turma fica 1 acima e a resposta sinaliza | RF-CIP-003 |
+| Duas inscrições simultâneas com o **mesmo CPF** | a validação deixa as duas passarem; o `unique_together` barra a segunda e `salvar_inscricao` devolve 400, não 500 | RF-CIP-003 |
 | Usuário sem nível | 403 | RF-CIP-004 |
 
 ## Decisões
@@ -92,6 +94,7 @@ flowchart LR
 | CT-CIP-003 | RF-CIP-002 | Turma na sala cria Reserva espelho vinculada; excluir turma remove a Reserva |
 | CT-CIP-004 | RF-CIP-002 | Reserva existente na sala (ex: 10:00, 120 min) no dia → turma na sala 409 |
 | CT-CIP-005 | RF-CIP-003 | Inscrição válida → 201; CPF repetido → 400; CPF inválido → 400 |
+| CT-CIP-019 | RF-CIP-003 | CPF repetido na turma → 400 (com e sem máscara); corrida com a validação neutralizada → 400 e um único registro; editar mantendo o próprio CPF → 200; editar para o CPF de outro inscrito → 400; mesmo CPF em outra turma → 201 |
 | CT-CIP-006 | RF-CIP-003 | Inscrição além da capacidade → 201 e `acima_da_capacidade` com o excesso; turma dentro da capacidade → 0 |
 | CT-CIP-007 | RF-CIP-004 | Usuário `usuario` → 403; `condomed` e `admin` → 200 |
 | CT-CIP-008 | RNF-CIP-002 | Falha forçada ao criar o espelho → nenhuma turma persistida |

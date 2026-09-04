@@ -1,11 +1,12 @@
 # condomed/views.py
 import openpyxl
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from users.permissions import IsCondomedOrAdmin
@@ -13,6 +14,7 @@ from users.permissions import IsCondomedOrAdmin
 from . import services
 from .models import LOCAIS_CIPA, InscricaoCipa, TurmaCipa
 from .serializers import (
+    CPF_DUPLICADO,
     ImportarTurmaSerializer,
     InscricaoCipaSerializer,
     TurmaCipaSerializer,
@@ -21,6 +23,25 @@ from .validators import cpf_valido, normalizar_cpf
 
 # Colunas da planilha modelo, na ordem. O cabeçalho é o contrato com a tela:
 # o parser do frontend casa por este texto, então mudar aqui é mudar lá.
+def salvar_inscricao(serializer, **kwargs):
+    """Grava a inscrição traduzindo a constraint de CPF duplicado em 400.
+
+    O `unique_together (turma, cpf)` é a garantia final da regra — a validação
+    do serializer não cobre duas requisições simultâneas com o mesmo CPF, que
+    passam as duas pela checagem e só se encontram no banco. Sem esta
+    tradução, a segunda viraria 500.
+
+    É a única constraint de unicidade da tabela, então IntegrityError aqui só
+    pode ser ela. O `atomic` isola a falha: no PostgreSQL, a transação fica
+    inutilizável depois de um IntegrityError.
+    """
+    try:
+        with transaction.atomic():
+            return serializer.save(**kwargs)
+    except IntegrityError as erro:
+        raise ValidationError({"cpf": CPF_DUPLICADO}) from erro
+
+
 COLUNAS_MODELO = [
     ("administradora", 28, "Delforte Administração"),
     ("condominio", 28, "Residencial Aurora"),
@@ -189,14 +210,14 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
 
         # Sem `select_for_update`: ele existia só para a capacidade não ser
         # estourada em corrida (INV-CIP-003), e a capacidade deixou de ser
-        # limite (ADR-0006). A unicidade de CPF por turma segue garantida pelo
-        # `unique_together` no banco.
+        # limite (ADR-0006). A unicidade de CPF por turma segue no
+        # `unique_together`, e `salvar_inscricao` traduz a constraint em 400.
         turma = self.get_object()
         serializer = InscricaoCipaSerializer(
             data=request.data, context={"turma": turma, "request": request}
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save(turma=turma)
+        salvar_inscricao(serializer, turma=turma)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -221,5 +242,5 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
             inscricao, data=request.data, partial=True, context={"turma": turma}
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        salvar_inscricao(serializer)
         return Response(serializer.data)
