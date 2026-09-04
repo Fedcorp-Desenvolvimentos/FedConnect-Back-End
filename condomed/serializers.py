@@ -7,6 +7,7 @@ from .models import (
     HORA_FIM_PADRAO,
     HORA_INICIO_PADRAO,
     LOCAIS_CIPA,
+    LOCAL_CHOICES,
     SALA_REUNIAO,
     InscricaoCipa,
     TurmaCipa,
@@ -206,3 +207,82 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
                     },
                 )
         return attrs
+
+
+class ImportarTurmaSerializer(serializers.Serializer):
+    """Turma + inscritos de uma vez, para a importação por planilha.
+
+    Existe para a turma e a lista nascerem na mesma transação: criar a turma
+    primeiro e a lista depois deixaria turma vazia no sistema se a segunda
+    metade falhasse.
+
+    A validação da turma é a do `TurmaCipaSerializer` (conflito de local/dia e
+    de reserva da sala), e a de cada linha é a do `InscricaoCipaSerializer` —
+    a importação não afrouxa nenhuma regra.
+    """
+
+    local = serializers.ChoiceField(choices=LOCAL_CHOICES)
+    data = serializers.DateField()
+    observacao = serializers.CharField(required=False, allow_blank=True, default="")
+    inscricoes = serializers.ListField(
+        child=serializers.DictField(), allow_empty=False
+    )
+
+    def validate(self, attrs):
+        local = attrs["local"]
+        inscricoes = attrs["inscricoes"]
+
+        capacidade = services.capacidade_do_local(local)
+        if len(inscricoes) > capacidade:
+            raise serializers.ValidationError({
+                "inscricoes": (
+                    f"A planilha tem {len(inscricoes)} pessoas e o local comporta "
+                    f"{capacidade}. Nada foi importado."
+                )
+            })
+
+        # As mesmas regras de linha, mais a duplicidade dentro da própria
+        # planilha — que o unique_together pegaria só no banco, sem dizer onde.
+        erros = {}
+        cpfs = {}
+        limpas = []
+        for indice, linha in enumerate(inscricoes):
+            serializer = InscricaoCipaSerializer(data=linha)
+            if not serializer.is_valid():
+                erros[str(indice)] = serializer.errors
+                continue
+
+            cpf = serializer.validated_data["cpf"]
+            if cpf in cpfs:
+                erros[str(indice)] = {
+                    "cpf": [f"CPF repetido na planilha (linha {cpfs[cpf] + 1})."]
+                }
+                continue
+            cpfs[cpf] = indice
+            limpas.append(serializer.validated_data)
+
+        if erros:
+            raise serializers.ValidationError({"inscricoes": erros})
+
+        attrs["inscricoes"] = limpas
+        return attrs
+
+    def criar(self, usuario):
+        """Grava turma, espelho e inscritos. Chamado dentro de atomic pela view."""
+        dados = self.validated_data
+        turma_serializer = TurmaCipaSerializer(
+            data={
+                "local": dados["local"],
+                "data": dados["data"],
+                "observacao": dados.get("observacao", ""),
+            }
+        )
+        # Deixa o 409 de conflito subir como em qualquer criação de turma.
+        turma_serializer.is_valid(raise_exception=True)
+        turma = turma_serializer.save(criado_por=usuario)
+        services.sincronizar_espelho(turma, usuario)
+
+        InscricaoCipa.objects.bulk_create([
+            InscricaoCipa(turma=turma, **linha) for linha in dados["inscricoes"]
+        ])
+        return turma

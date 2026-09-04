@@ -1,5 +1,9 @@
 # condomed/views.py
+import openpyxl
 from django.db import transaction
+from django.http import HttpResponse
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,8 +12,24 @@ from users.permissions import IsCondomedOrAdmin
 
 from . import services
 from .models import LOCAIS_CIPA, InscricaoCipa, TurmaCipa
-from .serializers import InscricaoCipaSerializer, TurmaCipaSerializer
+from .serializers import (
+    ImportarTurmaSerializer,
+    InscricaoCipaSerializer,
+    TurmaCipaSerializer,
+)
 from .validators import cpf_valido, normalizar_cpf
+
+# Colunas da planilha modelo, na ordem. O cabeçalho é o contrato com a tela:
+# o parser do frontend casa por este texto, então mudar aqui é mudar lá.
+COLUNAS_MODELO = [
+    ("administradora", 28, "Delforte Administração"),
+    ("condominio", 28, "Residencial Aurora"),
+    ("nome", 30, "Maria Aparecida da Silva"),
+    ("cpf", 16, "529.982.247-25"),
+    ("funcao", 20, "Zeladora"),
+    ("email", 26, "maria@exemplo.com.br"),
+    ("telefone", 18, "11999998888"),
+]
 
 
 class TurmaCipaViewSet(viewsets.ModelViewSet):
@@ -60,6 +80,60 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
         return Response([
             {"codigo": codigo, **dados} for codigo, dados in LOCAIS_CIPA.items()
         ])
+
+    @action(detail=False, methods=["get"], url_path="planilha-modelo")
+    def planilha_modelo(self, request):
+        """Planilha modelo dos inscritos, com uma linha de exemplo.
+
+        Local e data são escolhidos na tela, não na planilha: uma planilha é
+        uma turma, e data errada em célula é erro caro de achar.
+        """
+        workbook = openpyxl.Workbook()
+        aba = workbook.active
+        aba.title = "Inscritos"
+
+        for indice, (cabecalho, largura, exemplo) in enumerate(COLUNAS_MODELO, 1):
+            celula = aba.cell(row=1, column=indice, value=cabecalho)
+            celula.font = Font(bold=True, color="FFFFFF")
+            celula.fill = PatternFill("solid", start_color="0F3D5D")
+            celula.alignment = Alignment(horizontal="center")
+            aba.column_dimensions[get_column_letter(indice)].width = largura
+            aba.cell(row=2, column=indice, value=exemplo)
+
+        aba.freeze_panes = "A2"
+        # O CPF fica como texto: formatado como número, o Excel come o zero à
+        # esquerda e a linha volta inválida.
+        for linha in range(2, 200):
+            aba.cell(row=linha, column=4).number_format = "@"
+
+        resposta = HttpResponse(
+            content_type=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        )
+        resposta["Content-Disposition"] = (
+            'attachment; filename="modelo-inscritos-cipa.xlsx"'
+        )
+        workbook.save(resposta)
+        return resposta
+
+    @action(detail=False, methods=["post"], url_path="importar")
+    def importar(self, request):
+        """Cria a turma com os inscritos da planilha, tudo na mesma transação.
+
+        Ou nasce completa, ou não nasce: turma vazia por falha na segunda
+        metade seria pior que erro nenhum. A tela já valida linha a linha e só
+        envia o que passou, então aqui o payload é tudo-ou-nada.
+        """
+        serializer = ImportarTurmaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            turma = serializer.criar(request.user)
+
+        return Response(
+            TurmaCipaSerializer(turma).data, status=status.HTTP_201_CREATED
+        )
 
     @action(detail=False, methods=["get"], url_path="verificar-cpf")
     def verificar_cpf(self, request):

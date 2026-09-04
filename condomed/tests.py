@@ -651,3 +651,136 @@ class ExclusaoDeTurmaTests(CipaTestBase):
         )
 
         self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+
+
+class ImportacaoPorPlanilhaTests(CipaTestBase):
+    """CT-CIP-015..018: turma + inscritos de uma planilha, na mesma transação."""
+
+    def linha(self, **overrides):
+        base = {
+            "nome": "Fulano de Tal",
+            "cpf": CPF_A,
+            "funcao": "Zelador",
+            **dados_vinculo(),
+        }
+        base.update(overrides)
+        return base
+
+    def importar(self, inscricoes, **overrides):
+        corpo = {
+            "local": AUDITORIO,
+            "data": DIA.isoformat(),
+            "inscricoes": inscricoes,
+        }
+        corpo.update(overrides)
+        return self.client.post("/cursos-cipa/importar/", corpo, format="json")
+
+    def test_ct_cip_015_importa_turma_com_inscritos(self):
+        resposta = self.importar([
+            self.linha(),
+            self.linha(nome="Beltrano", cpf=CPF_B, condominio_nome="Ed. Bem-Te-Vi"),
+        ])
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        turma = TurmaCipa.objects.get(pk=resposta.data["id"])
+        self.assertEqual(turma.inscricoes.count(), 2)
+        self.assertEqual(resposta.data["total_inscritos"], 2)
+        self.assertEqual(len(resposta.data["condominios"]), 2)
+
+    def test_ct_cip_016_linha_invalida_nao_grava_nada(self):
+        resposta = self.importar([
+            self.linha(),
+            self.linha(nome="Sem CPF", cpf="11111111111"),
+        ])
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("1", resposta.data["inscricoes"])
+        self.assertFalse(TurmaCipa.objects.exists())
+
+    def test_ct_cip_016_linha_sem_vinculo_nao_grava_nada(self):
+        resposta = self.importar([self.linha(condominio_nome="")])
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("condominio_nome", resposta.data["inscricoes"]["0"])
+        self.assertFalse(TurmaCipa.objects.exists())
+
+    def test_ct_cip_016_cpf_repetido_na_planilha_aponta_a_linha(self):
+        resposta = self.importar([self.linha(), self.linha(nome="Homônimo")])
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("linha 1", str(resposta.data["inscricoes"]["1"]["cpf"]))
+        self.assertFalse(TurmaCipa.objects.exists())
+
+    def test_ct_cip_017_planilha_maior_que_a_capacidade_nao_grava_nada(self):
+        linhas = [
+            self.linha(nome="Inscrito %s" % i, cpf="%011d" % i) for i in range(11)
+        ]
+
+        resposta = self.importar(linhas, local=SALA_REUNIAO)
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("11 pessoas", str(resposta.data["inscricoes"]))
+        self.assertIn("comporta 10", str(resposta.data["inscricoes"]))
+        self.assertFalse(TurmaCipa.objects.exists())
+
+    def test_ct_cip_017_conflito_de_dia_nao_grava_nada(self):
+        self.client.post("/cursos-cipa/", dados_turma(), format="json")
+
+        resposta = self.importar([self.linha()])
+
+        self.assertEqual(resposta.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(TurmaCipa.objects.count(), 1)
+        self.assertEqual(InscricaoCipa.objects.count(), 0)
+
+    def test_ct_cip_017_importacao_na_sala_cria_o_espelho_na_agenda(self):
+        resposta = self.importar([self.linha()], local=SALA_REUNIAO)
+
+        turma = TurmaCipa.objects.get(pk=resposta.data["id"])
+        self.assertIsNotNone(turma.reserva_sala)
+        self.assertEqual(turma.reserva_sala.tema, "Curso CIPA — Sala de reunião")
+
+    def test_ct_cip_017_planilha_vazia_da_400(self):
+        resposta = self.importar([])
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(TurmaCipa.objects.exists())
+
+    def test_ct_cip_018_planilha_modelo_baixa_com_os_cabecalhos(self):
+        resposta = self.client.get("/cursos-cipa/planilha-modelo/")
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertIn("spreadsheetml", resposta["Content-Type"])
+        self.assertIn("modelo-inscritos-cipa.xlsx", resposta["Content-Disposition"])
+
+        import io as _io
+
+        import openpyxl
+
+        aba = openpyxl.load_workbook(_io.BytesIO(resposta.content)).active
+        cabecalhos = [celula.value for celula in aba[1]]
+        self.assertEqual(
+            cabecalhos,
+            [
+                "administradora",
+                "condominio",
+                "nome",
+                "cpf",
+                "funcao",
+                "email",
+                "telefone",
+            ],
+        )
+        # Sem colunas de local e data: a turma é escolhida na tela.
+        self.assertNotIn("local", cabecalhos)
+        self.assertNotIn("data", cabecalhos)
+
+    def test_ct_cip_018_importacao_e_modelo_exigem_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        self.assertEqual(
+            self.client.get("/cursos-cipa/planilha-modelo/").status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.importar([self.linha()]).status_code, status.HTTP_403_FORBIDDEN
+        )

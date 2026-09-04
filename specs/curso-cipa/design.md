@@ -1,6 +1,6 @@
 # Design — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · INV: INV-CIP-001..003 · ADR: ADR-0001, ADR-0003, ADR-0004 · Questões: PA-001..002, PA-006
+> **Rastreabilidade** — RF: RF-CIP-001..004 · INV: INV-CIP-001..003 · ADR: ADR-0001, ADR-0003..0005 · Questões: PA-001..002, PA-006
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 > **Baseado em:** `requirements.md` (aprovado)
 
@@ -27,6 +27,8 @@ flowchart LR
 | `condomed/serializers.py` | `InscricaoCipaSerializer` valida administradora e condomínio; `TurmaCipaSerializer` deixa de aceitá-los e passa a expor `administradoras` e `condominios` derivados |
 | `condomed/services.py` | tema do espelho na agenda vira `"Curso CIPA — <local>"` (não há condomínio da turma) |
 | `condomed/views.py` | `verificar-cpf` devolve administradora e condomínio de cada inscrição; conflito 409 deixa de citar o condomínio da turma |
+| `condomed/serializers.py` — `ImportarTurmaSerializer` (novo, ADR-0005) | valida turma + lista em bloco: capacidade, regras de linha e CPF repetido dentro da própria planilha; `criar()` grava tudo |
+| `condomed/views.py` — `importar` e `planilha-modelo` (novos, ADR-0005) | `POST cursos-cipa/importar/` (uma transação) e `GET cursos-cipa/planilha-modelo/` (xlsx via openpyxl, padrão do app `planilha`) |
 | `users/models.py`, migração | novo choice `condomed` em `nivel_acesso` |
 | `users/permissions.py` | `IsCondomedOrAdmin` |
 | `bigcorp/urls.py`, `bigcorp/settings.py` | `router.register('cursos-cipa', ...)`; app em `INSTALLED_APPS` |
@@ -37,6 +39,7 @@ flowchart LR
 - `TurmaCipa`: `local` (choices `AUDITORIO`, `SALA_REUNIAO`), `data` (DateField), `hora_inicio`/`hora_fim` (TimeField, defaults 09:00/17:30), `observacao`, `status` (choices `agendada`/`realizada`/`cancelada`), `criado_por` (FK), `reserva_sala` (OneToOne `agenda.Reserva`, nullable, `on_delete=SET_NULL`), `criado_em`. Índice `(local, data)`. **Sem cliente** (ADR-0004).
 - `InscricaoCipa`: FK `turma`, `nome`, `cpf` (11 dígitos), `funcao`, `email`, `telefone`, `administradora_codigo` + `administradora_nome` (do Firebird via FedHub, nome desnormalizado), `condominio_nome` (digitado — não há código de condomínio), `criado_em`; `unique_together (turma, cpf)`. Índice `(administradora_codigo,)` para a consulta por administradora.
 - `LOCAIS_CIPA`: `{AUDITORIO: {nome, predio, capacidade}, SALA_REUNIAO: {...}}` — capacidades: auditório 30, sala de reunião 10 (PA-001, fechada em 2026-08-31).
+- Importação: `POST cursos-cipa/importar/` recebe `{local, data, observacao, inscricoes: [...]}` e devolve a turma criada; `GET cursos-cipa/planilha-modelo/` devolve o `.xlsx` modelo. Cabeçalhos do modelo em `COLUNAS_MODELO` (`condomed/views.py`) — é o contrato com o parser da tela.
 - Contrato: `GET/POST cursos-cipa/?mes&ano&local` (sem paginação — o calendário pede o mês inteiro), `GET cursos-cipa/locais/`, `GET cursos-cipa/verificar-cpf/?cpf&excluir_turma` (onde mais o CPF está inscrito; a tela usa para avisar antes de gravar), `GET/PATCH/DELETE cursos-cipa/{id}/`, `GET/POST cursos-cipa/{id}/inscricoes/`, `PATCH/DELETE cursos-cipa/{id}/inscricoes/{iid}/` (o PATCH é parcial: o CPF não enviado é preservado, e a checagem de capacidade não se aplica à edição de quem já está na lista). Resposta da turma inclui `capacidade`, `total_inscritos` e as listas derivadas `administradoras` (`[{codigo, nome}]`) e `condominios` (`[nome]`), sem repetição e somente-leitura — é o que permite rotular, filtrar e buscar o mês sem baixar todos os inscritos (ADR-0004). Erros: 409 `{"detail", "conflito": {...}}`; 400 DRF padrão.
 
 ## Invariantes
@@ -72,6 +75,7 @@ flowchart LR
 - ADR-0001: turma na sala espelhada como `agenda.Reserva`.
 - ADR-0003: duplicidade de inscrito entre turmas avisa, não bloqueia.
 - ADR-0004: administradora e condomínio são do inscrito, não da turma; a turma é identificada por local + ocupação.
+- ADR-0005: importação por planilha cria turma e inscritos numa transação só, tudo-ou-nada, e a planilha não traz local nem data.
 
 ## Divergência vs. produção
 
@@ -96,6 +100,10 @@ flowchart LR
 | CT-CIP-012 | RF-CIP-001 | Turma com inscritos de duas administradoras → resposta traz as duas em `administradoras`, sem repetição, e os dois condomínios |
 | CT-CIP-013 | RF-CIP-001 | POST de turma com `administradora_codigo`/`condominio_nome` → campos ignorados (não existem mais no contrato da turma) |
 | CT-CIP-014 | RF-CIP-002 | DELETE da turma: 204, inscrições apagadas em cascata, Reserva espelho removida, dia liberado; `usuario` → 403; cancelar preserva as inscrições e ainda libera a sala |
+| CT-CIP-015 | RF-CIP-005 | `importar` com lista válida → 201 com a turma, os inscritos e os condomínios derivados |
+| CT-CIP-016 | RF-CIP-005 | Linha com CPF inválido, sem vínculo ou com CPF repetido → 400 por índice e **nenhuma** turma criada |
+| CT-CIP-017 | RF-CIP-005 | Lista maior que a capacidade → 400 dizendo quantas e quantas cabem; dia ocupado → 409; lista vazia → 400; na sala, cria o espelho |
+| CT-CIP-018 | RF-CIP-005 | `planilha-modelo` devolve xlsx com os sete cabeçalhos e sem `local`/`data`; nível sem permissão → 403 nas duas rotas |
 
 ## Impacto e Riscos
 

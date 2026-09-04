@@ -1,6 +1,6 @@
 # Tarefas — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · CT: CT-CIP-001..014
+> **Rastreabilidade** — RF: RF-CIP-001..005 · CT: CT-CIP-001..018
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 > **Baseado em:** `design.md` (aprovado)
 
@@ -31,10 +31,17 @@
 - [x] T-CIP-4.5 Numerar e cobrir CT-CIP-009 a CT-CIP-013 em `condomed/tests.py`, ajustando os testes que hoje criam turma com cliente _(RNF-CIP-001 · CT-CIP-009..013)_
 - [x] T-CIP-4.6 Cobrir a exclusão da turma inteira: cascata das inscrições, remoção do espelho, dia liberado, 403 e a alternativa de cancelar _(RF-CIP-002 · CT-CIP-014)_
 
+## Fase 5 — Importação por planilha (ADR-0005)
+
+- [x] T-CIP-5.1 `ImportarTurmaSerializer`: capacidade, regras de linha por índice e CPF repetido na planilha _(RF-CIP-005 · CT-CIP-016, CT-CIP-017)_
+- [x] T-CIP-5.2 `POST cursos-cipa/importar/` criando turma, espelho e inscritos em uma transação _(RF-CIP-005 · CT-CIP-015)_
+- [x] T-CIP-5.3 `GET cursos-cipa/planilha-modelo/` com openpyxl, CPF como texto e sem colunas de local/data _(RF-CIP-005 · CT-CIP-018)_
+- [x] T-CIP-5.4 Cobrir CT-CIP-015..018 em `condomed/tests.py` _(RNF-CIP-001 · CT-CIP-015..018)_
+
 ## Verificação Final
 
 - [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 29 testes, OK em 2026-09-01 (local, SQLite: sem Postgres na máquina)
-- [x] Fase 4 verificada: 42 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
+- [x] Fases 4 e 5 verificadas: 52 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
 - [ ] Reverificar em Postgres antes do merge
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem; STATUS.md atualizado

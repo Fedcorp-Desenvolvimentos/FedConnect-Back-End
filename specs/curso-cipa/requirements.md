@@ -1,6 +1,6 @@
 # Requisitos — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · RNF: RNF-CIP-001..003 · ADR: ADR-0001, ADR-0003, ADR-0004 · Questões: PA-001..006
+> **Rastreabilidade** — RF: RF-CIP-001..004 · RNF: RNF-CIP-001..003 · ADR: ADR-0001, ADR-0003..0005 · Questões: PA-001..006
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 
 ## Contexto e Problema
@@ -15,6 +15,7 @@
 - Turmas CIPA por local (auditório | sala de reunião), um dia por turma, 09:00–17:30
 - Lista de inscritos com limite de capacidade, cada um com seu vínculo: administradora (do Firebird) e nome do condomínio
 - Conjunto de administradoras e condomínios da turma **derivado** dos inscritos, para rotular e filtrar
+- Criação de turma com a lista de inscritos de uma vez, a partir de planilha, e a planilha modelo para download
 - Espelho da turma na agenda atual quando o local é a sala de reunião
 - Acesso restrito a `condomed` + `admin`
 
@@ -62,6 +63,17 @@
 
 - **QUANDO** o usuário tem `nivel_acesso` em {`condomed`, `admin`}, **ENTÃO** os endpoints `cursos-cipa/*` **DEVEM** responder normalmente. `[E]` níveis existentes em `users/models.py:39-49` (sem `condomed` hoje — será adicionado)
 - **SE** o usuário autenticado tem outro nível, **ENTÃO** os endpoints **DEVEM** responder HTTP 403. `[E]` padrão `users/permissions.py` (`IsAdminOrModerador`)
+
+### RF-CIP-005: Turma e inscritos de uma planilha
+
+**Como** operador da Condomed, **quero** criar a turma já com a lista de participantes vinda de uma planilha, **para** não digitar 30 pessoas uma a uma.
+
+- **QUANDO** envio local, data e uma lista de inscritos válidos, **ENTÃO** o sistema **DEVE** criar a turma, o espelho na agenda (se for a sala) e todas as inscrições **na mesma transação**. `[D]` ADR-0005
+- **SE** qualquer linha é inválida, **ENTÃO** o sistema **DEVE** recusar a importação inteira e devolver o erro por índice de linha, sem gravar nada. `[D]` ADR-0005
+- **SE** o mesmo CPF aparece duas vezes na lista, **ENTÃO** o sistema **DEVE** recusar apontando a linha anterior. `[D]` ADR-0005
+- **SE** a lista tem mais pessoas do que a capacidade do local, **ENTÃO o** sistema **DEVE** recusar a importação inteira dizendo quantas são e quantas cabem — nunca cortar a lista por conta própria. `[D]` ADR-0005
+- **SE** o local e o dia já estão ocupados, **ENTÃO** o sistema **DEVE** responder 409 como em qualquer criação de turma, sem gravar inscrição nenhuma. `[D]` ADR-0005
+- **QUANDO** peço a planilha modelo, **ENTÃO** o sistema **DEVE** devolver um `.xlsx` com os cabeçalhos dos campos do inscrito e uma linha de exemplo, **sem** colunas de local e data. `[D]` ADR-0005
 
 ## Requisitos Não Funcionais
 
