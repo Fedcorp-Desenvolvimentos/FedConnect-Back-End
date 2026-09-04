@@ -6,17 +6,28 @@ from .exceptions import ConflitoAgendamento
 from .models import (
     HORA_FIM_PADRAO,
     HORA_INICIO_PADRAO,
+    INSTRUTORES_CIPA,
     LOCAIS_CIPA,
+    LOCAL_CHOICES,
     SALA_REUNIAO,
     InscricaoCipa,
     TurmaCipa,
 )
-from .validators import cpf_valido, normalizar_cpf
+from .validators import cnpj_valido, cpf_valido, normalizar_cnpj, normalizar_cpf
+
+# Frase única da duplicidade de CPF: sai igual desta validação e da tradução
+# da constraint do banco em `views.salvar_inscricao`.
+CPF_DUPLICADO = "Este CPF já está inscrito nesta turma."
 
 
 class InscricaoCipaSerializer(serializers.ModelSerializer):
     # Aceita CPF formatado; normalizado para 11 dígitos em validate_cpf.
     cpf = serializers.CharField(max_length=14)
+    # Idem para o CNPJ (18 com máscara, 14 gravados). Declarado aqui porque o
+    # max_length herdado do model barraria a máscara antes do normalizador.
+    condominio_cnpj = serializers.CharField(
+        max_length=18, required=False, allow_blank=True, default=""
+    )
 
     class Meta:
         model = InscricaoCipa
@@ -28,9 +39,34 @@ class InscricaoCipaSerializer(serializers.ModelSerializer):
             "funcao",
             "email",
             "telefone",
+            "administradora_codigo",
+            "administradora_nome",
+            "condominio_nome",
+            "condominio_cnpj",
             "criado_em",
         ]
         read_only_fields = ["id", "turma", "criado_em"]
+        extra_kwargs = {
+            # O vínculo é obrigatório (INV-CIP-004): sem ele não se sabe de
+            # quem é o participante, que é a razão da inscrição existir.
+            "administradora_codigo": {"required": True, "allow_blank": False},
+            "condominio_nome": {"required": True, "allow_blank": False},
+        }
+
+    def validate_condominio_cnpj(self, valor):
+        """Opcional; quando vem, tem de ser um CNPJ válido, gravado só com dígitos."""
+        cnpj = normalizar_cnpj(valor)
+        if not cnpj:
+            return ""
+        if not cnpj_valido(cnpj):
+            raise serializers.ValidationError("CNPJ inválido.")
+        return cnpj
+
+    def validate_condominio_nome(self, valor):
+        nome = (valor or "").strip()
+        if not nome:
+            raise serializers.ValidationError("Informe o condomínio do participante.")
+        return nome
 
     def validate_cpf(self, valor):
         cpf = normalizar_cpf(valor)
@@ -48,17 +84,11 @@ class InscricaoCipaSerializer(serializers.ModelSerializer):
         if self.instance:
             duplicados = duplicados.exclude(pk=self.instance.pk)
         if duplicados.exists():
-            raise serializers.ValidationError(
-                {"cpf": "Este CPF já está inscrito nesta turma."}
-            )
+            raise serializers.ValidationError({"cpf": CPF_DUPLICADO})
 
-        # Capacidade (INV-CIP-003) — a view segura a turma com select_for_update.
-        if self.instance is None:
-            capacidade = services.capacidade_do_local(turma.local)
-            if turma.inscricoes.count() >= capacidade:
-                raise serializers.ValidationError(
-                    f"Turma lotada: o local comporta {capacidade} participantes."
-                )
+        # A capacidade do local é referência, não trava (ADR-0006): chega
+        # funcionário extra de última hora e a turma recebe. Quem sinaliza o
+        # excesso é a tela, a partir de `capacidade` e `total_inscritos`.
         return attrs
 
 
@@ -66,7 +96,13 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
     local_nome = serializers.SerializerMethodField(read_only=True)
     capacidade = serializers.SerializerMethodField(read_only=True)
     total_inscritos = serializers.SerializerMethodField(read_only=True)
+    acima_da_capacidade = serializers.SerializerMethodField(read_only=True)
     tem_espelho = serializers.SerializerMethodField(read_only=True)
+    # Derivados dos inscritos (ADR-0004): a turma não tem cliente, mas a tela
+    # precisa rotular, filtrar e buscar o mês sem baixar todos os inscritos.
+    administradoras = serializers.SerializerMethodField(read_only=True)
+    condominios = serializers.SerializerMethodField(read_only=True)
+    instrutor_nome = serializers.SerializerMethodField(read_only=True)
     inscricoes = InscricaoCipaSerializer(many=True, read_only=True)
 
     class Meta:
@@ -78,13 +114,15 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
             "data",
             "hora_inicio",
             "hora_fim",
-            "administradora_codigo",
-            "administradora_nome",
-            "condominio_nome",
+            "instrutor",
+            "instrutor_nome",
             "observacao",
             "status",
             "capacidade",
             "total_inscritos",
+            "acima_da_capacidade",
+            "administradoras",
+            "condominios",
             "tem_espelho",
             "inscricoes",
             "criado_em",
@@ -94,11 +132,40 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
     def get_local_nome(self, obj):
         return LOCAIS_CIPA.get(obj.local, {}).get("nome", obj.local)
 
+    def get_instrutor_nome(self, obj):
+        return INSTRUTORES_CIPA.get(obj.instrutor, {}).get("nome", "")
+
     def get_capacidade(self, obj):
         return services.capacidade_do_local(obj.local)
 
     def get_total_inscritos(self, obj):
         return obj.inscricoes.count()
+
+    def get_acima_da_capacidade(self, obj):
+        """Quantos passam da capacidade do local; 0 quando está dentro.
+
+        A capacidade é referência, não limite (ADR-0006) — este campo existe
+        para a tela sinalizar sem recontar a regra.
+        """
+        excesso = obj.inscricoes.count() - services.capacidade_do_local(obj.local)
+        return max(excesso, 0)
+
+    def get_administradoras(self, obj):
+        """Administradoras presentes na turma, sem repetição, ordenadas por nome."""
+        vistas = {}
+        for inscricao in obj.inscricoes.all():
+            vistas.setdefault(
+                inscricao.administradora_codigo,
+                {
+                    "codigo": inscricao.administradora_codigo,
+                    "nome": inscricao.administradora_nome,
+                },
+            )
+        return sorted(vistas.values(), key=lambda a: (a["nome"] or "", a["codigo"]))
+
+    def get_condominios(self, obj):
+        """Condomínios presentes na turma, sem repetição."""
+        return sorted({i.condominio_nome for i in obj.inscricoes.all()})
 
     def get_tem_espelho(self, obj):
         """False sinaliza INV-CIP-002 violado (espelho apagado pela agenda atual)."""
@@ -140,7 +207,15 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
                     "data": str(conflito.data),
                     "hora_inicio": str(conflito.hora_inicio),
                     "hora_fim": str(conflito.hora_fim),
-                    "condominio_nome": conflito.condominio_nome,
+                    "local_nome": LOCAIS_CIPA.get(conflito.local, {}).get(
+                        "nome", conflito.local
+                    ),
+                    # A turma é identificada por local + ocupação (ADR-0004);
+                    # texto pronto porque o corpo do 409 vira string no DRF.
+                    "ocupacao": (
+                        f"{conflito.inscricoes.count()}"
+                        f"/{services.capacidade_do_local(conflito.local)}"
+                    ),
                 },
             )
 
@@ -163,3 +238,117 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
                     },
                 )
         return attrs
+
+
+class ImportarTurmaSerializer(serializers.Serializer):
+    """Turma + inscritos de uma vez, para a importação por planilha.
+
+    Existe para a turma e a lista nascerem na mesma transação: criar a turma
+    primeiro e a lista depois deixaria turma vazia no sistema se a segunda
+    metade falhasse.
+
+    A validação da turma é a do `TurmaCipaSerializer` (conflito de local/dia e
+    de reserva da sala), e a de cada linha é a do `InscricaoCipaSerializer` —
+    a importação não afrouxa nenhuma regra.
+    """
+
+    local = serializers.ChoiceField(choices=LOCAL_CHOICES)
+    data = serializers.DateField()
+    instrutor = serializers.ChoiceField(
+        choices=list(INSTRUTORES_CIPA.keys()), required=False, allow_blank=True, default=""
+    )
+    observacao = serializers.CharField(required=False, allow_blank=True, default="")
+    inscricoes = serializers.ListField(
+        child=serializers.DictField(), allow_empty=False
+    )
+
+    def validate(self, attrs):
+        inscricoes = attrs["inscricoes"]
+
+        # Planilha maior que a capacidade do local entra (ADR-0006): a tela
+        # avisa o excesso e o operador decide. Recusar deixaria de fora quem
+        # chegou de última hora, que é justamente o caso real.
+
+        # As mesmas regras de linha, mais a duplicidade dentro da própria
+        # planilha — que o unique_together pegaria só no banco, sem dizer onde.
+        erros = {}
+        cpfs = {}
+        limpas = []
+        for indice, linha in enumerate(inscricoes):
+            serializer = InscricaoCipaSerializer(data=linha)
+            if not serializer.is_valid():
+                erros[str(indice)] = serializer.errors
+                continue
+
+            cpf = serializer.validated_data["cpf"]
+            if cpf in cpfs:
+                erros[str(indice)] = {
+                    "cpf": [f"CPF repetido na planilha (linha {cpfs[cpf] + 1})."]
+                }
+                continue
+            cpfs[cpf] = indice
+            limpas.append(serializer.validated_data)
+
+        if erros:
+            raise serializers.ValidationError({"inscricoes": erros})
+
+        attrs["inscricoes"] = limpas
+        return attrs
+
+    def criar(self, usuario):
+        """Grava turma, espelho e inscritos. Chamado dentro de atomic pela view."""
+        dados = self.validated_data
+        turma_serializer = TurmaCipaSerializer(
+            data={
+                "local": dados["local"],
+                "data": dados["data"],
+                "instrutor": dados.get("instrutor", ""),
+                "observacao": dados.get("observacao", ""),
+            }
+        )
+        # Deixa o 409 de conflito subir como em qualquer criação de turma.
+        turma_serializer.is_valid(raise_exception=True)
+        turma = turma_serializer.save(criado_por=usuario)
+        services.sincronizar_espelho(turma, usuario)
+
+        InscricaoCipa.objects.bulk_create([
+            InscricaoCipa(turma=turma, **linha) for linha in dados["inscricoes"]
+        ])
+        return turma
+
+
+class TurmaResumoSerializer(TurmaCipaSerializer):
+    """Turma sem a lista de inscritos, para o histórico paginado.
+
+    O histórico pode listar centenas de turmas; carregar os inscritos de cada
+    uma só para mostrar contagens seria pagar por dados que a tela não usa. As
+    contagens e as listas derivadas (`administradoras`, `condominios`) ficam.
+    """
+
+    class Meta(TurmaCipaSerializer.Meta):
+        fields = [
+            campo for campo in TurmaCipaSerializer.Meta.fields if campo != "inscricoes"
+        ]
+
+
+class InscricaoComTurmaSerializer(InscricaoCipaSerializer):
+    """Inscrição com o resumo da turma, para a consulta de participantes.
+
+    A consulta responde "onde esta pessoa esteve": cada linha é uma inscrição,
+    e a turma vem junto para a tela não fazer uma requisição por linha.
+    """
+
+    turma = serializers.SerializerMethodField(read_only=True)
+
+    class Meta(InscricaoCipaSerializer.Meta):
+        fields = InscricaoCipaSerializer.Meta.fields
+
+    def get_turma(self, obj):
+        turma = obj.turma
+        return {
+            "id": turma.id,
+            "data": turma.data,
+            "local": turma.local,
+            "local_nome": LOCAIS_CIPA.get(turma.local, {}).get("nome", turma.local),
+            "status": turma.status,
+        }

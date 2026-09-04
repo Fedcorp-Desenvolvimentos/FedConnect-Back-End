@@ -2,8 +2,6 @@
 """Regras de conflito e espelho da turma CIPA na agenda atual (ADR-0001)."""
 from datetime import datetime
 
-from django.db import connection
-
 from agenda.models import Reserva
 
 from .models import DURACAO_MINUTOS, LOCAIS_CIPA, SALA_REUNIAO, TurmaCipa
@@ -62,7 +60,7 @@ def criar_reserva_espelho(turma, usuario):
     Chamado dentro de transaction.atomic() pela view.
     """
     return Reserva.objects.create(
-        tema=f"Curso CIPA — {turma.condominio_nome}",
+        tema=f"Curso CIPA — {LOCAIS_CIPA[turma.local]['nome']}",
         participantes="Curso CIPA (Condomed)",
         data=turma.data,
         horario=turma.hora_inicio.strftime("%H:%M"),
@@ -83,7 +81,7 @@ def sincronizar_espelho(turma, usuario):
         reserva = turma.reserva_sala
         reserva.data = turma.data
         reserva.horario = turma.hora_inicio.strftime("%H:%M")
-        reserva.tema = f"Curso CIPA — {turma.condominio_nome}"
+        reserva.tema = f"Curso CIPA — {LOCAIS_CIPA[turma.local]['nome']}"
         reserva.save(update_fields=["data", "horario", "tema"])
     return turma.reserva_sala
 
@@ -100,15 +98,3 @@ def remover_espelho(turma):
 
 def capacidade_do_local(local):
     return LOCAIS_CIPA[local]["capacidade"]
-
-
-def travar_turma(turma_id):
-    """Recarrega a turma com lock de linha, para a checagem de capacidade (INV-CIP-003).
-
-    Em produção (PostgreSQL) usa SELECT ... FOR UPDATE; em backends sem suporte
-    (SQLite dos testes locais) apenas recarrega — a escrita já é serializada.
-    """
-    qs = TurmaCipa.objects.all()
-    if connection.features.has_select_for_update:
-        qs = qs.select_for_update()
-    return qs.get(pk=turma_id)
