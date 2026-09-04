@@ -68,13 +68,9 @@ class InscricaoCipaSerializer(serializers.ModelSerializer):
                 {"cpf": "Este CPF já está inscrito nesta turma."}
             )
 
-        # Capacidade (INV-CIP-003) — a view segura a turma com select_for_update.
-        if self.instance is None:
-            capacidade = services.capacidade_do_local(turma.local)
-            if turma.inscricoes.count() >= capacidade:
-                raise serializers.ValidationError(
-                    f"Turma lotada: o local comporta {capacidade} participantes."
-                )
+        # A capacidade do local é referência, não trava (ADR-0006): chega
+        # funcionário extra de última hora e a turma recebe. Quem sinaliza o
+        # excesso é a tela, a partir de `capacidade` e `total_inscritos`.
         return attrs
 
 
@@ -82,6 +78,7 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
     local_nome = serializers.SerializerMethodField(read_only=True)
     capacidade = serializers.SerializerMethodField(read_only=True)
     total_inscritos = serializers.SerializerMethodField(read_only=True)
+    acima_da_capacidade = serializers.SerializerMethodField(read_only=True)
     tem_espelho = serializers.SerializerMethodField(read_only=True)
     # Derivados dos inscritos (ADR-0004): a turma não tem cliente, mas a tela
     # precisa rotular, filtrar e buscar o mês sem baixar todos os inscritos.
@@ -102,6 +99,7 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
             "status",
             "capacidade",
             "total_inscritos",
+            "acima_da_capacidade",
             "administradoras",
             "condominios",
             "tem_espelho",
@@ -118,6 +116,15 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
 
     def get_total_inscritos(self, obj):
         return obj.inscricoes.count()
+
+    def get_acima_da_capacidade(self, obj):
+        """Quantos passam da capacidade do local; 0 quando está dentro.
+
+        A capacidade é referência, não limite (ADR-0006) — este campo existe
+        para a tela sinalizar sem recontar a regra.
+        """
+        excesso = obj.inscricoes.count() - services.capacidade_do_local(obj.local)
+        return max(excesso, 0)
 
     def get_administradoras(self, obj):
         """Administradoras presentes na turma, sem repetição, ordenadas por nome."""
@@ -229,17 +236,11 @@ class ImportarTurmaSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-        local = attrs["local"]
         inscricoes = attrs["inscricoes"]
 
-        capacidade = services.capacidade_do_local(local)
-        if len(inscricoes) > capacidade:
-            raise serializers.ValidationError({
-                "inscricoes": (
-                    f"A planilha tem {len(inscricoes)} pessoas e o local comporta "
-                    f"{capacidade}. Nada foi importado."
-                )
-            })
+        # Planilha maior que a capacidade do local entra (ADR-0006): a tela
+        # avisa o excesso e o operador decide. Recusar deixaria de fora quem
+        # chegou de última hora, que é justamente o caso real.
 
         # As mesmas regras de linha, mais a duplicidade dentro da própria
         # planilha — que o unique_together pegaria só no banco, sem dizer onde.

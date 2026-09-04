@@ -1,6 +1,6 @@
 # Design — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · INV: INV-CIP-001..003 · ADR: ADR-0001, ADR-0003..0005 · Questões: PA-001..002, PA-006
+> **Rastreabilidade** — RF: RF-CIP-001..004 · INV: INV-CIP-001..003 · ADR: ADR-0001, ADR-0003..0006 · Questões: PA-001..002, PA-006
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 > **Baseado em:** `requirements.md` (aprovado)
 
@@ -40,7 +40,7 @@ flowchart LR
 - `InscricaoCipa`: FK `turma`, `nome`, `cpf` (11 dígitos), `funcao`, `email`, `telefone`, `administradora_codigo` + `administradora_nome` (do Firebird via FedHub, nome desnormalizado), `condominio_nome` (digitado — não há código de condomínio), `criado_em`; `unique_together (turma, cpf)`. Índice `(administradora_codigo,)` para a consulta por administradora.
 - `LOCAIS_CIPA`: `{AUDITORIO: {nome, predio, capacidade}, SALA_REUNIAO: {...}}` — capacidades: auditório 30, sala de reunião 10 (PA-001, fechada em 2026-08-31).
 - Importação: `POST cursos-cipa/importar/` recebe `{local, data, observacao, inscricoes: [...]}` e devolve a turma criada; `GET cursos-cipa/planilha-modelo/` devolve o `.xlsx` modelo. Cabeçalhos do modelo em `COLUNAS_MODELO` (`condomed/views.py`) — é o contrato com o parser da tela.
-- Contrato: `GET/POST cursos-cipa/?mes&ano&local` (sem paginação — o calendário pede o mês inteiro), `GET cursos-cipa/locais/`, `GET cursos-cipa/verificar-cpf/?cpf&excluir_turma` (onde mais o CPF está inscrito; a tela usa para avisar antes de gravar), `GET/PATCH/DELETE cursos-cipa/{id}/`, `GET/POST cursos-cipa/{id}/inscricoes/`, `PATCH/DELETE cursos-cipa/{id}/inscricoes/{iid}/` (o PATCH é parcial: o CPF não enviado é preservado, e a checagem de capacidade não se aplica à edição de quem já está na lista). Resposta da turma inclui `capacidade`, `total_inscritos` e as listas derivadas `administradoras` (`[{codigo, nome}]`) e `condominios` (`[nome]`), sem repetição e somente-leitura — é o que permite rotular, filtrar e buscar o mês sem baixar todos os inscritos (ADR-0004). Erros: 409 `{"detail", "conflito": {...}}`; 400 DRF padrão.
+- Contrato: `GET/POST cursos-cipa/?mes&ano&local` (sem paginação — o calendário pede o mês inteiro), `GET cursos-cipa/locais/`, `GET cursos-cipa/verificar-cpf/?cpf&excluir_turma` (onde mais o CPF está inscrito; a tela usa para avisar antes de gravar), `GET/PATCH/DELETE cursos-cipa/{id}/`, `GET/POST cursos-cipa/{id}/inscricoes/`, `PATCH/DELETE cursos-cipa/{id}/inscricoes/{iid}/` (o PATCH é parcial: o CPF não enviado é preservado, e a checagem de capacidade não se aplica à edição de quem já está na lista). Resposta da turma inclui `capacidade`, `total_inscritos`, `acima_da_capacidade` (quantos passam da capacidade; 0 quando dentro) e as listas derivadas `administradoras` (`[{codigo, nome}]`) e `condominios` (`[nome]`), sem repetição e somente-leitura — é o que permite rotular, filtrar e buscar o mês sem baixar todos os inscritos (ADR-0004). Erros: 409 `{"detail", "conflito": {...}}`; 400 DRF padrão.
 
 ## Invariantes
 
@@ -48,7 +48,7 @@ flowchart LR
 |---|---|---|
 | INV-CIP-001 | Duas turmas ativas nunca ocupam o mesmo local com intervalos sobrepostos no mesmo dia | aplicação (serializer) + banco (índice `(local, data)`; unicidade por dia pode virar constraint enquanto a hora for fixa) |
 | INV-CIP-002 | Toda turma ativa com `local=SALA_REUNIAO` tem exatamente uma `agenda.Reserva` espelho no mesmo dia e intervalo | aplicação (`transaction.atomic()` em create/destroy) |
-| INV-CIP-003 | O número de inscritos de uma turma nunca excede a capacidade do local | aplicação (serializer de inscrição, com `select_for_update` na turma) |
+| INV-CIP-003 | O excesso sobre a capacidade do local é sempre visível na resposta da turma (`acima_da_capacidade`) — a capacidade é referência, não limite (ADR-0006) | aplicação (serializer da turma) |
 | INV-CIP-004 | Toda inscrição tem administradora e condomínio preenchidos | aplicação (serializer) + banco (campos não nulos, sem default) |
 
 ## Fluxo Principal
@@ -67,7 +67,7 @@ flowchart LR
 | Reunião já marcada na sala no dia | 409 com horário da reserva | RF-CIP-002 |
 | Falha ao gravar o espelho | rollback da turma (atomic) | RNF-CIP-002 |
 | Reserva espelho excluída pela agenda atual | INV-CIP-002 violado: listagem marca turma como "sem espelho" e oferece recriar (ação admin) | RF-CIP-002 |
-| Duas inscrições simultâneas na última vaga | `select_for_update` na turma; a segunda recebe 400 | RF-CIP-003 |
+| Duas inscrições simultâneas na última vaga | ambas entram; a turma fica 1 acima e a resposta sinaliza | RF-CIP-003 |
 | Usuário sem nível | 403 | RF-CIP-004 |
 
 ## Decisões
@@ -76,6 +76,7 @@ flowchart LR
 - ADR-0003: duplicidade de inscrito entre turmas avisa, não bloqueia.
 - ADR-0004: administradora e condomínio são do inscrito, não da turma; a turma é identificada por local + ocupação.
 - ADR-0005: importação por planilha cria turma e inscritos numa transação só, tudo-ou-nada, e a planilha não traz local nem data.
+- ADR-0006: capacidade do local é referência, não limite; o excesso é sinalizado, e o `select_for_update` da inscrição sai porque existia só para essa trava.
 
 ## Divergência vs. produção
 
@@ -91,7 +92,7 @@ flowchart LR
 | CT-CIP-003 | RF-CIP-002 | Turma na sala cria Reserva espelho vinculada; excluir turma remove a Reserva |
 | CT-CIP-004 | RF-CIP-002 | Reserva existente na sala (ex: 10:00, 120 min) no dia → turma na sala 409 |
 | CT-CIP-005 | RF-CIP-003 | Inscrição válida → 201; CPF repetido → 400; CPF inválido → 400 |
-| CT-CIP-006 | RF-CIP-003 | Inscrição além da capacidade → 400 |
+| CT-CIP-006 | RF-CIP-003 | Inscrição além da capacidade → 201 e `acima_da_capacidade` com o excesso; turma dentro da capacidade → 0 |
 | CT-CIP-007 | RF-CIP-004 | Usuário `usuario` → 403; `condomed` e `admin` → 200 |
 | CT-CIP-008 | RNF-CIP-002 | Falha forçada ao criar o espelho → nenhuma turma persistida |
 | CT-CIP-009 | RF-CIP-003 | `verificar-cpf`: CPF em outra turma → 200 com turma, administradora e condomínio; `excluir_turma` remove a turma aberta; CPF inválido → 400 |
@@ -102,7 +103,7 @@ flowchart LR
 | CT-CIP-014 | RF-CIP-002 | DELETE da turma: 204, inscrições apagadas em cascata, Reserva espelho removida, dia liberado; `usuario` → 403; cancelar preserva as inscrições e ainda libera a sala |
 | CT-CIP-015 | RF-CIP-005 | `importar` com lista válida → 201 com a turma, os inscritos e os condomínios derivados |
 | CT-CIP-016 | RF-CIP-005 | Linha com CPF inválido, sem vínculo ou com CPF repetido → 400 por índice e **nenhuma** turma criada |
-| CT-CIP-017 | RF-CIP-005 | Lista maior que a capacidade → 400 dizendo quantas e quantas cabem; dia ocupado → 409; lista vazia → 400; na sala, cria o espelho |
+| CT-CIP-017 | RF-CIP-005 | Lista maior que a capacidade → 201 com o excesso sinalizado; dia ocupado → 409; lista vazia → 400; na sala, cria o espelho |
 | CT-CIP-018 | RF-CIP-005 | `planilha-modelo` devolve xlsx com os sete cabeçalhos e sem `local`/`data`; nível sem permissão → 403 nas duas rotas |
 
 ## Impacto e Riscos

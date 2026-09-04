@@ -38,10 +38,17 @@
 - [x] T-CIP-5.3 `GET cursos-cipa/planilha-modelo/` com openpyxl, CPF como texto e sem colunas de local/data _(RF-CIP-005 · CT-CIP-018)_
 - [x] T-CIP-5.4 Cobrir CT-CIP-015..018 em `condomed/tests.py` _(RNF-CIP-001 · CT-CIP-015..018)_
 
+## Fase 6 — Capacidade como referência (ADR-0006)
+
+- [x] T-CIP-6.1 Retirar a recusa por capacidade da inscrição individual e da importação _(RF-CIP-003, RF-CIP-005 · CT-CIP-006, CT-CIP-017)_
+- [x] T-CIP-6.2 `acima_da_capacidade` na resposta da turma _(RF-CIP-003 · CT-CIP-006)_
+- [x] T-CIP-6.3 Remover `travar_turma`/`select_for_update`, que existia só para a trava _(RF-CIP-003)_
+- [x] T-CIP-6.4 Ajustar CT-CIP-006 e CT-CIP-017 e acrescentar `cpf_sintetico` para listas grandes nos testes _(RNF-CIP-001 · CT-CIP-006, CT-CIP-017)_
+
 ## Verificação Final
 
 - [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 29 testes, OK em 2026-09-01 (local, SQLite: sem Postgres na máquina)
-- [x] Fases 4 e 5 verificadas: 52 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
+- [x] Fases 4 a 6 verificadas: 53 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
 - [ ] Reverificar em Postgres antes do merge
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem; STATUS.md atualizado

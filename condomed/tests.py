@@ -18,6 +18,21 @@ CPF_A = "52998224725"  # CPF sintético válido (dígitos verificadores corretos
 CPF_B = "16899535009"
 
 
+def cpf_sintetico(indice):
+    """CPF válido a partir de um índice, para listas grandes nos testes.
+
+    Os nove primeiros dígitos vêm do índice; os dois últimos são calculados,
+    senão a validação de CPF recusa a linha antes de a regra em teste rodar.
+    """
+    base = f"{indice:09d}"
+    for _ in range(2):
+        peso = len(base) + 1
+        soma = sum(int(digito) * (peso - i) for i, digito in enumerate(base))
+        verificador = (soma * 10) % 11
+        base += str(0 if verificador == 10 else verificador)
+    return base
+
+
 def dados_turma(**overrides):
     """Turma: local e dia. O cliente é de cada inscrito (ADR-0004)."""
     base = {
@@ -223,7 +238,8 @@ class InscricaoCipaTests(CipaTestBase):
 
         self.assertEqual(self.turma.inscricoes.first().cpf, CPF_A)
 
-    def test_ct_cip_006_inscricao_alem_da_capacidade_da_400(self):
+    def test_ct_cip_006_inscricao_acima_da_capacidade_entra_e_e_sinalizada(self):
+        """Capacidade é referência, não trava (ADR-0006): extra de última hora entra."""
         turma_sala = TurmaCipa.objects.create(
             local=SALA_REUNIAO,
             data=DIA,
@@ -243,8 +259,20 @@ class InscricaoCipaTests(CipaTestBase):
             format="json",
         )
 
-        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(turma_sala.inscricoes.count(), 10)
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(turma_sala.inscricoes.count(), 11)
+
+        turma = self.client.get("/cursos-cipa/%s/" % turma_sala.id)
+        self.assertEqual(turma.data["capacidade"], 10)
+        self.assertEqual(turma.data["total_inscritos"], 11)
+        self.assertEqual(turma.data["acima_da_capacidade"], 1)
+
+    def test_ct_cip_006_turma_dentro_da_capacidade_nao_sinaliza_excesso(self):
+        self.inscrever()
+
+        resposta = self.client.get("/cursos-cipa/%s/" % self.turma.id)
+
+        self.assertEqual(resposta.data["acima_da_capacidade"], 0)
 
     def test_edita_inscrito(self):
         criada = self.inscrever()
@@ -297,8 +325,8 @@ class InscricaoCipaTests(CipaTestBase):
 
         self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_edita_inscrito_em_turma_lotada(self):
-        """Editar quem já está na lista não consome vaga."""
+    def test_edita_inscrito_em_turma_cheia(self):
+        """Editar quem já está na lista não depende de vaga."""
         turma_sala = TurmaCipa.objects.create(
             local=SALA_REUNIAO,
             data=DIA,
@@ -711,17 +739,19 @@ class ImportacaoPorPlanilhaTests(CipaTestBase):
         self.assertIn("linha 1", str(resposta.data["inscricoes"]["1"]["cpf"]))
         self.assertFalse(TurmaCipa.objects.exists())
 
-    def test_ct_cip_017_planilha_maior_que_a_capacidade_nao_grava_nada(self):
+    def test_ct_cip_017_planilha_maior_que_a_capacidade_entra_e_sinaliza(self):
+        """A planilha que passa da capacidade importa inteira (ADR-0006)."""
         linhas = [
-            self.linha(nome="Inscrito %s" % i, cpf="%011d" % i) for i in range(11)
+            self.linha(nome="Inscrito %s" % i, cpf=cpf_sintetico(i + 1))
+            for i in range(11)
         ]
 
         resposta = self.importar(linhas, local=SALA_REUNIAO)
 
-        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("11 pessoas", str(resposta.data["inscricoes"]))
-        self.assertIn("comporta 10", str(resposta.data["inscricoes"]))
-        self.assertFalse(TurmaCipa.objects.exists())
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resposta.data["total_inscritos"], 11)
+        self.assertEqual(resposta.data["capacidade"], 10)
+        self.assertEqual(resposta.data["acima_da_capacidade"], 1)
 
     def test_ct_cip_017_conflito_de_dia_nao_grava_nada(self):
         self.client.post("/cursos-cipa/", dados_turma(), format="json")

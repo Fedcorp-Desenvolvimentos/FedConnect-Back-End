@@ -1,6 +1,6 @@
 # Requisitos — Agendamento de cursos CIPA (Condomed)
 
-> **Rastreabilidade** — RF: RF-CIP-001..004 · RNF: RNF-CIP-001..003 · ADR: ADR-0001, ADR-0003..0005 · Questões: PA-001..006
+> **Rastreabilidade** — RF: RF-CIP-001..004 · RNF: RNF-CIP-001..003 · ADR: ADR-0001, ADR-0003..0006 · Questões: PA-001..006
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-04
 
 ## Contexto e Problema
@@ -53,7 +53,7 @@
 - **SE** o mesmo CPF aparece em outra turma, **ENTÃO** a resposta de `verificar-cpf` **DEVE** informar também a administradora e o condomínio de cada inscrição encontrada. `[D]` ADR-0004
 - **SE** o CPF já está inscrito na mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400 — a tela avisa antes, mas o servidor é a garantia. `[D]` ADR-0001
 - **SE** o CPF já está inscrito em **outra** turma, **ENTÃO** o sistema **DEVE** aceitar a inscrição e informar em quais turmas ele consta — o bloqueio é só dentro da mesma turma. `[D]` ADR-0003
-- **SE** a turma já atingiu a capacidade do local, **ENTÃO** o sistema **DEVE** rejeitar a inscrição com HTTP 400. `[P]` PA-001
+- **SE** a turma já atingiu a capacidade do local, **ENTÃO** o sistema **DEVE** aceitar a inscrição e informar quantas pessoas passam da capacidade — chegam funcionários extras de última hora, e recusar deixaria fora da lista quem fez o curso. `[D]` ADR-0006
 - **SE** o CPF é inválido (dígitos verificadores), **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400. `[D]` ADR-0001
 - **QUANDO** edito um inscrito já cadastrado, **ENTÃO** o sistema **DEVE** aceitar a alteração mesmo com a turma na capacidade, aplicando as mesmas regras de CPF válido e não duplicado — o CPF dele próprio não conta como duplicidade. `[D]` ADR-0001
 
@@ -71,7 +71,7 @@
 - **QUANDO** envio local, data e uma lista de inscritos válidos, **ENTÃO** o sistema **DEVE** criar a turma, o espelho na agenda (se for a sala) e todas as inscrições **na mesma transação**. `[D]` ADR-0005
 - **SE** qualquer linha é inválida, **ENTÃO** o sistema **DEVE** recusar a importação inteira e devolver o erro por índice de linha, sem gravar nada. `[D]` ADR-0005
 - **SE** o mesmo CPF aparece duas vezes na lista, **ENTÃO** o sistema **DEVE** recusar apontando a linha anterior. `[D]` ADR-0005
-- **SE** a lista tem mais pessoas do que a capacidade do local, **ENTÃO o** sistema **DEVE** recusar a importação inteira dizendo quantas são e quantas cabem — nunca cortar a lista por conta própria. `[D]` ADR-0005
+- **SE** a lista tem mais pessoas do que a capacidade do local, **ENTÃO** o sistema **DEVE** importar todas e informar o excesso — nunca cortar a lista por conta própria. `[D]` ADR-0006 (revoga a recusa decidida no ADR-0005)
 - **SE** o local e o dia já estão ocupados, **ENTÃO** o sistema **DEVE** responder 409 como em qualquer criação de turma, sem gravar inscrição nenhuma. `[D]` ADR-0005
 - **QUANDO** peço a planilha modelo, **ENTÃO** o sistema **DEVE** devolver um `.xlsx` com os cabeçalhos dos campos do inscrito e uma linha de exemplo, **sem** colunas de local e data. `[D]` ADR-0005
 
@@ -91,6 +91,6 @@ Os dados dos inscritos (CPF, e-mail, telefone) só são expostos aos níveis aut
 
 ## Questões em Aberto
 
-- PA-001: **fechada (2026-08-31)** — auditório 30, sala de reunião 10
+- PA-001: **fechada (2026-08-31)** — auditório 30, sala de reunião 10. Reaberta e fechada de novo em 2026-09-04: os números seguem, mas como referência, não limite (ADR-0006)
 - PA-002: **fechada (2026-08-31)** — cinco campos do inscrito; o campo de técnico instrutor foi retirado do escopo pelo dono em 2026-08-31, junto com o código do condomínio
 - PA-003, PA-004, PA-005: fora do escopo inicial (registradas)

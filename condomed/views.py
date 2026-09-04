@@ -187,14 +187,16 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
             )
             return Response(serializer.data)
 
-        # POST — trava a turma para não estourar a capacidade em corrida (INV-CIP-003).
-        with transaction.atomic():
-            turma = services.travar_turma(self.get_object().pk)
-            serializer = InscricaoCipaSerializer(
-                data=request.data, context={"turma": turma, "request": request}
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save(turma=turma)
+        # Sem `select_for_update`: ele existia só para a capacidade não ser
+        # estourada em corrida (INV-CIP-003), e a capacidade deixou de ser
+        # limite (ADR-0006). A unicidade de CPF por turma segue garantida pelo
+        # `unique_together` no banco.
+        turma = self.get_object()
+        serializer = InscricaoCipaSerializer(
+            data=request.data, context={"turma": turma, "request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(turma=turma)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(
