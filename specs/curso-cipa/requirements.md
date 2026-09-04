@@ -44,9 +44,11 @@
 **Como** operador, **quero** registrar os funcionários do condomínio inscritos, **para** controlar presença e capacidade.
 
 - **QUANDO** informo nome, CPF, função, e-mail e telefone de um inscrito, **ENTÃO** o sistema **DEVE** gravá-lo vinculado à turma. `[P]` PA-002
-- **SE** o CPF já está inscrito na mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400. `[D]` ADR-0001
+- **SE** o CPF já está inscrito na mesma turma, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400 — a tela avisa antes, mas o servidor é a garantia. `[D]` ADR-0001
+- **SE** o CPF já está inscrito em **outra** turma, **ENTÃO** o sistema **DEVE** aceitar a inscrição e informar em quais turmas ele consta — o bloqueio é só dentro da mesma turma. `[D]` ADR-0003
 - **SE** a turma já atingiu a capacidade do local, **ENTÃO** o sistema **DEVE** rejeitar a inscrição com HTTP 400. `[P]` PA-001
 - **SE** o CPF é inválido (dígitos verificadores), **ENTÃO** o sistema **DEVE** rejeitar com HTTP 400. `[D]` ADR-0001
+- **QUANDO** edito um inscrito já cadastrado, **ENTÃO** o sistema **DEVE** aceitar a alteração mesmo com a turma na capacidade, aplicando as mesmas regras de CPF válido e não duplicado — o CPF dele próprio não conta como duplicidade. `[D]` ADR-0001
 
 ### RF-CIP-004: Acesso restrito
 

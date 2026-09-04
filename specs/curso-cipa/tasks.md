@@ -20,10 +20,10 @@
 ## Fase 3 — Rotas e testes
 
 - [x] T-CIP-3.1 ViewSet + rota aninhada + registro em `bigcorp/urls.py` e `INSTALLED_APPS` _(RF-CIP-001..004 · CT-CIP-001)_
-- [x] T-CIP-3.2 `condomed/tests.py` cobrindo CT-CIP-001..008 _(RNF-CIP-001 · CT-CIP-001..008)_
+- [x] T-CIP-3.2 `condomed/tests.py` cobrindo CT-CIP-001..008 + edição de inscrito _(RNF-CIP-001 · CT-CIP-001..008)_
 
 ## Verificação Final
 
-- [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 17 testes, OK em 2026-08-31 (local, SQLite: sem Postgres na máquina)
+- [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 29 testes, OK em 2026-09-01 (local, SQLite: sem Postgres na máquina)
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem; STATUS.md atualizado

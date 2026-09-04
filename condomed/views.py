@@ -7,8 +7,9 @@ from rest_framework.response import Response
 from users.permissions import IsCondomedOrAdmin
 
 from . import services
-from .models import LOCAIS_CIPA, TurmaCipa
+from .models import LOCAIS_CIPA, InscricaoCipa, TurmaCipa
 from .serializers import InscricaoCipaSerializer, TurmaCipaSerializer
+from .validators import cpf_valido, normalizar_cpf
 
 
 class TurmaCipaViewSet(viewsets.ModelViewSet):
@@ -58,6 +59,45 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
         """Locais e capacidades para montar as abas do frontend."""
         return Response([
             {"codigo": codigo, **dados} for codigo, dados in LOCAIS_CIPA.items()
+        ])
+
+    @action(detail=False, methods=["get"], url_path="verificar-cpf")
+    def verificar_cpf(self, request):
+        """Onde mais este CPF já está inscrito.
+
+        Duplicidade na mesma turma é barrada no serializer; entre turmas é
+        permitida, e a tela usa esta consulta para avisar antes de gravar.
+        `excluir_turma` tira da resposta a turma que está sendo preenchida.
+        """
+        cpf = normalizar_cpf(request.query_params.get("cpf", ""))
+        if not cpf_valido(cpf):
+            return Response(
+                {"detail": "CPF inválido."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        inscricoes = (
+            InscricaoCipa.objects.filter(cpf=cpf)
+            .select_related("turma")
+            .order_by("-turma__data")
+        )
+        excluir = request.query_params.get("excluir_turma")
+        if excluir:
+            inscricoes = inscricoes.exclude(turma_id=excluir)
+
+        return Response([
+            {
+                "inscricao_id": inscricao.id,
+                "turma_id": inscricao.turma_id,
+                "nome": inscricao.nome,
+                "data": inscricao.turma.data,
+                "local": inscricao.turma.local,
+                "local_nome": LOCAIS_CIPA.get(inscricao.turma.local, {}).get(
+                    "nome", inscricao.turma.local
+                ),
+                "condominio_nome": inscricao.turma.condominio_nome,
+                "status": inscricao.turma.status,
+            }
+            for inscricao in inscricoes
         ])
 
     @action(detail=True, methods=["get", "post"], url_path="inscricoes")

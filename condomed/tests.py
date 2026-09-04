@@ -234,6 +234,169 @@ class InscricaoCipaTests(CipaTestBase):
         self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(turma_sala.inscricoes.count(), 10)
 
+    def test_edita_inscrito(self):
+        criada = self.inscrever()
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (self.turma.id, criada.data["id"]),
+            {"nome": "Fulano Editado", "funcao": "Sindico"},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        inscrito = self.turma.inscricoes.get(pk=criada.data["id"])
+        self.assertEqual(inscrito.nome, "Fulano Editado")
+        self.assertEqual(inscrito.funcao, "Sindico")
+        self.assertEqual(inscrito.cpf, CPF_A)  # não informado no PATCH, preservado
+
+    def test_edita_o_proprio_cpf_sem_colidir_consigo_mesmo(self):
+        criada = self.inscrever()
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (self.turma.id, criada.data["id"]),
+            {"cpf": "529.982.247-25"},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.turma.inscricoes.get(pk=criada.data["id"]).cpf, CPF_A)
+
+    def test_edicao_com_cpf_de_outro_inscrito_da_400(self):
+        primeira = self.inscrever()
+        self.inscrever(nome="Beltrano", cpf=CPF_B)
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (self.turma.id, primeira.data["id"]),
+            {"cpf": CPF_B},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cpf", resposta.data)
+
+    def test_edicao_com_cpf_invalido_da_400(self):
+        criada = self.inscrever()
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (self.turma.id, criada.data["id"]),
+            {"cpf": "11111111111"},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_edita_inscrito_em_turma_lotada(self):
+        """Editar quem já está na lista não consome vaga."""
+        turma_sala = TurmaCipa.objects.create(
+            local=SALA_REUNIAO,
+            data=DIA,
+            administradora_codigo="001",
+            condominio_nome="Condomínio Lotado",
+            criado_por=self.operador,
+        )
+        for i in range(10):
+            InscricaoCipa.objects.create(
+                turma=turma_sala, nome="Inscrito %s" % i, cpf="%011d" % i
+            )
+        alvo = turma_sala.inscricoes.first()
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (turma_sala.id, alvo.id),
+            {"funcao": "Zelador"},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(turma_sala.inscricoes.count(), 10)
+
+    def test_edicao_de_inscrito_de_outra_turma_da_404(self):
+        criada = self.inscrever()
+        outra = TurmaCipa.objects.create(
+            local=SALA_REUNIAO,
+            data=DIA,
+            administradora_codigo="001",
+            condominio_nome="Outro Condomínio",
+            criado_por=self.operador,
+        )
+
+        resposta = self.client.patch(
+            "/cursos-cipa/%s/inscricoes/%s/" % (outra.id, criada.data["id"]),
+            {"nome": "Invasor"},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_verificar_cpf_lista_outras_turmas(self):
+        self.inscrever()
+        outra = TurmaCipa.objects.create(
+            local=SALA_REUNIAO,
+            data=date(2026, 9, 22),
+            administradora_codigo="001",
+            condominio_nome="Condomínio Vizinho",
+            criado_por=self.operador,
+        )
+        InscricaoCipa.objects.create(turma=outra, nome="Fulano de Tal", cpf=CPF_A)
+
+        resposta = self.client.get(
+            "/cursos-cipa/verificar-cpf/",
+            {"cpf": CPF_A, "excluir_turma": self.turma.id},
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resposta.data), 1)
+        self.assertEqual(resposta.data[0]["turma_id"], outra.id)
+        self.assertEqual(resposta.data[0]["condominio_nome"], "Condomínio Vizinho")
+        self.assertEqual(resposta.data[0]["local_nome"], "Sala de reunião")
+
+    def test_verificar_cpf_sem_outras_turmas_volta_vazio(self):
+        self.inscrever()
+
+        resposta = self.client.get(
+            "/cursos-cipa/verificar-cpf/",
+            {"cpf": CPF_A, "excluir_turma": self.turma.id},
+        )
+
+        self.assertEqual(resposta.data, [])
+
+    def test_verificar_cpf_aceita_com_mascara(self):
+        self.inscrever()
+
+        resposta = self.client.get("/cursos-cipa/verificar-cpf/", {"cpf": "529.982.247-25"})
+
+        self.assertEqual(len(resposta.data), 1)
+
+    def test_verificar_cpf_invalido_da_400(self):
+        resposta = self.client.get("/cursos-cipa/verificar-cpf/", {"cpf": "11111111111"})
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verificar_cpf_exige_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        resposta = self.client.get("/cursos-cipa/verificar-cpf/", {"cpf": CPF_A})
+
+        self.assertEqual(resposta.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_inscricao_em_outra_turma_continua_permitida(self):
+        """A duplicidade entre turmas é avisada na tela, não bloqueada na API."""
+        self.inscrever()
+        outra = TurmaCipa.objects.create(
+            local=SALA_REUNIAO,
+            data=date(2026, 9, 22),
+            administradora_codigo="001",
+            condominio_nome="Condomínio Vizinho",
+            criado_por=self.operador,
+        )
+
+        resposta = self.client.post(
+            "/cursos-cipa/%s/inscricoes/" % outra.id,
+            {"nome": "Fulano de Tal", "cpf": CPF_A, "funcao": "Zelador"},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+
     def test_lista_e_remove_inscrito(self):
         criada = self.inscrever()
 
