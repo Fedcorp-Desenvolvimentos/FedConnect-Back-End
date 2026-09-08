@@ -13,7 +13,7 @@ from rest_framework.response import Response
 
 from users.permissions import IsCondomedOrAdmin
 
-from . import services
+from . import documentos, services
 from .models import INSTRUTORES_CIPA, LOCAIS_CIPA, InscricaoCipa, TurmaCipa
 from .serializers import (
     CPF_DUPLICADO,
@@ -317,6 +317,7 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
             {
                 "inscricao_id": inscricao.id,
                 "turma_id": inscricao.turma_id,
+                "turma_codigo": inscricao.turma.codigo,
                 "nome": inscricao.nome,
                 "data": inscricao.turma.data,
                 "local": inscricao.turma.local,
@@ -332,6 +333,23 @@ class TurmaCipaViewSet(viewsets.ModelViewSet):
             }
             for inscricao in inscricoes
         ])
+
+    @action(detail=True, methods=["get"], url_path="lista-presenca")
+    def lista_presenca(self, request, pk=None):
+        """PDF da lista de presença para assinatura no dia (RF-HIS-003).
+
+        Sempre disponível, inclusive antes do curso — é para levar impressa.
+        Gerada do registro a cada download; nada é armazenado.
+        """
+        turma = self.get_object()
+        pdf = documentos.gerar_lista_presenca(turma, usuario=request.user)
+        resposta = HttpResponse(pdf, content_type="application/pdf")
+        resposta["Content-Disposition"] = (
+            f'attachment; filename="{documentos.nome_arquivo_lista_presenca(turma)}"'
+        )
+        # O frontend lê o nome do arquivo deste header; sem expor, o CORS o esconde.
+        resposta["Access-Control-Expose-Headers"] = "Content-Disposition"
+        return resposta
 
     @action(detail=True, methods=["get", "post"], url_path="inscricoes")
     def inscricoes(self, request, pk=None):

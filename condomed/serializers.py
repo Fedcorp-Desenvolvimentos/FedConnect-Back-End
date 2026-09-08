@@ -103,12 +103,14 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
     administradoras = serializers.SerializerMethodField(read_only=True)
     condominios = serializers.SerializerMethodField(read_only=True)
     instrutor_nome = serializers.SerializerMethodField(read_only=True)
+    codigo = serializers.CharField(read_only=True)
     inscricoes = InscricaoCipaSerializer(many=True, read_only=True)
 
     class Meta:
         model = TurmaCipa
         fields = [
             "id",
+            "codigo",
             "local",
             "local_nome",
             "data",
@@ -347,6 +349,7 @@ class InscricaoComTurmaSerializer(InscricaoCipaSerializer):
         turma = obj.turma
         return {
             "id": turma.id,
+            "codigo": turma.codigo,
             "data": turma.data,
             "local": turma.local,
             "local_nome": LOCAIS_CIPA.get(turma.local, {}).get("nome", turma.local),

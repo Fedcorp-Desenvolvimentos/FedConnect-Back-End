@@ -110,8 +110,18 @@ class TurmaCipa(models.Model):
         verbose_name = "turma CIPA"
         verbose_name_plural = "turmas CIPA"
 
+    @property
+    def codigo(self):
+        """Identificador legível da turma: ano do curso + id, ex. CIPA-2026-0004.
+
+        Derivado, não armazenado: não há o que digitar nem o que conflitar. A
+        turma não tem nome (ADR-0004); o código é o que se cita por telefone,
+        no PDF e na URL da tela.
+        """
+        return f"CIPA-{self.data.year}-{self.pk:04d}" if self.pk else ""
+
     def __str__(self):
-        return f"CIPA {self.get_local_display()} em {self.data}"
+        return f"{self.codigo} · {self.get_local_display()} em {self.data}"
 
     @property
     def capacidade(self):

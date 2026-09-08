@@ -49,7 +49,9 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 
 ## PA-007 — Presença e certificado: regras que só o solicitante pode dar
 
-- **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Status:** fechada (2026-09-08) · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Resposta (presença, 2026-09-08):** sem prazo para marcar; não existe presença parcial (presente ou ausente); qualquer usuário `condomed` ou `admin` marca; a turma passa a `realizada` ao registrar presença e a opção manual sai do formulário; a lista de presença mantém as linhas em branco, sem coluna de horário; o histórico guarda tudo, sem retenção. **Resposta (certificado, 2026-09-04):** ver PA-008.
+- **Pergunta original:** (mantida abaixo para contexto)
 - **Trava:** fases C (presença) e D (certificado) do `../docs/curso-cipa/MAPEAMENTO_CIPA_FASE2.md`. Não trava a fase A (`specs/curso-cipa-historico/`).
 - **Questão:** carga horária do certificado; texto e base legal; quem assina (reabre o instrutor da turma, retirado em PA-002); numeração; layout; prazo para marcar presença; presença parcial; quem pode marcar; envio por e-mail; linhas extras na lista de presença. Lista completa na seção 7 do mapeamento.
 
@@ -59,3 +61,9 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Trava:** a emissão do certificado (fase D do mapeamento).
 - **Questão:** os dois modelos de certificado em Word (`../docs/curso-cipa/ANALISE_CERTIFICADO_CIPA.md`) citam o condomínio com CNPJ e levam nome, registro MTE e assinatura digitalizada do instrutor — nada disso existia no cadastro. O instrutor tinha sido retirado do escopo em PA-002.
 - **Resposta:** CNPJ do condomínio entra na inscrição, **opcional para inscrever e obrigatório para emitir** (o funcionário extra de última hora entra sem ele). Instrutor volta, mas **sem cadastro editável**: lista fixa no código com os dois instrutores dos certificados existentes (Felipe Barboza de Oliveira, MTE/RJ 0060169; Vinicius dos Santos Pinto, MTE/RJ 0056876), assinaturas como assets do repositório, e um select na turma. Unidade emissora e cidade vêm do local (CondoMed Rio nos dois locais — a frente em São Paulo dos modelos era defeito). Data impressa é a do curso; certificado numerado (`CIPA-AAAA-000000`) com código de verificação; só download, sem e-mail.
+
+## PA-009 — Presença antes do dia da turma
+
+- **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** baixa
+- **Trava:** um critério de RF-HIS-004; não trava a implementação.
+- **Questão:** o solicitante disse "sem prazo" para marcar presença **depois** do curso. Não foi perguntado sobre **antes**: pode-se registrar presença numa turma cuja data ainda não chegou? Hipótese de trabalho: não — a API recusa presença antes da data da turma, porque presença é fato do dia e marcar antes só produz registro falso. Se a operação precisar (ex.: curso adiantado), vira um dia de tolerância.

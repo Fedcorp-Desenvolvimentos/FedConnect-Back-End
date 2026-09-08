@@ -63,6 +63,6 @@
 
 - [x] Todos os CT da matriz passando (`python manage.py test condomed`) — 29 testes, OK em 2026-09-01 (local, SQLite: sem Postgres na máquina)
 - [x] Fases 4 a 8 verificadas: 79 testes OK em 2026-09-04 (SQLite; o `.env` local tem credenciais placeholder de Postgres)
-- [ ] Reverificar em Postgres antes do merge
+- [x] Reverificado em PostgreSQL 14 + Django 6.0.2 (venv com o requirements de produção, migrações aplicadas pelo runner): 79 testes OK em 2026-09-08
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem; STATUS.md atualizado
