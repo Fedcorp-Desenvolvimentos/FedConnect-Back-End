@@ -36,6 +36,7 @@
 - **QUANDO** consulto `cursos-cipa/locais/`, **ENTÃO** cada local **DEVE** trazer a unidade emissora (nome, endereço, telefone, e-mail, cidade) — é dela que saem cabeçalho e cidade dos documentos. `[D]` PA-008
 - **SE** já existe turma ativa no mesmo local e dia com horário sobreposto, **ENTÃO** o sistema **DEVE** rejeitar com HTTP 409 indicando a turma conflitante. `[D]` ADR-0001
 - **QUANDO** consulto turmas por mês/ano e local, **ENTÃO** o sistema **DEVE** listar apenas as turmas daquele local no período, cada uma com as administradoras e os condomínios dos seus inscritos, sem repetição. `[D]` ADR-0004
+- **QUANDO** uma turma é devolvida em qualquer rota, **ENTÃO** ela **DEVE** trazer `codigo` no formato `CIPA-<ano>-<id com 4 dígitos>`, derivado e imutável — é como a turma é citada na tela, no PDF e por telefone, já que não tem nome. `[E]` `TurmaCipa.codigo`
 
 ### RF-CIP-002: Sala de reunião compartilhada com a agenda
 

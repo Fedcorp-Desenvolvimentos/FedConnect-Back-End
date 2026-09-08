@@ -81,6 +81,8 @@ class TurmaCipaTests(CipaTestBase):
         self.assertEqual(turma.criado_por, self.operador)
         self.assertEqual(resposta.data["capacidade"], 30)
         self.assertEqual(resposta.data["total_inscritos"], 0)
+        # Código derivado: ano do curso + id com 4 dígitos. É o nome que a turma não tem.
+        self.assertEqual(resposta.data["codigo"], f"CIPA-2026-{turma.pk:04d}")
 
     def test_ct_cip_002_segunda_turma_no_mesmo_local_e_dia_da_409(self):
         self.client.post("/cursos-cipa/", dados_turma(), format="json")
@@ -1025,6 +1027,7 @@ class HistoricoEConsultaTests(CipaTestBase):
         self.assertEqual(linha["turma"]["id"], self.recente.id)
         self.assertEqual(linha["turma"]["local_nome"], "Sala de reunião")
         self.assertEqual(linha["turma"]["status"], "agendada")
+        self.assertEqual(linha["turma"]["codigo"], f"CIPA-2026-{self.recente.pk:04d}")
 
     def test_ct_his_003_participantes_busca_por_nome_condominio_e_administradora(self):
         por_nome = self.client.get("/cursos-cipa/participantes/", {"busca": "joão"})
@@ -1175,3 +1178,90 @@ class CadastroParaCertificadoTests(CipaTestBase):
         self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("condominio_cnpj", resposta.data["inscricoes"]["0"])
         self.assertEqual(TurmaCipa.objects.count(), 1)  # só a do setUp
+
+
+class ListaPresencaTests(CipaTestBase):
+    """CT-HIS-005: lista de presença em PDF, ordenada por condomínio e com linhas extras."""
+
+    def setUp(self):
+        super().setUp()
+        self.turma = TurmaCipa.objects.create(
+            local=SALA_REUNIAO, data=DIA, instrutor="FELIPE", criado_por=self.operador
+        )
+        # Inserção fora de ordem de propósito: a lista tem de ordenar.
+        InscricaoCipa.objects.create(
+            turma=self.turma, nome="Zuleica", cpf=cpf_sintetico(3),
+            administradora_codigo="002", administradora_nome="Habitar",
+            condominio_nome="Residencial Aurora",
+        )
+        InscricaoCipa.objects.create(
+            turma=self.turma, nome="Bruno", cpf=cpf_sintetico(1),
+            administradora_codigo="001", administradora_nome="Delforte",
+            condominio_nome="edifício bem-te-vi",
+        )
+        InscricaoCipa.objects.create(
+            turma=self.turma, nome="Ana", cpf=cpf_sintetico(2),
+            administradora_codigo="002", administradora_nome="Habitar",
+            condominio_nome="Residencial Aurora",
+        )
+
+    def test_ct_his_005_linhas_ordenadas_por_condominio_depois_nome_com_extras(self):
+        from condomed.documentos import linhas_lista_presenca
+
+        linhas = linhas_lista_presenca(self.turma, linhas_extras=5)
+
+        nomes = [l["nome"] for l in linhas if not l["extra"]]
+        # "edifício bem-te-vi" < "Residencial Aurora" sem distinguir caixa/acento inicial
+        self.assertEqual(nomes, ["Bruno", "Ana", "Zuleica"])
+        self.assertEqual([l["numero"] for l in linhas], [1, 2, 3, 4, 5, 6, 7, 8])
+        self.assertEqual(sum(1 for l in linhas if l["extra"]), 5)
+        self.assertEqual(linhas[0]["cpf"], "000.000.001-91")  # formatado
+
+    def test_ct_his_005_cabecalho_resolve_unidade_e_instrutor(self):
+        from condomed.documentos import cabecalho_lista_presenca
+
+        cab = cabecalho_lista_presenca(self.turma)
+
+        self.assertEqual(cab["unidade_nome"], "CondoMed Rio")
+        self.assertIn("Felipe Barboza de Oliveira", cab["instrutor"])
+        self.assertIn("MTE/RJ 0060169", cab["instrutor"])
+        self.assertEqual(cab["local"], "Sala de reunião")
+        self.assertEqual(cab["total"], 3)
+        self.assertEqual(cab["capacidade"], 10)
+
+    def test_ct_his_005_sem_instrutor_o_cabecalho_diz_a_definir(self):
+        from condomed.documentos import cabecalho_lista_presenca
+
+        self.turma.instrutor = ""
+        self.assertEqual(cabecalho_lista_presenca(self.turma)["instrutor"], "a definir")
+
+    def test_ct_his_005_endpoint_devolve_pdf_para_download(self):
+        resposta = self.client.get("/cursos-cipa/%s/lista-presenca/" % self.turma.id)
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(resposta["Content-Type"], "application/pdf")
+        self.assertIn(
+            'filename="lista-presenca-cipa-2026-09-15-sala_reuniao.pdf"',
+            resposta["Content-Disposition"],
+        )
+        self.assertEqual(resposta["Access-Control-Expose-Headers"], "Content-Disposition")
+        self.assertTrue(resposta.content.startswith(b"%PDF-"))
+        self.assertGreater(len(resposta.content), 2000)
+
+    def test_ct_his_005_disponivel_para_turma_vazia_e_futura(self):
+        """É para levar impressa: existe antes do curso e mesmo sem inscritos."""
+        vazia = TurmaCipa.objects.create(
+            local=AUDITORIO, data=date(2026, 12, 20), criado_por=self.operador
+        )
+
+        resposta = self.client.get("/cursos-cipa/%s/lista-presenca/" % vazia.id)
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertTrue(resposta.content.startswith(b"%PDF-"))
+
+    def test_ct_his_005_exige_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        resposta = self.client.get("/cursos-cipa/%s/lista-presenca/" % self.turma.id)
+
+        self.assertEqual(resposta.status_code, status.HTTP_403_FORBIDDEN)
