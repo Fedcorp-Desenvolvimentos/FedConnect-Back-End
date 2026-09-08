@@ -1,0 +1,5 @@
+# Scripts de shell e Dockerfile precisam de LF: o /bin/sh do Linux engasga com CRLF
+# ("bad interpreter"), e o Windows converte no checkout se ninguem disser o contrario.
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-entrypoint.sh text eol=lf
