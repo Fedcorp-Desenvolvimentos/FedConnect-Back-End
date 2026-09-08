@@ -1,0 +1,6 @@
+requisito;origem;design;invariantes;tarefas;testes;questoes
+RF-CIP-006;PA-010|PA-008|condomed/models.py INSTRUTORES_CIPA|docs/curso-cipa/ANALISE_CERTIFICADO_CIPA.md secao 3.2;a definir no design;;;CT-CIP-021;PA-010|PA-011
+RF-CIP-007;PA-010|PA-001|ADR-0001|ADR-0006|condomed/models.py LOCAIS_CIPA;a definir no design;;;CT-CIP-022;PA-010
+RNF-CIP-004;condomed/serializers.py TurmaCipaSerializer|ImportarTurmaSerializer;a definir no design;;;CT-CIP-023;
+RNF-CIP-005;bigcorp/settings.py sem MEDIA_ROOT (verificado 2026-09-08);a definir no design;;;CT-CIP-021;PA-011
+RNF-CIP-006;users/permissions.py IsCondomedOrAdmin;a definir no design;;;CT-CIP-023;PA-010

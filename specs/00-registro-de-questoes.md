@@ -67,3 +67,21 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** baixa
 - **Trava:** um critério de RF-HIS-004; não trava a implementação.
 - **Questão:** o solicitante disse "sem prazo" para marcar presença **depois** do curso. Não foi perguntado sobre **antes**: pode-se registrar presença numa turma cuja data ainda não chegou? Hipótese de trabalho: não — a API recusa presença antes da data da turma, porque presença é fato do dia e marcar antes só produz registro falso. Se a operação precisar (ex.: curso adiantado), vira um dia de tolerância.
+
+## PA-010 — Palestrantes e locais passam a ser cadastro editável
+
+- **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Trava:** RF-CIP-006 e RF-CIP-007 (`specs/curso-cipa-cadastros/`).
+- **Questão:** em 2026-09-08 o dono pediu área na Condomed para cadastrar palestrantes e locais, revertendo PA-001 (locais fixos) e a decisão Q3 de PA-008 (instrutores fixos "para não cadastrar errado"). Falta decidir: (a) quem cadastra — qualquer `condomed` ou só `admin`? (b) registro com turma vinculada não se exclui, só se desativa — confirmar; (c) a assinatura é obrigatória já no cadastro do palestrante ou só para emitir certificado? Hipótese de trabalho: (a) `condomed` e `admin`, como o resto do módulo; (b) sim; (c) opcional no cadastro, obrigatória para emitir — mesmo padrão do CNPJ (PA-008).
+
+## PA-011 — Onde guardar a assinatura digitalizada
+
+- **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** média
+- **Trava:** RNF-CIP-005.
+- **Questão:** o backend roda em container na DigitalOcean App Platform, com disco descartado a cada deploy, e o repositório não configura `MEDIA_ROOT` nem `STORAGES` (verificado em `bigcorp/settings.py`, 2026-09-08). Upload em disco perderia as assinaturas no próximo deploy. Hipótese de trabalho: imagem no banco (`BinaryField` + tipo MIME, limite 500 KB) — são poucas imagens pequenas e não há bucket (Spaces) contratado. Se a operação já tiver um bucket, o design troca para ele.
+
+## PA-012 — Emissão em lote com inscritos impedidos
+
+- **Status:** aberta · **Dono:** Ingrid Aylana · **Severidade:** média
+- **Trava:** um critério de RF-HIS-005.
+- **Questão:** numa turma com 18 presentes em que 2 estão sem CNPJ do condomínio (PA-008: obrigatório para emitir), a emissão em lote emite os 16 aptos e devolve os 2 como impedidos, ou recusa o lote inteiro até tudo estar completo? Hipótese de trabalho: **emite os aptos e lista os impedidos com o motivo** — a operação corrige o CNPJ e emite de novo só para eles (a emissão é idempotente). Falta de instrutor ou de assinatura do instrutor, por afetar todos, recusa o lote.

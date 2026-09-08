@@ -5,3 +5,6 @@ RNF-HIS-001;condomed/views.py PaginacaoHistorico;Tratamento de Erros;;T-HIS-1.1;
 RF-HIS-003;ADR-0007|PA-007|condomed/documentos.py;Arquitetura|Modelo de Dados e Contratos|Decisões;;T-HIS-2.1|T-HIS-2.2|T-HIS-2.3;CT-HIS-005;PA-007
 RF-HIS-004;PA-007|PA-009|docs/curso-cipa/MAPEAMENTO_CIPA_FASE2.md secao 3;a definir no design;;;CT-HIS-006;PA-007|PA-009
 RNF-HIS-002;PA-007;a definir no design;;;CT-HIS-006;PA-007
+RF-HIS-005;PA-008|PA-012|ADR-0007|docs/curso-cipa/MAPEAMENTO_CIPA_FASE2.md secao 4;a definir no design;;;CT-HIS-007;PA-012
+RF-HIS-006;PA-008|ADR-0007|docs/curso-cipa/ANALISE_CERTIFICADO_CIPA.md secao 1;a definir no design;;;CT-HIS-008;
+RNF-HIS-003;ADR-0007;a definir no design;;;CT-HIS-007;
