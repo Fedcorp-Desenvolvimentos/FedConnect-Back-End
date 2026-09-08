@@ -5,7 +5,7 @@
 
 ## Contexto e Problema
 
-`[E]` A spec `curso-cipa` entrega a **agenda**: `GET cursos-cipa/?mes&ano` devolve o mês inteiro sem paginação, porque o calendário pede assim (`condomed/views.py`, `pagination_class = None`). Não há como listar seis meses de turmas nem responder "em quais turmas esta pessoa esteve" fora do `verificar-cpf`, que só aceita CPF. `[D]` O solicitante pediu, em reunião de 2026-09-04, histórico de turmas, consulta de participantes e documentos (lista de presença, presença, certificado). Mapeamento completo em `../../MAPEAMENTO_CIPA_FASE2.md`; esta spec cobre a **fase A** (histórico e consulta). Presença e certificado ficam em rascunho até as respostas de PA-007.
+`[E]` A spec `curso-cipa` entrega a **agenda**: `GET cursos-cipa/?mes&ano` devolve o mês inteiro sem paginação, porque o calendário pede assim (`condomed/views.py`, `pagination_class = None`). Não há como listar seis meses de turmas nem responder "em quais turmas esta pessoa esteve" fora do `verificar-cpf`, que só aceita CPF. `[D]` O solicitante pediu, em reunião de 2026-09-04, histórico de turmas, consulta de participantes e documentos (lista de presença, presença, certificado). Mapeamento completo em `../../docs/curso-cipa/MAPEAMENTO_CIPA_FASE2.md`; esta spec cobre a **fase A** (histórico e consulta). Presença e certificado ficam em rascunho até as respostas de PA-007.
 
 ## Escopo
 

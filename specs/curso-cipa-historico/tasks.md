@@ -13,7 +13,7 @@
 
 ## Fases B–D (rascunho, travadas em PA-007)
 
-- [ ] Lista de presença em PDF · presença por inscrição · certificado — ver `../../MAPEAMENTO_CIPA_FASE2.md`
+- [ ] Lista de presença em PDF · presença por inscrição · certificado — ver `../../docs/curso-cipa/MAPEAMENTO_CIPA_FASE2.md`
 
 ## Verificação Final
 
