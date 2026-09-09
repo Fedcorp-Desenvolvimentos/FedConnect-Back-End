@@ -47,6 +47,8 @@ class Usuario(AbstractUser):
         ("financeiro", "Financeiro"),
         ("vistoria", "Vistoria"),
         ("condomed", "Condomed"),
+        # Condomed + robô eSocial (SOC); restrito a poucos operadores.
+        ("esocial", "Condomed eSocial"),
     ]
 
     username = None
