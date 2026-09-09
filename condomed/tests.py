@@ -4,9 +4,9 @@ from datetime import date, time, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from rest_framework import status
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.test import APITestCase
 
 from agenda.models import Reserva
@@ -16,7 +16,10 @@ from .serializers import InscricaoCipaSerializer
 
 Usuario = get_user_model()
 
-DIA = date(2026, 9, 15)
+# As turmas criadas pela API precisam de data futura (regra do serializer):
+# tudo que era 2026 nos testes passa a ser o ano que vem, relativo a hoje.
+ANO = timezone.localdate().year + 1
+DIA = date(ANO, 9, 15)
 CPF_A = "52998224725"  # CPF sintético válido (dígitos verificadores corretos)
 CPF_B = "16899535009"
 
@@ -93,7 +96,7 @@ class TurmaCipaTests(CipaTestBase):
         self.assertEqual(resposta.data["capacidade"], 30)
         self.assertEqual(resposta.data["total_inscritos"], 0)
         # Código derivado: ano do curso + id com 4 dígitos. É o nome que a turma não tem.
-        self.assertEqual(resposta.data["codigo"], f"CIPA-2026-{turma.pk:04d}")
+        self.assertEqual(resposta.data["codigo"], f"CIPA-{ANO}-{turma.pk:04d}")
 
     def test_ct_cip_002_segunda_turma_no_mesmo_local_e_dia_da_409(self):
         self.client.post("/cursos-cipa/", dados_turma(), format="json")
@@ -201,14 +204,14 @@ class TurmaCipaTests(CipaTestBase):
         self.client.post("/cursos-cipa/", dados_turma(local=SALA_REUNIAO), format="json")
 
         resposta = self.client.get(
-            "/cursos-cipa/", {"local": AUDITORIO, "mes": 9, "ano": 2026}
+            "/cursos-cipa/", {"local": AUDITORIO, "mes": 9, "ano": ANO}
         )
 
         self.assertEqual(len(resposta.data), 1)
         self.assertEqual(resposta.data[0]["local"], AUDITORIO)
 
         vazio = self.client.get(
-            "/cursos-cipa/", {"local": AUDITORIO, "mes": 10, "ano": 2026}
+            "/cursos-cipa/", {"local": AUDITORIO, "mes": 10, "ano": ANO}
         )
         self.assertEqual(len(vazio.data), 0)
 
@@ -384,7 +387,7 @@ class InscricaoCipaTests(CipaTestBase):
         self.inscrever()
         outra = TurmaCipa.objects.create(
             local=local_por_codigo(SALA_REUNIAO),
-            data=date(2026, 9, 22),
+            data=date(ANO, 9, 22),
             criado_por=self.operador,
         )
         InscricaoCipa.objects.create(
@@ -442,7 +445,7 @@ class InscricaoCipaTests(CipaTestBase):
         self.inscrever()
         outra = TurmaCipa.objects.create(
             local=local_por_codigo(SALA_REUNIAO),
-            data=date(2026, 9, 22),
+            data=date(ANO, 9, 22),
             criado_por=self.operador,
         )
 
@@ -578,7 +581,7 @@ class VinculoDoInscritoTests(CipaTestBase):
         resposta = self.client.post(
             "/cursos-cipa/",
             dados_turma(
-                data=date(2026, 9, 16),
+                data=date(ANO, 9, 16),
                 administradora_codigo="001",
                 condominio_nome="Condomínio Fantasma",
             ),
@@ -603,7 +606,7 @@ class VinculoDoInscritoTests(CipaTestBase):
     def test_espelho_na_agenda_tem_tema_por_local(self):
         turma_sala = self.client.post(
             "/cursos-cipa/",
-            dados_turma(local=SALA_REUNIAO, data=date(2026, 9, 17).isoformat()),
+            dados_turma(local=SALA_REUNIAO, data=date(ANO, 9, 17).isoformat()),
             format="json",
         )
 
@@ -936,14 +939,14 @@ class HistoricoEConsultaTests(CipaTestBase):
         super().setUp()
         # Três turmas em meses diferentes, com gente de duas administradoras.
         self.antiga = TurmaCipa.objects.create(
-            local=local_por_codigo(AUDITORIO), data=date(2026, 6, 10), status="realizada",
+            local=local_por_codigo(AUDITORIO), data=date(ANO, 6, 10), status="realizada",
             criado_por=self.operador,
         )
         self.recente = TurmaCipa.objects.create(
-            local=local_por_codigo(SALA_REUNIAO), data=date(2026, 9, 15), criado_por=self.operador,
+            local=local_por_codigo(SALA_REUNIAO), data=date(ANO, 9, 15), criado_por=self.operador,
         )
         self.cancelada = TurmaCipa.objects.create(
-            local=local_por_codigo(AUDITORIO), data=date(2026, 9, 20), status="cancelada",
+            local=local_por_codigo(AUDITORIO), data=date(ANO, 9, 20), status="cancelada",
             criado_por=self.operador,
         )
         InscricaoCipa.objects.create(
@@ -968,7 +971,7 @@ class HistoricoEConsultaTests(CipaTestBase):
         self.assertEqual(resposta.status_code, status.HTTP_200_OK)
         self.assertEqual(resposta.data["count"], 3)
         datas = [turma["data"] for turma in resposta.data["results"]]
-        self.assertEqual(datas, ["2026-09-20", "2026-09-15", "2026-06-10"])
+        self.assertEqual(datas, [f"{ANO}-09-20", f"{ANO}-09-15", f"{ANO}-06-10"])
         # Sem a lista de inscritos: o histórico traz só contagens e derivados.
         self.assertNotIn("inscricoes", resposta.data["results"][0])
         self.assertEqual(resposta.data["results"][1]["total_inscritos"], 2)
@@ -977,7 +980,7 @@ class HistoricoEConsultaTests(CipaTestBase):
     def test_ct_his_001_historico_filtra_por_periodo_local_e_situacao(self):
         por_periodo = self.client.get(
             "/cursos-cipa/historico/",
-            {"data_inicio": "2026-09-01", "data_fim": "2026-09-30"},
+            {"data_inicio": f"{ANO}-09-01", "data_fim": f"{ANO}-09-30"},
         )
         self.assertEqual(por_periodo.data["count"], 2)
 
@@ -1021,7 +1024,7 @@ class HistoricoEConsultaTests(CipaTestBase):
 
     def test_ct_his_002_calendario_continua_sem_paginacao(self):
         """A rota nova não pode mudar o contrato da agenda."""
-        resposta = self.client.get("/cursos-cipa/", {"mes": 9, "ano": 2026})
+        resposta = self.client.get("/cursos-cipa/", {"mes": 9, "ano": ANO})
 
         self.assertIsInstance(resposta.data, list)
         self.assertEqual(len(resposta.data), 2)
@@ -1038,7 +1041,7 @@ class HistoricoEConsultaTests(CipaTestBase):
         self.assertEqual(linha["turma"]["id"], self.recente.id)
         self.assertEqual(linha["turma"]["local_nome"], "Sala de reunião")
         self.assertEqual(linha["turma"]["status"], "agendada")
-        self.assertEqual(linha["turma"]["codigo"], f"CIPA-2026-{self.recente.pk:04d}")
+        self.assertEqual(linha["turma"]["codigo"], f"CIPA-{ANO}-{self.recente.pk:04d}")
 
     def test_ct_his_003_participantes_busca_por_nome_condominio_e_administradora(self):
         por_nome = self.client.get("/cursos-cipa/participantes/", {"busca": "joão"})
@@ -1058,7 +1061,7 @@ class HistoricoEConsultaTests(CipaTestBase):
 
     def test_ct_his_003_participantes_filtra_por_periodo(self):
         resposta = self.client.get(
-            "/cursos-cipa/participantes/", {"cpf": CPF_A, "data_inicio": "2026-09-01"}
+            "/cursos-cipa/participantes/", {"cpf": CPF_A, "data_inicio": f"{ANO}-09-01"}
         )
 
         self.assertEqual(resposta.data["count"], 1)
@@ -1147,7 +1150,7 @@ class CadastroParaCertificadoTests(CipaTestBase):
             "/cursos-cipa/importar/",
             {
                 "local": AUDITORIO,
-                "data": date(2026, 9, 16).isoformat(),
+                "data": date(ANO, 9, 16).isoformat(),
                 "instrutor": "VINICIUS",
                 "inscricoes": [
                     {
@@ -1172,7 +1175,7 @@ class CadastroParaCertificadoTests(CipaTestBase):
             "/cursos-cipa/importar/",
             {
                 "local": AUDITORIO,
-                "data": date(2026, 9, 16).isoformat(),
+                "data": date(ANO, 9, 16).isoformat(),
                 "inscricoes": [
                     {
                         "nome": "Fulano de Tal",
@@ -1252,7 +1255,7 @@ class ListaPresencaTests(CipaTestBase):
         self.assertEqual(resposta.status_code, status.HTTP_200_OK)
         self.assertEqual(resposta["Content-Type"], "application/pdf")
         self.assertIn(
-            'filename="lista-presenca-cipa-2026-09-15-sala_reuniao.pdf"',
+            f'filename="lista-presenca-cipa-{ANO}-09-15-sala_reuniao.pdf"',
             resposta["Content-Disposition"],
         )
         self.assertEqual(resposta["Access-Control-Expose-Headers"], "Content-Disposition")
@@ -1262,7 +1265,7 @@ class ListaPresencaTests(CipaTestBase):
     def test_ct_his_005_disponivel_para_turma_vazia_e_futura(self):
         """É para levar impressa: existe antes do curso e mesmo sem inscritos."""
         vazia = TurmaCipa.objects.create(
-            local=local_por_codigo(AUDITORIO), data=date(2026, 12, 20), criado_por=self.operador
+            local=local_por_codigo(AUDITORIO), data=date(ANO, 12, 20), criado_por=self.operador
         )
 
         resposta = self.client.get("/cursos-cipa/%s/lista-presenca/" % vazia.id)
@@ -1656,7 +1659,7 @@ class CadastrosCipaTests(CipaTestBase):
         self.client.patch(f"/cursos-cipa/locais/{auditorio.id}/", {"ativo": False}, format="json")
         ativos = {l["codigo"] for l in self.client.get("/cursos-cipa/locais/").data}
         self.assertNotIn(AUDITORIO, ativos)
-        nova = self.client.post("/cursos-cipa/", dados_turma(local=AUDITORIO, data="2026-10-01"), format="json")
+        nova = self.client.post("/cursos-cipa/", dados_turma(local=AUDITORIO, data=f"{ANO}-10-01"), format="json")
         self.assertEqual(nova.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("local", nova.data)
         # O histórico continua listando a turma antiga com o nome do local.
@@ -1914,7 +1917,7 @@ class CertificadoTests(CipaTestBase):
         self.marcar_presenca()
 
         turma = self.client.get(f"/cursos-cipa/{self.turma.id}/certificados/pdf/")
-        inexistente = self.client.get("/certificados/CIPA-2026-999999/pdf/")
+        inexistente = self.client.get(f"/certificados/CIPA-{ANO}-999999/pdf/")
 
         self.assertEqual(turma.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(inexistente.status_code, status.HTTP_404_NOT_FOUND)
@@ -1928,3 +1931,58 @@ class CertificadoTests(CipaTestBase):
         self.assertEqual(
             self.client.get(f"/cursos-cipa/{self.turma.id}/certificados/pdf/").status_code, status.HTTP_403_FORBIDDEN
         )
+
+
+class DataPassadaTests(CipaTestBase):
+    """Turma não se agenda no passado; turma antiga continua editável."""
+
+    def test_criar_turma_em_data_passada_da_400(self):
+        ontem = timezone.localdate() - timedelta(days=1)
+
+        resposta = self.client.post("/cursos-cipa/", dados_turma(data=ontem.isoformat()), format="json")
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("data", resposta.data)
+        self.assertEqual(TurmaCipa.objects.count(), 0)
+
+    def test_criar_turma_hoje_e_permitido(self):
+        resposta = self.client.post(
+            "/cursos-cipa/", dados_turma(data=timezone.localdate().isoformat()), format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+
+    def test_importar_planilha_em_data_passada_da_400(self):
+        ontem = timezone.localdate() - timedelta(days=1)
+
+        resposta = self.client.post(
+            "/cursos-cipa/importar/",
+            {"local": AUDITORIO, "data": ontem.isoformat(),
+             "inscricoes": [{"nome": "Alguém", "cpf": cpf_sintetico(1), **dados_vinculo()}]},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("data", resposta.data)
+
+    def test_turma_antiga_continua_editavel_mas_nao_remarca_para_o_passado(self):
+        ontem = timezone.localdate() - timedelta(days=1)
+        antiga = TurmaCipa.objects.create(
+            local=local_por_codigo(AUDITORIO), data=ontem, criado_por=self.operador
+        )
+
+        observacao = self.client.patch(
+            f"/cursos-cipa/{antiga.id}/", {"observacao": "material entregue"}, format="json"
+        )
+        instrutor = self.client.patch(
+            f"/cursos-cipa/{antiga.id}/", {"instrutor": "FELIPE"}, format="json"
+        )
+        remarcar = self.client.patch(
+            f"/cursos-cipa/{antiga.id}/",
+            {"data": (ontem - timedelta(days=7)).isoformat()}, format="json",
+        )
+
+        self.assertEqual(observacao.status_code, status.HTTP_200_OK, observacao.data)
+        self.assertEqual(instrutor.status_code, status.HTTP_200_OK, instrutor.data)
+        self.assertEqual(remarcar.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("data", remarcar.data)

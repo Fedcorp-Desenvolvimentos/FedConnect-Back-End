@@ -44,10 +44,12 @@ class IsOwnerOrAdmin(permissions.BasePermission):
 
 class IsCondomedOrAdmin(permissions.BasePermission):
     """
-    Permissão para os endpoints da Condomed (cursos CIPA): apenas os níveis
-    'condomed' e 'admin' (RF-CIP-004).
+    Permissão para os endpoints da Condomed (cursos CIPA): os níveis
+    'condomed', 'esocial' (Condomed + robô eSocial) e 'admin' (RF-CIP-004).
     """
+
+    NIVEIS = ('condomed', 'esocial', 'admin')
 
     def has_permission(self, request, view):
         return (request.user and request.user.is_authenticated
-                and request.user.nivel_acesso in ('condomed', 'admin'))
+                and request.user.nivel_acesso in self.NIVEIS)

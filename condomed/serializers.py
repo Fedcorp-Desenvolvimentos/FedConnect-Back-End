@@ -436,6 +436,17 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
         ) or HORA_FIM_PADRAO
         status_turma = attrs.get("status", getattr(instancia, "status", "agendada"))
 
+        # Turma nova, ou remarcada, não pode cair em dia que já passou: não há
+        # o que agendar no passado. Editar outros campos de uma turma antiga
+        # continua permitido (é o caminho da presença e do certificado).
+        from django.utils import timezone
+
+        data_mudou = "data" in attrs and (instancia is None or attrs["data"] != instancia.data)
+        if data_mudou and attrs["data"] < timezone.localdate():
+            raise serializers.ValidationError(
+                {"data": "Não é possível agendar turma em uma data que já passou."}
+            )
+
         # PA-013: com certificado emitido, a turma não pode virar cancelada.
         if instancia is not None and status_turma == "cancelada" and instancia.status != "cancelada":
             motivo = services.motivo_turma_intocavel(instancia)
