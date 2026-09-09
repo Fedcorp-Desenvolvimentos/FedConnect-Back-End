@@ -46,3 +46,5 @@ tzdata==2025.3
 uritemplate==4.2.0
 urllib3==2.6.3
 whitenoise==6.11.0
+# Assinatura do palestrante do CIPA em S3 (RNF-CIP-005); ativo só com AWS_STORAGE_BUCKET_NAME
+django-storages[s3]==1.14.6

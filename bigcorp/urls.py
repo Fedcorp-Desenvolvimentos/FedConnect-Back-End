@@ -96,7 +96,7 @@ from fedhub.views.vistorias_view import (
     ExportarVistoriasPDF
 )
 from agenda.views import ReservaViewSet
-from condomed.views import TurmaCipaViewSet
+from condomed.views import CertificadoPdfView, InstrutorCipaViewSet, LocalCipaViewSet, TurmaCipaViewSet
 
 from cotacao.views import calcular_cotacao_incendio
 from questionarios.views import QuestionarioProcessoViewSet
@@ -120,6 +120,9 @@ router.register(r"users", UsuarioViewSet, basename="users")
 router.register(r'empresas', EmpresaViewSet)
 router.register(r'agenda', ReservaViewSet)
 router.register(r'questionarios', QuestionarioProcessoViewSet)
+# Cadastros ANTES do viewset de turmas: `cursos-cipa/<pk>/` casaria "locais" como pk.
+router.register(r'cursos-cipa/locais', LocalCipaViewSet, basename='cursos-cipa-locais')
+router.register(r'cursos-cipa/instrutores', InstrutorCipaViewSet, basename='cursos-cipa-instrutores')
 router.register(r'cursos-cipa', TurmaCipaViewSet, basename='cursos-cipa')
 
 urlpatterns = [
@@ -305,5 +308,7 @@ urlpatterns = [
     path('vistorias/exportar/excel/', ExportarVistoriasExcel.as_view(), name='exportar-vistorias-excel'),
     path('vistorias/exportar/pdf/', ExportarVistoriasPDF.as_view(), name='exportar-vistorias-pdf'),
     
+    # Reemissão de certificado CIPA pelo número (RF-HIS-006)
+    path("certificados/<str:numero>/pdf/", CertificadoPdfView.as_view(), name="certificado-cipa-pdf"),
     path("", include(router.urls)),
 ]

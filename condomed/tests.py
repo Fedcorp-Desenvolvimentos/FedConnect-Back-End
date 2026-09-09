@@ -1,15 +1,17 @@
 # condomed/tests.py
 """Cobre CT-CIP-001..013 da matriz de specs/curso-cipa/matriz.csv."""
-from datetime import date, time
+from datetime import date, time, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from agenda.models import Reserva
 
-from .models import AUDITORIO, SALA_REUNIAO, InscricaoCipa, TurmaCipa
+from .models import AUDITORIO, SALA_REUNIAO, CertificadoCipa, InscricaoCipa, InstrutorCipa, LocalCipa, TurmaCipa
 from .serializers import InscricaoCipaSerializer
 
 Usuario = get_user_model()
@@ -32,6 +34,15 @@ def cpf_sintetico(indice):
         verificador = (soma * 10) % 11
         base += str(0 if verificador == 10 else verificador)
     return base
+
+
+def local_por_codigo(codigo):
+    """Registro do local semeado pela migração 0005 (AUDITORIO / SALA_REUNIAO)."""
+    return LocalCipa.objects.get(codigo=codigo)
+
+
+def instrutor_por_codigo(codigo):
+    return InstrutorCipa.objects.get(codigo=codigo)
 
 
 def dados_turma(**overrides):
@@ -244,7 +255,7 @@ class InscricaoCipaTests(CipaTestBase):
     def test_ct_cip_006_inscricao_acima_da_capacidade_entra_e_e_sinalizada(self):
         """Capacidade é referência, não trava (ADR-0006): extra de última hora entra."""
         turma_sala = TurmaCipa.objects.create(
-            local=SALA_REUNIAO,
+            local=local_por_codigo(SALA_REUNIAO),
             data=DIA,
             criado_por=self.operador,
         )
@@ -331,7 +342,7 @@ class InscricaoCipaTests(CipaTestBase):
     def test_edita_inscrito_em_turma_cheia(self):
         """Editar quem já está na lista não depende de vaga."""
         turma_sala = TurmaCipa.objects.create(
-            local=SALA_REUNIAO,
+            local=local_por_codigo(SALA_REUNIAO),
             data=DIA,
             criado_por=self.operador,
         )
@@ -356,7 +367,7 @@ class InscricaoCipaTests(CipaTestBase):
     def test_edicao_de_inscrito_de_outra_turma_da_404(self):
         criada = self.inscrever()
         outra = TurmaCipa.objects.create(
-            local=SALA_REUNIAO,
+            local=local_por_codigo(SALA_REUNIAO),
             data=DIA,
             criado_por=self.operador,
         )
@@ -372,7 +383,7 @@ class InscricaoCipaTests(CipaTestBase):
     def test_verificar_cpf_lista_outras_turmas(self):
         self.inscrever()
         outra = TurmaCipa.objects.create(
-            local=SALA_REUNIAO,
+            local=local_por_codigo(SALA_REUNIAO),
             data=date(2026, 9, 22),
             criado_por=self.operador,
         )
@@ -430,7 +441,7 @@ class InscricaoCipaTests(CipaTestBase):
         """A duplicidade entre turmas é avisada na tela, não bloqueada na API."""
         self.inscrever()
         outra = TurmaCipa.objects.create(
-            local=SALA_REUNIAO,
+            local=local_por_codigo(SALA_REUNIAO),
             data=date(2026, 9, 22),
             criado_por=self.operador,
         )
@@ -901,7 +912,7 @@ class DuplicidadeDeCpfNaTurmaTests(CipaTestBase):
     def test_ct_cip_019_mesmo_cpf_em_outra_turma_continua_permitido(self):
         self.inscrever()
         outra = TurmaCipa.objects.create(
-            local=SALA_REUNIAO, data=DIA, criado_por=self.operador
+            local=local_por_codigo(SALA_REUNIAO), data=DIA, criado_por=self.operador
         )
 
         resposta = self.client.post(
@@ -925,14 +936,14 @@ class HistoricoEConsultaTests(CipaTestBase):
         super().setUp()
         # Três turmas em meses diferentes, com gente de duas administradoras.
         self.antiga = TurmaCipa.objects.create(
-            local=AUDITORIO, data=date(2026, 6, 10), status="realizada",
+            local=local_por_codigo(AUDITORIO), data=date(2026, 6, 10), status="realizada",
             criado_por=self.operador,
         )
         self.recente = TurmaCipa.objects.create(
-            local=SALA_REUNIAO, data=date(2026, 9, 15), criado_por=self.operador,
+            local=local_por_codigo(SALA_REUNIAO), data=date(2026, 9, 15), criado_por=self.operador,
         )
         self.cancelada = TurmaCipa.objects.create(
-            local=AUDITORIO, data=date(2026, 9, 20), status="cancelada",
+            local=local_por_codigo(AUDITORIO), data=date(2026, 9, 20), status="cancelada",
             criado_por=self.operador,
         )
         InscricaoCipa.objects.create(
@@ -1186,7 +1197,7 @@ class ListaPresencaTests(CipaTestBase):
     def setUp(self):
         super().setUp()
         self.turma = TurmaCipa.objects.create(
-            local=SALA_REUNIAO, data=DIA, instrutor="FELIPE", criado_por=self.operador
+            local=local_por_codigo(SALA_REUNIAO), data=DIA, instrutor=instrutor_por_codigo("FELIPE"), criado_por=self.operador
         )
         # Inserção fora de ordem de propósito: a lista tem de ordenar.
         InscricaoCipa.objects.create(
@@ -1232,7 +1243,7 @@ class ListaPresencaTests(CipaTestBase):
     def test_ct_his_005_sem_instrutor_o_cabecalho_diz_a_definir(self):
         from condomed.documentos import cabecalho_lista_presenca
 
-        self.turma.instrutor = ""
+        self.turma.instrutor = None
         self.assertEqual(cabecalho_lista_presenca(self.turma)["instrutor"], "a definir")
 
     def test_ct_his_005_endpoint_devolve_pdf_para_download(self):
@@ -1251,7 +1262,7 @@ class ListaPresencaTests(CipaTestBase):
     def test_ct_his_005_disponivel_para_turma_vazia_e_futura(self):
         """É para levar impressa: existe antes do curso e mesmo sem inscritos."""
         vazia = TurmaCipa.objects.create(
-            local=AUDITORIO, data=date(2026, 12, 20), criado_por=self.operador
+            local=local_por_codigo(AUDITORIO), data=date(2026, 12, 20), criado_por=self.operador
         )
 
         resposta = self.client.get("/cursos-cipa/%s/lista-presenca/" % vazia.id)
@@ -1265,3 +1276,655 @@ class ListaPresencaTests(CipaTestBase):
         resposta = self.client.get("/cursos-cipa/%s/lista-presenca/" % self.turma.id)
 
         self.assertEqual(resposta.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class PresencaTests(CipaTestBase):
+    """CT-HIS-006: presença em lote, com auditoria, e turma realizada por inferência."""
+
+    def setUp(self):
+        super().setUp()
+        # Turma de um dia que já passou: presença é fato do dia (PA-009).
+        self.ontem = timezone.localdate() - timedelta(days=1)
+        self.turma = TurmaCipa.objects.create(
+            local=local_por_codigo(AUDITORIO), data=self.ontem, instrutor=instrutor_por_codigo("FELIPE"), criado_por=self.operador
+        )
+        self.a = InscricaoCipa.objects.create(
+            turma=self.turma, nome="Ana", cpf=cpf_sintetico(1), **dados_vinculo()
+        )
+        self.b = InscricaoCipa.objects.create(
+            turma=self.turma, nome="Bruno", cpf=cpf_sintetico(2), **dados_vinculo()
+        )
+        self.c = InscricaoCipa.objects.create(
+            turma=self.turma, nome="Carla", cpf=cpf_sintetico(3), **dados_vinculo()
+        )
+        self.url = f"/cursos-cipa/{self.turma.id}/presenca/"
+
+    def lote(self, *pares):
+        return {"presencas": [{"inscricao_id": i.id, "presente": p} for i, p in pares]}
+
+    def test_ct_his_006_lote_grava_presente_ausente_com_auditoria_e_realiza_a_turma(self):
+        resposta = self.client.post(
+            self.url, self.lote((self.a, True), (self.b, False)), format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK, resposta.data)
+        self.a.refresh_from_db(); self.b.refresh_from_db(); self.c.refresh_from_db()
+        self.assertIs(self.a.presenca, True)
+        self.assertIs(self.b.presenca, False)
+        self.assertIsNone(self.c.presenca)  # não veio no lote: segue sem registro
+        self.assertEqual(self.a.presenca_registrada_por, self.operador)
+        self.assertIsNotNone(self.a.presenca_registrada_em)
+        self.turma.refresh_from_db()
+        self.assertEqual(self.turma.status, "realizada")
+        # A resposta é a turma completa, com as contagens que a tela usa.
+        self.assertEqual(resposta.data["status"], "realizada")
+        self.assertEqual(resposta.data["presentes"], 1)
+        self.assertEqual(resposta.data["ausentes"], 1)
+        self.assertEqual(resposta.data["sem_registro"], 1)
+        por_id = {i["id"]: i for i in resposta.data["inscricoes"]}
+        self.assertIs(por_id[self.a.id]["presenca"], True)
+        self.assertEqual(por_id[self.a.id]["presenca_registrada_por_nome"], self.operador.email)
+        self.assertIsNone(por_id[self.c.id]["presenca"])
+
+    def test_ct_his_006_inscricao_de_outra_turma_recusa_o_lote_inteiro(self):
+        outra = TurmaCipa.objects.create(local=local_por_codigo(SALA_REUNIAO), data=self.ontem, criado_por=self.operador)
+        estranho = InscricaoCipa.objects.create(
+            turma=outra, nome="Zé", cpf=cpf_sintetico(9), **dados_vinculo()
+        )
+
+        resposta = self.client.post(
+            self.url, self.lote((self.a, True), (estranho, True)), format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("1", resposta.data["presencas"])  # aponta o índice do lote
+        self.a.refresh_from_db()
+        self.assertIsNone(self.a.presenca)  # nada gravado
+        self.turma.refresh_from_db()
+        self.assertEqual(self.turma.status, "agendada")
+
+    def test_ct_his_006_regravar_e_aceito_e_atualiza_a_auditoria(self):
+        self.client.post(self.url, self.lote((self.a, False)), format="json")
+        self.a.refresh_from_db()
+        primeira = self.a.presenca_registrada_em
+
+        self.client.force_authenticate(self.admin)
+        resposta = self.client.post(self.url, self.lote((self.a, True)), format="json")
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.a.refresh_from_db()
+        self.assertIs(self.a.presenca, True)
+        self.assertEqual(self.a.presenca_registrada_por, self.admin)
+        self.assertGreaterEqual(self.a.presenca_registrada_em, primeira)
+
+    def test_ct_his_006_turma_cancelada_recusa(self):
+        self.turma.status = "cancelada"
+        self.turma.save()
+
+        resposta = self.client.post(self.url, self.lote((self.a, True)), format="json")
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cancelada", resposta.data["detail"])
+
+    def test_ct_his_006_turma_futura_recusa(self):
+        futura = TurmaCipa.objects.create(
+            local=local_por_codigo(SALA_REUNIAO),
+            data=timezone.localdate() + timedelta(days=1),
+            criado_por=self.operador,
+        )
+        inscrito = InscricaoCipa.objects.create(
+            turma=futura, nome="Dora", cpf=cpf_sintetico(4), **dados_vinculo()
+        )
+
+        resposta = self.client.post(
+            f"/cursos-cipa/{futura.id}/presenca/", self.lote((inscrito, True)), format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("a partir do dia da turma", resposta.data["detail"])
+        futura.refresh_from_db()
+        self.assertEqual(futura.status, "agendada")
+
+    def test_ct_his_006_turma_do_proprio_dia_aceita(self):
+        hoje = TurmaCipa.objects.create(
+            local=local_por_codigo(SALA_REUNIAO), data=timezone.localdate(), criado_por=self.operador
+        )
+        inscrito = InscricaoCipa.objects.create(
+            turma=hoje, nome="Eva", cpf=cpf_sintetico(5), **dados_vinculo()
+        )
+
+        resposta = self.client.post(
+            f"/cursos-cipa/{hoje.id}/presenca/", self.lote((inscrito, True)), format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK, resposta.data)
+
+    def test_ct_his_006_lote_vazio_ou_repetido_da_400(self):
+        vazio = self.client.post(self.url, {"presencas": []}, format="json")
+        repetido = self.client.post(
+            self.url, self.lote((self.a, True), (self.a, False)), format="json"
+        )
+
+        self.assertEqual(vazio.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(repetido.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_ct_his_006_contagens_aparecem_na_turma_no_historico_e_nos_participantes(self):
+        self.client.post(self.url, self.lote((self.a, True), (self.b, False)), format="json")
+
+        turma = self.client.get(f"/cursos-cipa/{self.turma.id}/")
+        historico = self.client.get(
+            "/cursos-cipa/historico/",
+            {"data_inicio": self.ontem.isoformat(), "data_fim": self.ontem.isoformat()},
+        )
+        participantes = self.client.get("/cursos-cipa/participantes/", {"cpf": self.a.cpf})
+
+        self.assertEqual((turma.data["presentes"], turma.data["ausentes"], turma.data["sem_registro"]), (1, 1, 1))
+        linha = next(t for t in historico.data["results"] if t["id"] == self.turma.id)
+        self.assertEqual(linha["presentes"], 1)
+        self.assertNotIn("inscricoes", linha)
+        self.assertIs(participantes.data["results"][0]["presenca"], True)
+
+    def test_ct_his_006_inscrito_novo_em_turma_realizada_nasce_sem_registro(self):
+        self.client.post(self.url, self.lote((self.a, True)), format="json")
+
+        resposta = self.client.post(
+            f"/cursos-cipa/{self.turma.id}/inscricoes/",
+            {"nome": "Extra", "cpf": cpf_sintetico(6), **dados_vinculo()},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+        self.assertIsNone(resposta.data["presenca"])
+
+    def test_ct_his_006_presenca_nao_muda_por_patch_na_inscricao(self):
+        resposta = self.client.patch(
+            f"/cursos-cipa/{self.turma.id}/inscricoes/{self.a.id}/",
+            {"presenca": True},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.a.refresh_from_db()
+        self.assertIsNone(self.a.presenca)  # campo é só leitura fora do lote
+
+    def test_ct_his_006_exige_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        resposta = self.client.post(self.url, self.lote((self.a, True)), format="json")
+
+        self.assertEqual(resposta.status_code, status.HTTP_403_FORBIDDEN)
+
+
+def png_minusculo(largura=8, altura=4):
+    """PNG válido gerado na hora (Pillow), para o upload da assinatura nos testes."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    buffer = BytesIO()
+    Image.new("RGB", (largura, altura), "black").save(buffer, format="PNG")
+    return SimpleUploadedFile("assinatura.png", buffer.getvalue(), content_type="image/png")
+
+
+class CadastrosCipaTests(CipaTestBase):
+    """CT-CIP-021..023 (`specs/curso-cipa-cadastros/`): palestrantes e locais editáveis."""
+
+    # ---- migração / semente -------------------------------------------------
+
+    def test_ct_cip_021_semente_preserva_os_dois_instrutores_e_as_assinaturas(self):
+        felipe = instrutor_por_codigo("FELIPE")
+        vinicius = instrutor_por_codigo("VINICIUS")
+
+        self.assertEqual(felipe.registro, "MTE/RJ 0060169")
+        self.assertEqual(vinicius.registro, "MTE/RJ 0056876")
+        self.assertTrue(felipe.tem_assinatura)
+        self.assertTrue(vinicius.tem_assinatura)
+
+    def test_ct_cip_022_semente_preserva_os_dois_locais_e_a_marca_da_sala(self):
+        auditorio = local_por_codigo(AUDITORIO)
+        sala = local_por_codigo(SALA_REUNIAO)
+
+        self.assertEqual((auditorio.capacidade, auditorio.compartilha_sala_reuniao), (30, False))
+        self.assertEqual((sala.capacidade, sala.compartilha_sala_reuniao), (10, True))
+        self.assertEqual(sala.unidade_dados["cidade"], "Rio de Janeiro")
+
+    # ---- instrutores --------------------------------------------------------
+
+    def test_ct_cip_021_cria_palestrante_com_assinatura_e_lista_sem_expor_o_arquivo(self):
+        resposta = self.client.post(
+            "/cursos-cipa/instrutores/",
+            {"nome": "Nova Palestrante", "registro_mte": "0099999", "registro_uf": "rj",
+             "assinatura": png_minusculo()},
+            format="multipart",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+        self.assertEqual(resposta.data["codigo"], "NOVA_PALESTRANTE")
+        self.assertEqual(resposta.data["registro"], "MTE/RJ 0099999")
+        self.assertEqual(resposta.data["titulo"], "Técnico em Segurança no Trabalho")
+        self.assertTrue(resposta.data["tem_assinatura"])
+        self.assertNotIn("assinatura", resposta.data)
+        lista = self.client.get("/cursos-cipa/instrutores/")
+        self.assertIn("NOVA_PALESTRANTE", {i["codigo"] for i in lista.data})
+
+    def test_ct_cip_021_palestrante_sem_assinatura_e_aceito_e_pode_recebe_la_depois(self):
+        criado = self.client.post(
+            "/cursos-cipa/instrutores/",
+            {"nome": "Sem Assinatura", "registro_mte": "0011111", "registro_uf": "SP"},
+            format="json",
+        )
+        self.assertEqual(criado.status_code, status.HTTP_201_CREATED, criado.data)
+        self.assertFalse(criado.data["tem_assinatura"])
+
+        editado = self.client.patch(
+            f"/cursos-cipa/instrutores/{criado.data['id']}/",
+            {"assinatura": png_minusculo()},
+            format="multipart",
+        )
+
+        self.assertEqual(editado.status_code, status.HTTP_200_OK, editado.data)
+        self.assertTrue(editado.data["tem_assinatura"])
+
+    def test_ct_cip_021_registro_mte_repetido_na_mesma_uf_da_400(self):
+        resposta = self.client.post(
+            "/cursos-cipa/instrutores/",
+            {"nome": "Outro Felipe", "registro_mte": "0060169", "registro_uf": "RJ"},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("registro_mte", resposta.data)
+
+    def test_ct_cip_021_assinatura_grande_ou_nao_imagem_da_400(self):
+        grande = SimpleUploadedFile("a.png", b"x" * (500 * 1024 + 1), content_type="image/png")
+        resposta = self.client.post(
+            "/cursos-cipa/instrutores/",
+            {"nome": "Pesada", "registro_mte": "0022222", "registro_uf": "RJ", "assinatura": grande},
+            format="multipart",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("assinatura", resposta.data)
+
+    def test_ct_cip_021_excluir_com_turma_da_400_e_desativar_tira_da_lista_mas_nao_da_turma(self):
+        felipe = instrutor_por_codigo("FELIPE")
+        turma = TurmaCipa.objects.create(
+            local=local_por_codigo(AUDITORIO), data=DIA, instrutor=felipe, criado_por=self.operador
+        )
+
+        excluir = self.client.delete(f"/cursos-cipa/instrutores/{felipe.id}/")
+        self.assertEqual(excluir.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Desative", excluir.data["detail"])
+
+        desativar = self.client.patch(
+            f"/cursos-cipa/instrutores/{felipe.id}/", {"ativo": False}, format="json"
+        )
+        self.assertEqual(desativar.status_code, status.HTTP_200_OK)
+
+        ativos = {i["codigo"] for i in self.client.get("/cursos-cipa/instrutores/").data}
+        todos = {i["codigo"] for i in self.client.get("/cursos-cipa/instrutores/", {"todos": 1}).data}
+        self.assertNotIn("FELIPE", ativos)
+        self.assertIn("FELIPE", todos)
+        # A turma antiga segue apontando para ele e continua legível.
+        detalhe = self.client.get(f"/cursos-cipa/{turma.id}/")
+        self.assertEqual(detalhe.data["instrutor"], "FELIPE")
+        self.assertEqual(detalhe.data["instrutor_nome"], "Felipe Barboza de Oliveira")
+        # Mas turma nova não pode escolhê-lo.
+        nova = self.client.post("/cursos-cipa/", dados_turma(instrutor="FELIPE"), format="json")
+        self.assertEqual(nova.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("instrutor", nova.data)
+
+    def test_ct_cip_021_excluir_sem_turma_e_permitido(self):
+        criado = self.client.post(
+            "/cursos-cipa/instrutores/",
+            {"nome": "Temporario", "registro_mte": "0033333", "registro_uf": "RJ"},
+            format="json",
+        )
+
+        resposta = self.client.delete(f"/cursos-cipa/instrutores/{criado.data['id']}/")
+
+        self.assertEqual(resposta.status_code, status.HTTP_204_NO_CONTENT)
+
+    # ---- locais -------------------------------------------------------------
+
+    def test_ct_cip_022_cria_local_e_ele_aparece_para_turma_nova(self):
+        resposta = self.client.post(
+            "/cursos-cipa/locais/",
+            {"nome": "Sala 2", "predio": "Anexo", "capacidade": 12},
+            format="json",
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+        self.assertEqual(resposta.data["codigo"], "SALA_2")
+        self.assertEqual(resposta.data["unidade"]["nome"], "CondoMed Rio")
+        self.assertFalse(resposta.data["compartilha_sala_reuniao"])
+
+        turma = self.client.post("/cursos-cipa/", dados_turma(local="SALA_2"), format="json")
+        self.assertEqual(turma.status_code, status.HTTP_201_CREATED, turma.data)
+        self.assertEqual(turma.data["local_nome"], "Sala 2")
+        self.assertEqual(turma.data["capacidade"], 12)
+        self.assertIsNone(turma.data["tem_espelho"])  # não é a sala da agenda
+
+    def test_ct_cip_022_nome_repetido_capacidade_zero_e_segunda_sala_da_agenda_dao_400(self):
+        repetido = self.client.post(
+            "/cursos-cipa/locais/", {"nome": "auditório", "capacidade": 5}, format="json"
+        )
+        zero = self.client.post(
+            "/cursos-cipa/locais/", {"nome": "Vazio", "capacidade": 0}, format="json"
+        )
+        segunda_sala = self.client.post(
+            "/cursos-cipa/locais/",
+            {"nome": "Sala B", "capacidade": 8, "compartilha_sala_reuniao": True},
+            format="json",
+        )
+
+        self.assertEqual(repetido.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("nome", repetido.data)
+        self.assertEqual(zero.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(segunda_sala.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("compartilha_sala_reuniao", segunda_sala.data)
+
+    def test_ct_cip_022_capacidade_alterada_reflete_no_acima_da_capacidade(self):
+        sala = local_por_codigo(SALA_REUNIAO)
+        turma = TurmaCipa.objects.create(local=sala, data=DIA, criado_por=self.operador)
+        for i in range(3):
+            InscricaoCipa.objects.create(
+                turma=turma, nome=f"P{i}", cpf=cpf_sintetico(i + 1), **dados_vinculo()
+            )
+
+        self.client.patch(f"/cursos-cipa/locais/{sala.id}/", {"capacidade": 2}, format="json")
+
+        detalhe = self.client.get(f"/cursos-cipa/{turma.id}/")
+        self.assertEqual(detalhe.data["capacidade"], 2)
+        self.assertEqual(detalhe.data["acima_da_capacidade"], 1)
+
+    def test_ct_cip_022_espelho_na_agenda_segue_a_marca_do_local(self):
+        resposta = self.client.post("/cursos-cipa/", dados_turma(local=SALA_REUNIAO), format="json")
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(resposta.data["tem_espelho"])
+        self.assertEqual(Reserva.objects.count(), 1)
+        self.assertIn("Sala de reunião", Reserva.objects.get().tema)
+
+    def test_ct_cip_022_excluir_com_turma_da_400_e_desativado_sai_das_opcoes(self):
+        auditorio = local_por_codigo(AUDITORIO)
+        TurmaCipa.objects.create(local=auditorio, data=DIA, criado_por=self.operador)
+
+        excluir = self.client.delete(f"/cursos-cipa/locais/{auditorio.id}/")
+        self.assertEqual(excluir.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.patch(f"/cursos-cipa/locais/{auditorio.id}/", {"ativo": False}, format="json")
+        ativos = {l["codigo"] for l in self.client.get("/cursos-cipa/locais/").data}
+        self.assertNotIn(AUDITORIO, ativos)
+        nova = self.client.post("/cursos-cipa/", dados_turma(local=AUDITORIO, data="2026-10-01"), format="json")
+        self.assertEqual(nova.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("local", nova.data)
+        # O histórico continua listando a turma antiga com o nome do local.
+        historico = self.client.get("/cursos-cipa/historico/", {"local": AUDITORIO})
+        self.assertEqual(historico.data["count"], 1)
+        self.assertEqual(historico.data["results"][0]["local_nome"], "Auditório")
+
+    # ---- contrato e acesso --------------------------------------------------
+
+    def test_ct_cip_023_contrato_continua_por_codigo_e_local_invalido_da_400(self):
+        ok = self.client.post("/cursos-cipa/", dados_turma(instrutor="VINICIUS"), format="json")
+        invalido = self.client.post("/cursos-cipa/", dados_turma(local="NAO_EXISTE"), format="json")
+
+        self.assertEqual(ok.status_code, status.HTTP_201_CREATED, ok.data)
+        self.assertEqual(ok.data["local"], AUDITORIO)
+        self.assertEqual(ok.data["instrutor"], "VINICIUS")
+        self.assertEqual(invalido.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("local", invalido.data)
+
+    def test_ct_cip_023_cadastros_exigem_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        locais = self.client.get("/cursos-cipa/locais/")
+        instrutores = self.client.post(
+            "/cursos-cipa/instrutores/", {"nome": "X", "registro_mte": "1", "registro_uf": "RJ"}, format="json"
+        )
+
+        self.assertEqual(locais.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(instrutores.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_ct_cip_023_usuario_condomed_cadastra(self):
+        # PA-010: quem cadastra é o próprio nível condomed (self.operador), não só admin.
+        resposta = self.client.post(
+            "/cursos-cipa/locais/", {"nome": "Sala Condomed", "capacidade": 6}, format="json"
+        )
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+
+
+def paginas_do_pdf(conteudo):
+    """Páginas de um PDF sem compressão: objetos /Type /Page, descontando o /Pages."""
+    return conteudo.count(b"/Type /Page") - conteudo.count(b"/Type /Pages")
+
+
+class CertificadoTests(CipaTestBase):
+    """CT-HIS-007 (emissão em lote) e CT-HIS-008 (PDF e reemissão)."""
+
+    CNPJ = "11222333000181"
+
+    def setUp(self):
+        super().setUp()
+        self.ontem = timezone.localdate() - timedelta(days=1)
+        self.felipe = instrutor_por_codigo("FELIPE")
+        self.turma = TurmaCipa.objects.create(
+            local=local_por_codigo(AUDITORIO), data=self.ontem, instrutor=self.felipe, criado_por=self.operador
+        )
+        vinc = dados_vinculo(condominio_cnpj=self.CNPJ)
+        self.a = InscricaoCipa.objects.create(turma=self.turma, nome="Ana Apta", cpf=cpf_sintetico(1), **vinc)
+        self.b = InscricaoCipa.objects.create(turma=self.turma, nome="Bruno Apto", cpf=cpf_sintetico(2), **vinc)
+        self.sem_cnpj = InscricaoCipa.objects.create(
+            turma=self.turma, nome="Carla Sem CNPJ", cpf=cpf_sintetico(3), **dados_vinculo()
+        )
+        self.ausente = InscricaoCipa.objects.create(turma=self.turma, nome="Dora Ausente", cpf=cpf_sintetico(4), **vinc)
+        self.sem_registro = InscricaoCipa.objects.create(turma=self.turma, nome="Eva Sem Registro", cpf=cpf_sintetico(5), **vinc)
+        self.url = f"/cursos-cipa/{self.turma.id}/certificados/"
+
+    def marcar_presenca(self):
+        self.client.post(
+            f"/cursos-cipa/{self.turma.id}/presenca/",
+            {"presencas": [
+                {"inscricao_id": self.a.id, "presente": True},
+                {"inscricao_id": self.b.id, "presente": True},
+                {"inscricao_id": self.sem_cnpj.id, "presente": True},
+                {"inscricao_id": self.ausente.id, "presente": False},
+            ]},
+            format="json",
+        )
+
+    # ---- CT-HIS-007: emissão --------------------------------------------------
+
+    def test_ct_his_007_emite_so_presentes_aptos_e_lista_impedidos(self):
+        self.marcar_presenca()
+
+        resposta = self.client.post(self.url)
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK, resposta.data)
+        emitidos = {c["inscricao_id"] for c in resposta.data["emitidos"]}
+        self.assertEqual(emitidos, {self.a.id, self.b.id})
+        self.assertEqual(resposta.data["ja_existentes"], [])
+        self.assertEqual([i["inscricao_id"] for i in resposta.data["impedidos"]], [self.sem_cnpj.id])
+        self.assertIn("CNPJ", resposta.data["impedidos"][0]["motivo"])
+        self.assertEqual(CertificadoCipa.objects.count(), 2)
+        self.assertFalse(CertificadoCipa.objects.filter(inscricao__in=[self.ausente, self.sem_registro]).exists())
+        # Número: ano da turma + sequencial de 6 dígitos; código de verificação presente.
+        numeros = sorted(c["numero"] for c in resposta.data["emitidos"])
+        ano = self.ontem.year
+        self.assertEqual(numeros, [f"CIPA-{ano}-000001", f"CIPA-{ano}-000002"])
+        self.assertTrue(all(len(c["codigo_verificacao"]) == 36 for c in resposta.data["emitidos"]))
+        # Contagens na turma devolvida e no GET.
+        self.assertEqual(resposta.data["turma"]["certificados_emitidos"], 2)
+        self.assertEqual(resposta.data["turma"]["aptos_sem_certificado"], 0)
+        self.assertEqual(resposta.data["turma"]["presentes_sem_cnpj"], 1)
+        detalhe = self.client.get(f"/cursos-cipa/{self.turma.id}/")
+        por_id = {i["id"]: i for i in detalhe.data["inscricoes"]}
+        self.assertEqual(por_id[self.a.id]["certificado"]["numero"], f"CIPA-{ano}-000001")
+        self.assertIsNone(por_id[self.sem_cnpj.id]["certificado"])
+
+    def test_ct_his_007_idempotente_e_emite_o_impedido_depois_de_corrigir_o_cnpj(self):
+        self.marcar_presenca()
+        self.client.post(self.url)
+
+        de_novo = self.client.post(self.url)
+        self.assertEqual(de_novo.status_code, status.HTTP_200_OK)
+        self.assertEqual(de_novo.data["emitidos"], [])
+        self.assertEqual(len(de_novo.data["ja_existentes"]), 2)
+        self.assertEqual(CertificadoCipa.objects.count(), 2)
+
+        self.client.patch(
+            f"/cursos-cipa/{self.turma.id}/inscricoes/{self.sem_cnpj.id}/",
+            {"condominio_cnpj": self.CNPJ}, format="json",
+        )
+        terceira = self.client.post(self.url)
+        self.assertEqual([c["inscricao_id"] for c in terceira.data["emitidos"]], [self.sem_cnpj.id])
+        self.assertEqual(terceira.data["emitidos"][0]["numero"], f"CIPA-{self.ontem.year}-000003")
+        self.assertEqual(terceira.data["impedidos"], [])
+
+    def test_ct_his_007_sem_presenca_registrada_recusa(self):
+        resposta = self.client.post(self.url)
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("presença", resposta.data["detail"])
+
+    def test_ct_his_007_sem_instrutor_ou_sem_assinatura_recusa_o_lote_inteiro(self):
+        self.marcar_presenca()
+        self.turma.instrutor = None
+        self.turma.save()
+        sem_instrutor = self.client.post(self.url)
+
+        sem_assinatura = InstrutorCipa.objects.create(
+            codigo="SEM_ASS", nome="Sem Assinatura", registro_mte="1", registro_uf="RJ"
+        )
+        self.turma.instrutor = sem_assinatura
+        self.turma.save()
+        sem_ass = self.client.post(self.url)
+
+        self.assertEqual(sem_instrutor.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("instrutor", sem_instrutor.data["detail"].lower())
+        self.assertEqual(sem_ass.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("assinatura", sem_ass.data["detail"])
+        self.assertEqual(CertificadoCipa.objects.count(), 0)
+
+    def test_ct_his_007_turma_cancelada_recusa(self):
+        self.marcar_presenca()
+        TurmaCipa.objects.filter(pk=self.turma.pk).update(status="cancelada")
+
+        resposta = self.client.post(self.url)
+
+        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_ct_his_007_sequencial_e_por_ano_da_turma(self):
+        self.marcar_presenca()
+        self.client.post(self.url)
+        ano_passado = self.ontem.replace(year=self.ontem.year - 1)
+        antiga = TurmaCipa.objects.create(
+            local=local_por_codigo(SALA_REUNIAO), data=ano_passado, instrutor=self.felipe, criado_por=self.operador
+        )
+        inscrito = InscricaoCipa.objects.create(
+            turma=antiga, nome="Zé Antigo", cpf=cpf_sintetico(9), **dados_vinculo(condominio_cnpj=self.CNPJ)
+        )
+        self.client.post(f"/cursos-cipa/{antiga.id}/presenca/", {"presencas": [{"inscricao_id": inscrito.id, "presente": True}]}, format="json")
+
+        resposta = self.client.post(f"/cursos-cipa/{antiga.id}/certificados/")
+
+        self.assertEqual(resposta.data["emitidos"][0]["numero"], f"CIPA-{ano_passado.year}-000001")
+
+    def test_ct_his_007_turma_e_inscricao_com_certificado_sao_intocaveis(self):
+        self.marcar_presenca()
+        self.client.post(self.url)
+
+        excluir_turma = self.client.delete(f"/cursos-cipa/{self.turma.id}/")
+        cancelar = self.client.patch(f"/cursos-cipa/{self.turma.id}/", {"status": "cancelada"}, format="json")
+        excluir_inscrito = self.client.delete(f"/cursos-cipa/{self.turma.id}/inscricoes/{self.a.id}/")
+        excluir_sem_certificado = self.client.delete(f"/cursos-cipa/{self.turma.id}/inscricoes/{self.sem_registro.id}/")
+
+        self.assertEqual(excluir_turma.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(cancelar.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", cancelar.data)
+        self.assertEqual(excluir_inscrito.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(excluir_sem_certificado.status_code, status.HTTP_204_NO_CONTENT)
+        self.turma.refresh_from_db()
+        self.assertEqual(self.turma.status, "realizada")
+        self.assertTrue(TurmaCipa.objects.filter(pk=self.turma.pk).exists())
+
+    def test_ct_his_007_historico_traz_as_contagens_de_certificado(self):
+        self.marcar_presenca()
+        self.client.post(self.url)
+
+        historico = self.client.get(
+            "/cursos-cipa/historico/",
+            {"data_inicio": self.ontem.isoformat(), "data_fim": self.ontem.isoformat()},
+        )
+
+        linha = historico.data["results"][0]
+        self.assertEqual(linha["certificados_emitidos"], 2)
+        self.assertEqual(linha["presentes_sem_cnpj"], 1)
+
+    def test_ct_his_007_exige_nivel_autorizado(self):
+        self.client.force_authenticate(self.comum)
+
+        self.assertEqual(self.client.post(self.url).status_code, status.HTTP_403_FORBIDDEN)
+
+    # ---- CT-HIS-008: PDF ------------------------------------------------------
+
+    def test_ct_his_008_pdf_da_turma_tem_frente_e_verso_por_certificado(self):
+        self.marcar_presenca()
+        self.client.post(self.url)
+
+        resposta = self.client.get(f"/cursos-cipa/{self.turma.id}/certificados/pdf/")
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(resposta["Content-Type"], "application/pdf")
+        self.assertEqual(
+            resposta["Content-Disposition"], f'attachment; filename="certificados-{self.turma.codigo}.pdf"'
+        )
+        self.assertEqual(resposta["Access-Control-Expose-Headers"], "Content-Disposition")
+        pdf = resposta.content
+        self.assertTrue(pdf.startswith(b"%PDF-"))
+        self.assertEqual(paginas_do_pdf(pdf), 4)  # 2 certificados x (frente + verso)
+        self.assertIn(b"Ana Apta", pdf)
+        self.assertIn(b"Bruno Apto", pdf)
+        self.assertIn(f"CIPA-{self.ontem.year}-000001".encode(), pdf)
+        self.assertIn(b"FELIPE BARBOZA DE OLIVEIRA", pdf)
+        self.assertIn(b"CONDOMED RIO", pdf)
+
+    def test_ct_his_008_pdf_individual_pelo_numero_reflete_a_inscricao_corrigida(self):
+        self.marcar_presenca()
+        numero = self.client.post(self.url).data["emitidos"][0]["numero"]
+        certificado = CertificadoCipa.objects.get(numero=numero)
+        self.client.patch(
+            f"/cursos-cipa/{self.turma.id}/inscricoes/{certificado.inscricao_id}/",
+            {"nome": "Nome Corrigido"}, format="json",
+        )
+
+        resposta = self.client.get(f"/certificados/{numero}/pdf/")
+
+        self.assertEqual(resposta.status_code, status.HTTP_200_OK)
+        self.assertEqual(resposta["Content-Disposition"], f'attachment; filename="certificado-{numero}.pdf"')
+        self.assertEqual(paginas_do_pdf(resposta.content), 2)
+        self.assertIn(b"Nome Corrigido", resposta.content)
+        self.assertIn(numero.encode(), resposta.content)
+        certificado.refresh_from_db()
+        self.assertEqual(certificado.numero, numero)  # número não muda com a correção
+
+    def test_ct_his_008_sem_certificado_da_404(self):
+        self.marcar_presenca()
+
+        turma = self.client.get(f"/cursos-cipa/{self.turma.id}/certificados/pdf/")
+        inexistente = self.client.get("/certificados/CIPA-2026-999999/pdf/")
+
+        self.assertEqual(turma.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(inexistente.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_ct_his_008_pdf_exige_nivel_autorizado(self):
+        self.marcar_presenca()
+        numero = self.client.post(self.url).data["emitidos"][0]["numero"]
+        self.client.force_authenticate(self.comum)
+
+        self.assertEqual(self.client.get(f"/certificados/{numero}/pdf/").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.get(f"/cursos-cipa/{self.turma.id}/certificados/pdf/").status_code, status.HTTP_403_FORBIDDEN
+        )
