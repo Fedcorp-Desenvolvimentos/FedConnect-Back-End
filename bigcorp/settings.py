@@ -14,6 +14,25 @@ logger.info(f"DEBUG está definido como: {DEBUG}")
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
+# Arquivos enviados (hoje só a assinatura do palestrante do CIPA — RNF-CIP-005).
+# Em produção o disco do container é descartado a cada deploy, então com
+# AWS_STORAGE_BUCKET_NAME definido o storage padrão passa a ser o S3
+# (django-storages); sem ele, cai no disco local (desenvolvimento e testes).
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "")
+if AWS_STORAGE_BUCKET_NAME:
+    AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
+    AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+    AWS_DEFAULT_ACL = None  # bucket privado; o backend lê, ninguém baixa por URL
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3.S3Storage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
 # Configurações de Email
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')

@@ -1,8 +1,8 @@
 # Requisitos — Histórico, consulta e documentos do CIPA (fase 2)
 
-> **Rastreabilidade** — RF: RF-HIS-001..006 · RNF: RNF-HIS-001..003 · ADR: ADR-0004, ADR-0007 · Questões: PA-007, PA-008, PA-009, PA-012
-> **Fase 3 (presença): `RF-HIS-004`, `RNF-HIS-002` em revisão — aguardando aprovação do dono antes do design.**
-> **Fase D (certificado): `RF-HIS-005`, `RF-HIS-006`, `RNF-HIS-003` em rascunho (2026-09-08) — aguardam aprovação e dependem da fase 3 e de `specs/curso-cipa-cadastros/`.**
+> **Rastreabilidade** — RF: RF-HIS-001..006 · RNF: RNF-HIS-001..003 · ADR: ADR-0004, ADR-0007 · Questões: PA-007, PA-008, PA-009, PA-012, PA-013
+> **Fase 3 (presença): `RF-HIS-004`, `RNF-HIS-002` aprovados em 2026-09-08 (instrução do dono: "segue o que dá pra fazer", após responder PA-009) e implementados no mesmo dia.**
+> **Fase D (certificado): `RF-HIS-005`, `RF-HIS-006`, `RNF-HIS-003` aprovados em 2026-09-08 (respostas do dono a PA-012/PA-013 e instrução "segue o que dá pra fazer") e implementados em 2026-09-09.**
 > **Status:** aprovado · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-08
 
 ## Contexto e Problema
@@ -66,7 +66,7 @@
 - **QUANDO** é a primeira gravação de presença da turma, **ENTÃO** a turma **DEVE** passar a `realizada` na mesma transação. `[D]` PA-007 (situação inferida; opção manual sai do formulário)
 - **QUANDO** já existe presença registrada, **ENTÃO** o sistema **DEVE** aceitar regravar a qualquer tempo, atualizando `registrada_em`/`por` — não há prazo. `[D]` PA-007
 - **SE** a turma está `cancelada`, **ENTÃO** o sistema **DEVE** recusar com 400 — não há presença em curso que não aconteceu. `[E]` `STATUS_ATIVOS` em `condomed/services.py`
-- **SE** a data da turma ainda não chegou, **ENTÃO** o sistema **DEVE** recusar com 400. `[P]` PA-009
+- **SE** a data da turma ainda não chegou, **ENTÃO** o sistema **DEVE** recusar com 400. `[D]` PA-009
 - **QUANDO** consulto a turma, a listagem, o histórico ou os participantes, **ENTÃO** cada inscrição **DEVE** trazer `presenca` (`true`/`false`/`null` = não registrada), `presenca_registrada_em` e o nome de quem registrou; e a turma **DEVE** trazer `presentes`, `ausentes` e `sem_registro`. `[E]` regra do repo: contagens vêm do backend
 - **QUANDO** um inscrito é adicionado a uma turma já `realizada` (chegou de última hora e foi registrado depois), **ENTÃO** ele **DEVE** nascer com `presenca = null`, e o operador marca em seguida. `[D]` PA-007
 - **SE** o usuário não tem nível `condomed`/`admin`, **ENTÃO** o sistema **DEVE** responder 403 — qualquer um dos dois níveis pode marcar, não só quem ministrou. `[D]` PA-007
@@ -76,14 +76,14 @@
 **Como** operador da Condomed, **quero** emitir de uma vez os certificados de quem esteve na turma, **para** não montar dezoito documentos um a um depois de confirmar dezoito presenças.
 
 - **QUANDO** envio `POST cursos-cipa/{id}/certificados/`, **ENTÃO** o sistema **DEVE** criar um `CertificadoCipa` para cada inscrição da turma com `presenca = true` que ainda não tem certificado, tudo em uma transação, e devolver `{emitidos: [...], ja_existentes: [...], impedidos: [{inscricao_id, motivo}]}`. `[E]` `docs/curso-cipa/MAPEAMENTO_CIPA_FASE2.md` seção 4 (Documentos)
-- **QUANDO** uma inscrição presente está sem `condominio_cnpj`, **ENTÃO** ela **DEVE** entrar em `impedidos` com o motivo e o restante do lote **DEVE** ser emitido — corrigido o CNPJ, chama-se de novo só para ela. `[P]` PA-012
+- **QUANDO** uma inscrição presente está sem `condominio_cnpj`, **ENTÃO** ela **DEVE** entrar em `impedidos` com o motivo e o restante do lote **DEVE** ser emitido — a tela avisa quem ficou de fora; corrigido o CNPJ, chama-se de novo só para ela. `[D]` PA-012
 - **SE** a turma está sem instrutor, ou o instrutor está sem assinatura, **ENTÃO** o sistema **DEVE** recusar o lote inteiro com 400 apontando o que falta — o certificado sai assinado ou não sai. `[D]` PA-008
 - **SE** a turma está `cancelada` ou nenhuma presença foi registrada, **ENTÃO** o sistema **DEVE** recusar com 400. `[D]` PA-007
 - **ENQUANTO** uma inscrição está `ausente` ou `não registrada`, ela **NUNCA** recebe certificado — a omissão não vira documento. `[D]` PA-007
 - **QUANDO** chamo a emissão de novo, **ENTÃO** o sistema **DEVE** devolver os já emitidos em `ja_existentes` sem criar nada — idempotente; reemitir é baixar de novo, não gerar outro. `[D]` ADR-0007
 - **QUANDO** um certificado é criado, **ENTÃO** ele **DEVE** receber `numero` no formato `CIPA-AAAA-000000` (ano da turma, sequencial por ano, sem furo nem repetição mesmo em requisições simultâneas) e `codigo_verificacao` (UUID), além de `emitido_em` e `emitido_por`. `[D]` PA-008
 - **QUANDO** consulto a turma, o histórico ou os participantes, **ENTÃO** cada inscrição **DEVE** trazer `certificado` (`numero`, `emitido_em`) ou `null`, e a turma **DEVE** trazer `certificados_emitidos` e `aptos_sem_certificado`. `[E]` regra do repo: contagens vêm do backend
-- **SE** tento excluir (`DELETE`) uma turma ou uma inscrição com certificado emitido, **ENTÃO** o sistema **DEVE** recusar com 400 — turma com certificado se cancela, não se apaga; o documento está na mão da pessoa. `[E]` `docs/curso-cipa/MAPEAMENTO_CIPA_FASE2.md` seção 7b (decisão do dono, 2026-09-04)
+- **SE** tento excluir (`DELETE`) uma turma ou uma inscrição com certificado emitido, **ou** alterar a situação dessa turma para `cancelada`, **ENTÃO** o sistema **DEVE** recusar com 400 — a turma permanece `realizada`; o documento está na mão da pessoa. `[D]` PA-013
 - **SE** o usuário não tem nível `condomed`/`admin`, **ENTÃO** o sistema **DEVE** responder 403. `[E]` mesmo `IsCondomedOrAdmin` do viewset
 
 ### RF-HIS-006: PDF dos certificados e reemissão
@@ -115,10 +115,10 @@ Toda gravação de presença registra quem e quando; regravar sobrescreve o valo
 
 ### RNF-HIS-003: Certificado é registro imutável e auditável
 
-`numero` e `codigo_verificacao` são únicos no banco; `emitido_em` e `emitido_por` nunca mudam; um certificado nunca é apagado por exclusão de turma ou inscrição (a aplicação recusa a exclusão — RF-HIS-005). O PDF é derivado e pode mudar de layout; o registro não. `[D]` ADR-0007
+`numero` e `codigo_verificacao` são únicos no banco; `emitido_em` e `emitido_por` nunca mudam; um certificado nunca é apagado por exclusão ou cancelamento de turma nem por remoção de inscrição (a aplicação recusa as três — RF-HIS-005). O PDF é derivado e pode mudar de layout; o registro não. `[D]` ADR-0007 · `[D]` PA-013
 
 ## Questões em Aberto
 
 - PA-007: perguntas ao solicitante sobre presença e certificado (carga horária, texto, assinatura, numeração, prazo de presença). Travam as fases C e D; não travam esta.
-- PA-012: emissão em lote com inscritos impedidos (sem CNPJ) — trava um critério de RF-HIS-005.
+- PA-009, PA-012 e PA-013: fechadas em 2026-09-08 com as respostas do dono (presença nunca antes da data; emissão parcial com aviso; turma com certificado nem se exclui nem se cancela).
 - PA-010/PA-011 (`specs/curso-cipa-cadastros/`): o certificado passa a ler instrutor e local do cadastro; a fase D depende dessa spec.

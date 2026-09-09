@@ -18,6 +18,8 @@ from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas as pdf_canvas
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import (
@@ -29,7 +31,6 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .models import INSTRUTORES_CIPA, LOCAIS_CIPA
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 
@@ -92,9 +93,9 @@ def linhas_lista_presenca(turma, linhas_extras=LINHAS_EXTRAS_PADRAO):
 
 def cabecalho_lista_presenca(turma):
     """Dados do cabeçalho, resolvidos a partir do local e do instrutor da turma."""
-    local = LOCAIS_CIPA.get(turma.local, {})
-    unidade = local.get("unidade", {})
-    instrutor = INSTRUTORES_CIPA.get(turma.instrutor)
+    local = turma.local
+    unidade = local.unidade_dados
+    instrutor = turma.instrutor
     return {
         "titulo": "Lista de presença — Curso CIPA (NR-5)",
         "codigo": turma.codigo,
@@ -104,21 +105,21 @@ def cabecalho_lista_presenca(turma):
             filter(None, [unidade.get("telefone"), unidade.get("email")])
         ),
         "data": data_por_extenso(turma.data),
-        "local": local.get("nome", turma.local),
+        "local": local.nome,
         "horario": f"{turma.hora_inicio:%H:%M} às {turma.hora_fim:%H:%M}",
         "instrutor": (
-            f"{instrutor['nome']} — {instrutor['titulo']} · MTE/{instrutor['registro_uf']} {instrutor['registro_mte']}"
+            f"{instrutor.nome} — {instrutor.titulo} · {instrutor.registro}"
             if instrutor
             else "a definir"
         ),
         "situacao": turma.get_status_display(),
         "total": turma.inscricoes.count(),
-        "capacidade": local.get("capacidade"),
+        "capacidade": local.capacidade,
     }
 
 
 def nome_arquivo_lista_presenca(turma):
-    return f"lista-presenca-cipa-{turma.data:%Y-%m-%d}-{turma.local.lower()}.pdf"
+    return f"lista-presenca-cipa-{turma.data:%Y-%m-%d}-{turma.local.codigo.lower()}.pdf"
 
 
 def gerar_lista_presenca(turma, usuario=None, linhas_extras=LINHAS_EXTRAS_PADRAO):
@@ -236,4 +237,214 @@ def gerar_lista_presenca(turma, usuario=None, linhas_extras=LINHAS_EXTRAS_PADRAO
         canvas.restoreState()
 
     doc.build(elementos, onFirstPage=rodape, onLaterPages=rodape)
+    return buffer.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Certificado (RF-HIS-006). Reproduz os modelos em Word da Condomed
+# (docs/curso-cipa/ANALISE_CERTIFICADO_CIPA.md §1): paisagem 16:9, frente com
+# texto e assinatura, verso com o conteúdo programático. Frente e verso com a
+# mesma unidade emissora — a do local da turma (PA-008).
+# ---------------------------------------------------------------------------
+
+CERTIFICADO_PAGINA = (33.9 * cm, 19.1 * cm)
+
+TEXTO_CERTIFICADO = (
+    "Certificamos que <b>{nome}</b>, portador(a) do CPF <b>{cpf}</b>, funcionário(a) "
+    "de <b>{condominio}</b>, CNPJ <b>{cnpj}</b>, concluiu os treinamentos para Representante "
+    "Nomeado da NR-5 – CIPA, NR-6 Equipamento de Proteção Individual – EPI e Noções Básicas "
+    "de Primeiros Socorros, conforme as exigências estabelecidas pela Portaria MTP nº 4.219, "
+    "de 20 de dezembro de 2022."
+)
+
+CONTEUDO_PROGRAMATICO = [
+    "estudo do ambiente, das condições de trabalho, bem como dos riscos originados do processo produtivo;",
+    "noções sobre acidentes e doenças relacionadas ao trabalho decorrentes das condições de trabalho e da "
+    "exposição aos riscos existentes no estabelecimento e suas medidas de prevenção (noções básicas de primeiros socorros);",
+    "metodologia de investigação e análise de acidentes e doenças relacionadas ao trabalho;",
+    "princípios gerais de higiene do trabalho e de medidas de prevenção dos riscos (APR/EPI/EPC);",
+    "noções sobre as legislações trabalhista e previdenciária relativas à segurança e saúde no trabalho;",
+    "noções sobre a inclusão de pessoas com deficiência e reabilitados nos processos de trabalho;",
+    "organização da CIPA e outros assuntos necessários ao exercício das atribuições da Comissão; e",
+    "prevenção e combate ao assédio sexual e a outras formas de violência no trabalho.",
+]
+
+DOURADO = colors.HexColor("#B8860B")
+
+
+def formatar_cnpj(cnpj):
+    d = "".join(c for c in (cnpj or "") if c.isdigit())
+    if len(d) != 14:
+        return cnpj or ""
+    return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
+
+
+def dados_certificado(certificado):
+    """Tudo que o PDF imprime, resolvido do registro — função pura, testável."""
+    inscricao = certificado.inscricao
+    turma = inscricao.turma
+    unidade = turma.local.unidade_dados
+    instrutor = turma.instrutor
+    return {
+        "numero": certificado.numero,
+        "codigo_verificacao": str(certificado.codigo_verificacao),
+        "nome": inscricao.nome,
+        "cpf": formatar_cpf(inscricao.cpf),
+        "condominio": inscricao.condominio_nome,
+        "cnpj": formatar_cnpj(inscricao.condominio_cnpj),
+        "cidade": unidade.get("cidade", ""),
+        "data": data_por_extenso(turma.data),
+        "turma_codigo": turma.codigo,
+        "unidade_nome": unidade.get("nome", "CondoMed"),
+        "unidade_linha": " — ".join(
+            filter(None, [unidade.get("endereco"), unidade.get("telefone"), unidade.get("email")])
+        ),
+        "instrutor_nome": instrutor.nome if instrutor else "",
+        "instrutor_titulo": instrutor.titulo if instrutor else "",
+        "instrutor_registro": instrutor.registro if instrutor else "",
+        "emitido_em": certificado.emitido_em,
+    }
+
+
+def _imagem(caminho):
+    try:
+        return ImageReader(str(caminho)) if Path(caminho).exists() else None
+    except Exception:  # asset corrompido não derruba a emissão
+        return None
+
+
+def _imagem_assinatura(instrutor):
+    if instrutor is None or not instrutor.assinatura:
+        return None
+    try:
+        with instrutor.assinatura.open("rb") as arquivo:
+            return ImageReader(BytesIO(arquivo.read()))
+    except Exception:
+        return None
+
+
+def _desenhar_imagem_proporcional(c, imagem, x, y, largura_max, altura_max, ancora="esquerda"):
+    if imagem is None:
+        return
+    iw, ih = imagem.getSize()
+    escala = min(largura_max / iw, altura_max / ih)
+    w, h = iw * escala, ih * escala
+    if ancora == "direita":
+        x = x - w
+    elif ancora == "centro":
+        x = x - w / 2
+    c.drawImage(imagem, x, y, width=w, height=h, mask="auto")
+
+
+def _faixa(c, largura, altura, dados):
+    """Faixa colorida do topo com a unidade emissora — igual na frente e no verso."""
+    c.setFillColor(AZUL)
+    c.rect(0, altura - 1.9 * cm, largura, 1.9 * cm, stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(1.5 * cm, altura - 0.85 * cm, dados["unidade_nome"].upper())
+    c.setFont("Helvetica", 8.5)
+    c.drawString(1.5 * cm, altura - 1.45 * cm, dados["unidade_linha"])
+
+
+def _rodape_certificado(c, largura, dados):
+    c.setFillColor(CINZA_TEXTO)
+    c.setFont("Helvetica", 7.5)
+    c.drawString(1.5 * cm, 0.7 * cm, f"Certificado nº {dados['numero']} · verificação {dados['codigo_verificacao']}")
+    c.drawRightString(largura - 1.5 * cm, 0.7 * cm, f"Turma {dados['turma_codigo']} · FedConnect / Condomed")
+
+
+def _frente(c, dados, logos, assinatura):
+    largura, altura = CERTIFICADO_PAGINA
+    _faixa(c, largura, altura, dados)
+
+    _desenhar_imagem_proporcional(c, logos["condomed"], 1.5 * cm, altura - 5.3 * cm, 6.0 * cm, 2.9 * cm)
+    _desenhar_imagem_proporcional(c, logos["condocorp"], largura - 1.5 * cm, altura - 5.1 * cm, 5.0 * cm, 2.6 * cm, ancora="direita")
+    # Selo no canto inferior direito, fora da área do texto e do bloco do instrutor.
+    _desenhar_imagem_proporcional(c, logos["selo"], largura - 3.8 * cm, 1.4 * cm, 4.2 * cm, 4.2 * cm, ancora="centro")
+
+    c.setFillColor(AZUL)
+    c.setFont("Helvetica-Bold", 34)
+    c.drawCentredString(largura / 2, altura - 8.0 * cm, "Certificado")
+
+    corpo = ParagraphStyle(
+        "corpo", fontName="Helvetica", fontSize=12.5, leading=19, textColor=colors.black, alignment=4
+    )
+    texto = Paragraph(TEXTO_CERTIFICADO.format(**dados), corpo)
+    largura_texto = largura - 2 * 2.6 * cm
+    _, h = texto.wrap(largura_texto, 8 * cm)
+    texto.drawOn(c, 2.6 * cm, altura - 9.0 * cm - h)
+
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 11.5)
+    c.drawString(2.6 * cm, 6.9 * cm, f"{dados['cidade']}, {dados['data']}.")
+
+    # Bloco do instrutor: assinatura sobre a linha, nome, título e registro.
+    x = 2.6 * cm
+    _desenhar_imagem_proporcional(c, assinatura, x, 4.35 * cm, 6.2 * cm, 2.0 * cm)
+    c.setStrokeColor(colors.black)
+    c.setLineWidth(0.6)
+    c.line(x, 4.2 * cm, x + 8.5 * cm, 4.2 * cm)
+    c.setFont("Helvetica", 8)
+    c.setFillColor(CINZA_TEXTO)
+    c.drawString(x, 3.7 * cm, "INSTRUTOR DO CURSO")
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 10.5)
+    c.drawString(x, 3.1 * cm, dados["instrutor_nome"].upper())
+    c.setFont("Helvetica", 9)
+    c.drawString(x, 2.55 * cm, dados["instrutor_titulo"])
+    c.drawString(x, 2.05 * cm, dados["instrutor_registro"])
+
+    _rodape_certificado(c, largura, dados)
+
+
+def _verso(c, dados, logos):
+    largura, altura = CERTIFICADO_PAGINA
+    _faixa(c, largura, altura, dados)
+    _desenhar_imagem_proporcional(c, logos["condomed"], 1.5 * cm, altura - 5.0 * cm, 5.2 * cm, 2.5 * cm)
+
+    c.setFillColor(AZUL)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(2.6 * cm, altura - 6.6 * cm, "CONTEÚDO PROGRAMÁTICO:")
+
+    item = ParagraphStyle("item", fontName="Helvetica", fontSize=10.5, leading=15, textColor=colors.black)
+    y = altura - 7.6 * cm
+    largura_texto = largura - 2 * 2.6 * cm - 1.0 * cm
+    for indice, linha in enumerate(CONTEUDO_PROGRAMATICO, 1):
+        par = Paragraph(f"{indice}. {linha}", item)
+        _, h = par.wrap(largura_texto, 4 * cm)
+        y -= h
+        par.drawOn(c, 3.2 * cm, y)
+        y -= 0.25 * cm
+
+    c.setFillColor(CINZA_TEXTO)
+    c.setFont("Helvetica", 8.5)
+    c.drawString(2.6 * cm, 2.2 * cm, f"Participante: {dados['nome']} · CPF {dados['cpf']}")
+    _rodape_certificado(c, largura, dados)
+
+
+def gerar_certificados(certificados, usuario=None):
+    """PDF em bytes com frente e verso de cada certificado, na ordem recebida (ADR-0007)."""
+    buffer = BytesIO()
+    c = pdf_canvas.Canvas(buffer, pagesize=CERTIFICADO_PAGINA)
+    # Sem compressão: o conteúdo (nome, CPF, número) fica legível no arquivo e testável.
+    c.setPageCompression(0)
+    c.setTitle("Certificados — Curso CIPA (Condomed)")
+    c.setAuthor(getattr(usuario, "nome_completo", "") or getattr(usuario, "email", "") or "FedConnect")
+    logos = {
+        "condomed": _imagem(ASSETS / "logo-condomed.jpeg"),
+        "condocorp": _imagem(ASSETS / "logo-condocorp.jpeg"),
+        "selo": _imagem(ASSETS / "selo-condomed.png"),
+    }
+    assinaturas = {}
+    for certificado in certificados:
+        dados = dados_certificado(certificado)
+        instrutor = certificado.inscricao.turma.instrutor
+        if instrutor is not None and instrutor.pk not in assinaturas:
+            assinaturas[instrutor.pk] = _imagem_assinatura(instrutor)
+        _frente(c, dados, logos, assinaturas.get(instrutor.pk) if instrutor else None)
+        c.showPage()
+        _verso(c, dados, logos)
+        c.showPage()
+    c.save()
     return buffer.getvalue()
