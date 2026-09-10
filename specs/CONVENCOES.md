@@ -31,6 +31,7 @@ Fixos. Não crie novos sem alterar esta tabela.
 | `USR` | usuários, autenticação, permissões — app `users` |
 | `INT` | integrações externas (BigDataCorp, BrasilAPI, FedBnk, Monday, e-mail) |
 | `CIP` | cursos CIPA da Condomed (turmas, inscritos, espelho na agenda) — app `condomed` |
+| `FAT` | relatórios de faturas do Financeiro (proxy ao FedHub e exportações Excel/PDF) — app `fedhub` |
 
 ### 2.2 Regras de identificador
 
