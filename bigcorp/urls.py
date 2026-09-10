@@ -46,6 +46,11 @@ from fedhub.views.faturamento_view import (
 from fedhub.views.empresas_view import BuscarTodasEmpresas
 
 from fedhub.views.faturas_view import BuscarFaturaPorNumero, ExportarFaturasComBoletosExcel, ExportarFaturasComBoletosPDF
+from fedhub.views.relatorios_view import (
+    FaturasPendentesExcelView,
+    FaturasPendentesPDFView,
+    FaturasPendentesView,
+)
 from fedhub.views.fedbnk_view import CancelarBoletoFedBnkView, SincronizarBoletosView
 from fedhub.views.fedpay_view import ConsultarFedPayView, TratamentoFedPayView
 from fedhub.views.envio_porto_view import (
@@ -190,6 +195,11 @@ urlpatterns = [
     path('consultas/faturas/', RealizarConsultaFaturasView.as_view(), name='realizar-consulta-faturas'),
     path('consultas/faturas/com-boletos/exportar-excel/', ExportarFaturasComBoletosExcel.as_view(), name='exportar-faturas-excel'),
     path("consultas/faturas/com-boletos/exportar-pdf/", ExportarFaturasComBoletosPDF.as_view(), name='exportar-faturas-pdf'),
+
+    # Relatório de faturas pendentes (spec relatorio-faturas-pendentes): dados, planilha e PDF
+    path('faturas/pendentes/', FaturasPendentesView.as_view(), name='faturas-pendentes'),
+    path('faturas/pendentes/exportar-excel/', FaturasPendentesExcelView.as_view(), name='faturas-pendentes-excel'),
+    path('faturas/pendentes/exportar-pdf/', FaturasPendentesPDFView.as_view(), name='faturas-pendentes-pdf'),
     path('consultas/faturas/<str:numero_fatura>/', BuscarFaturaPorNumero.as_view(), name='consulta-fatura-por-numero'),
 
     # ROTAS DE FATURAMENTO *******

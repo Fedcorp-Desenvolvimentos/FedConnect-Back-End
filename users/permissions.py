@@ -53,3 +53,18 @@ class IsCondomedOrAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         return (request.user and request.user.is_authenticated
                 and request.user.nivel_acesso in self.NIVEIS)
+
+
+class IsFinanceiroOuFaturamentoOuAdmin(permissions.BasePermission):
+    """
+    Relatórios do Financeiro (faturas pendentes — spec relatorio-faturas-pendentes,
+    RNF-FAT-001): níveis 'financeiro', 'faturamento' e 'admin'. Decisão do dono
+    em 2026-09-09; o relatório expõe carteira e inadimplência, então não basta
+    estar autenticado.
+    """
+
+    NIVEIS = ('financeiro', 'faturamento', 'admin')
+
+    def has_permission(self, request, view):
+        return (request.user and request.user.is_authenticated
+                and request.user.nivel_acesso in self.NIVEIS)

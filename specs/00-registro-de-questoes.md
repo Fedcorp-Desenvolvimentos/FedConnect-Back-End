@@ -103,3 +103,17 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Trava:** um critério de RF-HIS-005.
 - **Questão:** a hipótese anterior (mapeamento, 7b) era "não se exclui, só se cancela". Perguntado ao dono em 2026-09-08 se cancelar também deveria ser bloqueado.
 - **Resposta (2026-09-08):** **nem cancelar**. Turma com certificado emitido não pode ser excluída nem ter a situação alterada para `cancelada`; permanece `realizada`. A inscrição com certificado também não pode ser removida.
+
+## PA-014 — Layout do PDF e da planilha de faturas pendentes
+
+- **Status:** fechada (2026-09-09) · **Dono:** Ingrid Aylana · **Severidade:** média
+- **Resposta (2026-09-09):** o dono enviou o PDF "rel-faturas-pendentes-coimbra.pdf" gerado pelo legado em 09/09/2026 (6 páginas, 138 documentos, total R$ 45.581,23), enviado pelo dono em 2026-09-09. Layout a reproduzir: **A4 retrato**; cabeçalho com data de geração à esquerda, título "RELATÓRIO DE FATURAS PENDENTES" centralizado, "Página N de M" à direita e a linha "DATA: __/__/__ A __/__/__" com o período de vencimento filtrado; tabela com cabeçalho em duas linhas (FATURA · DOCUMENTO · PRODUTO/OBS · VIGÊNCIA · DATA VENCIMENTO · VALOR DOCUMENTO · DATA PAGAMENTO · VALOR PAGO); **cada documento ocupa duas linhas**: na primeira, fatura, documento, sacado, vigência MM/AAAA, vencimento e valor; na segunda, produto/OBS, periodicidade e parcela (MENSAL 12/1) e a administradora em negrito; separador pontilhado entre documentos; rodapé "N Fatura(s) · TOTAL GERAL R$ x · R$ pago". Sem subtotais por grupo. A planilha segue as mesmas colunas, uma linha por documento, mais uma linha de totais.
+- **Trava:** RF-FAT-002 e RF-FAT-003 (`specs/relatorio-faturas-pendentes/`).
+- **Questão:** o legado gera "relatório" (PDF) e "planilha". Não temos o modelo impresso do legado para reproduzir. Hipótese de trabalho: PDF A4 paisagem, cabeçalho com os filtros aplicados e a data de geração, agrupado pela ordenação escolhida quando ela é administradora ou cedente (subtotal por grupo), total geral no fim; planilha com uma linha por fatura, colunas iguais às da resposta do FedHub e linha de totais. Se a operação quiser o layout idêntico ao legado, precisamos de um PDF gerado por ele como referência.
+
+## PA-015 — Relatório de faturas pendentes: pedido e quem acessa
+
+- **Status:** fechada (2026-09-09) · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Trava:** RF-FAT-001, RNF-FAT-001 (`specs/relatorio-faturas-pendentes/`).
+- **Questão:** registrada já com a resposta, para servir de decisão citável nas regras do relatório de faturas pendentes.
+- **Resposta (2026-09-09):** o dono pediu o relatório de faturas pendentes no Financeiro, em Excel e PDF, reproduzindo o legado. **Acesso: financeiro, faturamento e admin.** A definição de pendente (vencimento passado há pelo menos 1 dia e sem baixa) vive no registro do FedHub.
