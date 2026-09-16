@@ -4,6 +4,14 @@ import os
 from django.conf import settings
 
 
+# `timeout=30` num `requests` é 30 s para CONECTAR **mais** 30 s para ler: um
+# destino que engole os pacotes, em vez de recusar a conexão, segura a
+# requisição por até 60 s. Esse é justamente o limite do balanceador da
+# DigitalOcean, que então devolve 504 — erro genérico, sem mensagem e sem log
+# útil. Com a tupla, o pior caso são 20 s e o operador recebe um 503 explicado.
+TEMPO_LIMITE = (5, 15)  # (conectar, ler), em segundos
+
+
 class RecusaBigDataCorp(Exception):
     """A BigDataCorp recusou a consulta, mas respondeu com HTTP 200.
 
@@ -52,7 +60,7 @@ class ConsultaCEP:
             raise ValueError("CEP inválido. Deve conter 8 dígitos numéricos.")
 
         url = settings.CEP_URL + cep
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, timeout=TEMPO_LIMITE)
         response.raise_for_status()
         data = response.json()
 
@@ -77,7 +85,7 @@ class ConsultaCEP:
         print(url)
 
         try:
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, timeout=TEMPO_LIMITE)
             
             print(f"DEBUG: Resposta bruta da ViaCEP (status {response.status_code}): {response.text}")
 
@@ -141,7 +149,7 @@ class ConsultaCPF:
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30) # Adicionado timeout
+            response = requests.post(url, json=payload, headers=headers, timeout=TEMPO_LIMITE)
             response.raise_for_status()
             return verificar_recusa_bigdatacorp(response.json())
         except RecusaBigDataCorp:
@@ -188,7 +196,7 @@ class ConsultaCPF:
         }
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30) # Adicionado timeout
+            response = requests.post(url, json=payload, headers=headers, timeout=TEMPO_LIMITE)
             response.raise_for_status()
             data = verificar_recusa_bigdatacorp(response.json())
 
@@ -233,7 +241,7 @@ class ConsultaCPF:
         payload = params_json 
         
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30) # Adicionado timeout
+            response = requests.post(url, json=payload, headers=headers, timeout=TEMPO_LIMITE)
             response.raise_for_status() # Levanta um HTTPError para erros 4xx/5xx
             # Retorna o JSON completo da resposta, depois de conferir se ela não é uma recusa.
             return verificar_recusa_bigdatacorp(response.json())
@@ -261,7 +269,7 @@ class ConsultaCNPJ:
         url = settings.CNPJ_URL + cnpj
         
         try:
-            response = requests.get(url, timeout=30)
+            response = requests.get(url, timeout=TEMPO_LIMITE)
             response.raise_for_status() # Lança um erro para status de resposta HTTP ruins (4xx ou 5xx)
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -315,7 +323,7 @@ class ConsultaCNPJ:
             )
 
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response = requests.post(url, json=payload, headers=headers, timeout=TEMPO_LIMITE)
             response.raise_for_status()
             
             # print("Resposta bruta da BigDataCorp:", response.text)
