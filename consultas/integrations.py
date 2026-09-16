@@ -4,6 +4,47 @@ import os
 from django.conf import settings
 
 
+class RecusaBigDataCorp(Exception):
+    """A BigDataCorp recusou a consulta, mas respondeu com HTTP 200.
+
+    Ela sinaliza falha no corpo, em `Status`, e não no código HTTP: token
+    inválido, saldo esgotado ou origem bloqueada chegam como 200. Quem só
+    olhava `raise_for_status()` tratava a recusa como sucesso — o resultado
+    era gravado no histórico e a tela ficava vazia, sem erro nenhum.
+    """
+
+
+def verificar_recusa_bigdatacorp(dados):
+    """Devolve `dados` ou levanta `RecusaBigDataCorp` com o que a base disse.
+
+    `Status` é um dicionário de grupo (`login`, `api`, `basic_data`, ...) para
+    uma lista de ocorrências `{Code, Message}`. Só código **negativo** é
+    recusa: 0 é sucesso e os positivos são avisos, como "nada encontrado",
+    que precisam continuar chegando à tela como consulta vazia.
+    """
+    status = (dados or {}).get("Status")
+    if not isinstance(status, dict):
+        return dados
+
+    recusas = []
+    for grupo, ocorrencias in status.items():
+        if not isinstance(ocorrencias, list):
+            continue
+        for ocorrencia in ocorrencias:
+            if not isinstance(ocorrencia, dict):
+                continue
+            codigo = ocorrencia.get("Code")
+            if isinstance(codigo, int) and codigo < 0:
+                mensagem = ocorrencia.get("Message") or "sem mensagem"
+                recusas.append(f"{grupo}: {mensagem} (código {codigo})")
+
+    if recusas:
+        raise RecusaBigDataCorp(
+            "A base de consulta recusou a requisição — " + "; ".join(recusas)
+        )
+    return dados
+
+
 class ConsultaCEP:
     @staticmethod
     def consultar(cep):
@@ -102,7 +143,9 @@ class ConsultaCPF:
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=30) # Adicionado timeout
             response.raise_for_status()
-            return response.json()
+            return verificar_recusa_bigdatacorp(response.json())
+        except RecusaBigDataCorp:
+            raise
         except requests.exceptions.RequestException as e:
             # Captura erros de requisição (conexão, timeout, etc.)
             raise requests.exceptions.RequestException(
@@ -147,7 +190,7 @@ class ConsultaCPF:
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=30) # Adicionado timeout
             response.raise_for_status()
-            data = response.json()
+            data = verificar_recusa_bigdatacorp(response.json())
 
             if data and data.get('data') and len(data['data']) > 0:
                 return data['data'][0]
@@ -192,7 +235,10 @@ class ConsultaCPF:
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=30) # Adicionado timeout
             response.raise_for_status() # Levanta um HTTPError para erros 4xx/5xx
-            return response.json() # Retorna o JSON completo da resposta da BigDataCorp
+            # Retorna o JSON completo da resposta, depois de conferir se ela não é uma recusa.
+            return verificar_recusa_bigdatacorp(response.json())
+        except RecusaBigDataCorp:
+            raise
         except requests.exceptions.HTTPError as e:
             # Captura erros HTTP específicos da API externa
             error_detail = e.response.json() if e.response.content else e.response.text
@@ -274,7 +320,7 @@ class ConsultaCNPJ:
             
             # print("Resposta bruta da BigDataCorp:", response.text)
             
-            data = response.json()
+            data = verificar_recusa_bigdatacorp(response.json())
 
             if data and data.get('Result') and isinstance(data['Result'], list) and len(data['Result']) > 0:
                 print("Resultados encontrados da BigDataCorp.")
@@ -299,6 +345,8 @@ class ConsultaCNPJ:
             raise requests.exceptions.RequestException(
                 f"Erro de comunicação com a API externa (BigDataCorp - {status_code_info}): {error_text}"
             )
+        except RecusaBigDataCorp:
+            raise
         except json.JSONDecodeError as e:
             print(f"Erro ao decodificar JSON da BigDataCorp: {e}. Resposta recebida: {response.text if 'response' in locals() else 'N/A'}")
             raise ValueError(f"Resposta inválida da API externa: Não foi possível decodificar JSON. Detalhes: {e}")
