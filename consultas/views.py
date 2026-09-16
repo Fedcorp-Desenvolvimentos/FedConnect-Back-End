@@ -15,7 +15,7 @@ from consultas.services.fedhub_service import FedhubService
 from consultas.utils.renderers import BinaryRenderer
 from .serializers import ConsultaRequestSerializer, HistoricoConsultaSerializer
 from .models import HistoricoConsulta
-from .integrations import ConsultaCEP, ConsultaCPF, ConsultaCNPJ
+from .integrations import ConsultaCEP, ConsultaCPF, ConsultaCNPJ, RecusaBigDataCorp
 from django.contrib.auth import get_user_model
 from rest_framework.pagination import PageNumberPagination
 
@@ -723,6 +723,13 @@ class RealizarConsultaView(APIView):
                     status=status.HTTP_200_OK,
                 )
 
+            except RecusaBigDataCorp as e:
+                # A base externa respondeu 200 recusando a consulta (token, saldo,
+                # origem). Não é erro do operador nem do FedConnect: vira 502 com a
+                # mensagem da própria base, e NADA é gravado no histórico — recusa
+                # não é consulta realizada.
+                logger.error(f"BigDataCorp recusou a consulta {tipo_consulta}: {e}")
+                return Response({"detail": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
             except ValueError as e:
                 # Captura erros de validação de negócio ou erros específicos da camada de integração.
                 # Ex: "CEP não encontrado.", "CPF inválido."
