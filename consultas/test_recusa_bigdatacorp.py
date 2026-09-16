@@ -14,6 +14,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from consultas.integrations import (
+    TEMPO_LIMITE,
     ConsultaCPF,
     RecusaBigDataCorp,
     verificar_recusa_bigdatacorp,
@@ -113,6 +114,18 @@ class ConsultaCPFTests(TestCase):
         post.return_value = _RespostaFalsa(SUCESSO)
 
         self.assertEqual(ConsultaCPF.consultar("00000000191"), SUCESSO)
+
+    @patch("consultas.integrations.requests.post")
+    def test_tempo_limite_separa_conectar_de_ler(self, post):
+        """Um destino que engole pacotes não pode segurar a requisição até o 504."""
+        post.return_value = _RespostaFalsa(SUCESSO)
+
+        ConsultaCPF.consultar("00000000191")
+
+        self.assertEqual(post.call_args.kwargs["timeout"], TEMPO_LIMITE)
+        conectar, ler = TEMPO_LIMITE
+        # O balanceador da DigitalOcean corta em 60 s; o pior caso tem que caber.
+        self.assertLess(conectar + ler, 60)
 
 
 class RealizarConsultaViewTests(APITestCase):
