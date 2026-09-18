@@ -1,0 +1,5 @@
+requisito;origem;design;invariantes;tarefas;testes;questoes
+RF-VOU-002;PA-016|ADR-0008|payload de useComissoes.js;Arquitetura|Modelo de Dados e Contratos|Fluxo Principal|Tratamento de Erros;INV-VOU-001;T-VOU-1.1|T-VOU-1.2|T-VOU-2.1|T-VOU-2.4;CT-VOU-002;PA-016
+RF-VOU-003;PA-016|dados do voucher 20131244 em 2026-09-18;Arquitetura|Modelo de Dados e Contratos|Fluxo Principal|Decisões;INV-VOU-001;T-VOU-1.2|T-VOU-2.2|T-VOU-2.4|T-VOU-3.2|T-VOU-3.3;CT-VOU-003;PA-016
+RF-VOU-004;voucher_controller.py cancelar_comissao (WHERE VOUCHER = ?);Fluxo Principal|Decisões;;T-VOU-1.2|T-VOU-2.3|T-VOU-2.4;CT-VOU-004;PA-016
+RNF-VOU-001;ADR-0008;Tratamento de Erros|Decisões;;T-VOU-2.1;CT-VOU-002;
