@@ -117,3 +117,12 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Trava:** RF-FAT-001, RNF-FAT-001 (`specs/relatorio-faturas-pendentes/`).
 - **Questão:** registrada já com a resposta, para servir de decisão citável nas regras do relatório de faturas pendentes.
 - **Resposta (2026-09-09):** o dono pediu o relatório de faturas pendentes no Financeiro, em Excel e PDF, reproduzindo o legado. **Acesso: financeiro, faturamento e admin.** A definição de pendente (vencimento passado há pelo menos 1 dia e sem baixa) vive no registro do FedHub.
+
+## PA-016 — Consulta por voucher traz parcelas que não estavam no documento
+
+- **Status:** parcialmente fechada (2026-09-18) · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Trava:** RF-VOU-002..004 (`specs/consulta-espelho-voucher/`).
+- **Questão:** o voucher 20131244 (favorecida ACPL ADMINISTRADORA DE IMÓVEIS) saiu com 169 parcelas e R$ 7.391,23; a consulta pelo número devolvia 186 linhas e R$ 8.086,09. As 17 a mais eram parcelas **sem baixa** de três lançamentos gerais — dezesseis já vencidas em 17/09, uma vencendo em 18/09 —, que herdam o número carimbado em `COMISSAO.VOUCHER` porque o carimbo é por lançamento e a consulta expande o lançamento em uma linha por parcela. Com o filtro de baixadas a consulta devolvia exatamente 169. O voucher não tem data de repasse gravada. Entre os 46 vouchers da mesma favorecida, 30 mostravam parcelas pagas depois do repasse (medição de 2026-09-18; a questão de mesmo teor no registro do frontend, em `FedConnect-FrontEnd-Prod/specs/00-registro-de-questoes.md`, traz o levantamento completo).
+- **Resposta (2026-09-18):** **"não tem que trazer parcelas sem baixa, tem que trazer EXATAMENTE o que tem no voucher."** Decisão: o Django registra a composição de cada documento na emissão e a consulta por voucher devolve só isso (ADR-0008). Filtrar por baixa foi recusado como solução.
+- **Em aberto:** parcela sem baixa deve continuar entrando na **lista de emissão** (80 das 209 pendentes da ACPL, R$ 3.995,90)? É regra de negócio; enquanto não decidida, a lista fica como está e o espelho garante que o que saiu no PDF é o que a consulta mostra.
+

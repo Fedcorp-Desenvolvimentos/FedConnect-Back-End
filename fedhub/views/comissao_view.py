@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from consultas.services.fedhub_service import FedhubService
+from fedhub.services import espelho_voucher_service as espelho
 
 from datetime import datetime
 
@@ -262,17 +263,29 @@ class ConsultarComissaoView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             
-            return Response(
-                {
-                    "sucesso": True,
-                    "dados": {
-                        "data": dados.get("data", []),
-                        "total_registros": dados.get("total_registros", 0),
-                    },
-                    "filtros_aplicados": params,
-                },
-                status=status.HTTP_200_OK
-            )
+            linhas = dados.get("data", [])
+            total = dados.get("total_registros", 0)
+            espelho_aplicado = None
+            if params.get("voucher"):
+                # Consulta por voucher devolve EXATAMENTE o que entrou no documento
+                # (RF-VOU-003). O Firebird carimba o lançamento, não a parcela; numa
+                # comissão recorrente as parcelas não pagas na emissão herdariam o
+                # número e apareceriam aqui sem nunca terem estado no PDF.
+                linhas, espelho_aplicado, _ = espelho.aplicar_espelho(params["voucher"], linhas)
+                total = len(linhas)
+            corpo = {
+                "sucesso": True,
+                "dados": {"data": linhas, "total_registros": total},
+                "filtros_aplicados": params,
+            }
+            if espelho_aplicado is not None:
+                corpo["espelho"] = espelho_aplicado
+                if not espelho_aplicado:
+                    corpo["aviso"] = (
+                        "Documento emitido antes do registro de composição: a lista traz todas as "
+                        "parcelas com este número, inclusive as que não estavam no PDF."
+                    )
+            return Response(corpo, status=status.HTTP_200_OK)
             
         except Exception as e:
             logger.error(f"Erro em ConsultarComissaoView: {e}")
@@ -384,6 +397,13 @@ class EmitirReciboComissaoView(APIView):
 
             # Se o FastAPI retornou o PDF em base64
             if resultado.get("pdf_base64"):
+                try:  # espelho do recibo, mesma regra do voucher (RF-VOU-002)
+                    espelho.registrar_emissao(
+                        resultado.get("numero_documento"), "recibo", payload,
+                        usuario=request.user, resultado=resultado,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    logger.error(f"Recibo emitido, mas o espelho não foi gravado: {e}")
                 return Response({
                     "sucesso": True,
                     "numero_documento": resultado.get("numero_documento"),
@@ -467,6 +487,16 @@ class EmitirVoucherComissaoView(APIView):
 
             # Se o FastAPI retornou o PDF em base64
             if resultado.get("pdf_base64"):
+                # Espelho (RF-VOU-002): guarda o que entrou neste documento. Falha
+                # aqui não desfaz a emissão — o PDF já existe e o Firebird já foi
+                # carimbado —, mas fica no log para a consulta não fingir exatidão.
+                try:
+                    espelho.registrar_emissao(
+                        resultado.get("numero_documento"), "voucher", payload,
+                        usuario=request.user, resultado=resultado,
+                    )
+                except Exception as e:  # noqa: BLE001 - registro é acessório da emissão
+                    logger.error(f"Voucher emitido, mas o espelho não foi gravado: {e}")
                 return Response({
                     "sucesso": True,
                     "numero_documento": resultado.get("numero_documento"),
@@ -554,6 +584,7 @@ class CancelarComissaoView(APIView):
 
             if resultado and resultado.get("status") == "success":
                 comissoes_canceladas = resultado.get("total_canceladas", len(comissoes_validas))
+                espelho.marcar_cancelamento({c["voucher"] for c in comissoes_validas})
             else:
                 comissoes_canceladas = 0
                 logger.error(f"Erro no cancelamento em lote: {resultado}")

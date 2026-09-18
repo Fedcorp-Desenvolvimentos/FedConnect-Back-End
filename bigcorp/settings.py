@@ -98,6 +98,9 @@ INSTALLED_APPS = [
     "bank",
     "questionarios",
     "condomed",
+    # fedhub: até 2026-09-18 era só views (proxy do FedHub); passou a ter modelos
+    # com o registro de composição dos vouchers (spec consulta-espelho-voucher).
+    "fedhub",
 ]
 
 MIDDLEWARE = [
