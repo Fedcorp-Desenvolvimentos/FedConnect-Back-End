@@ -22,3 +22,12 @@
 - [x] `bash specs/verificar.sh` sem violações
 - [x] Spec e código não divergem
 - [x] STATUS.md atualizado
+
+## Fase 4 — Redesenho do PDF (PA-017, 2026-09-21)
+
+- [x] T-FAT-4.1 Paleta e estilos do voucher no ReportLab: azul institucional, zebra, verde nos valores, mono nos números _(RF-FAT-003 · CT-FAT-004)_
+- [x] T-FAT-4.2 Faixa do topo desenhada no canvas (degradê em faixas finas, marca, título, emissão e período) e rodapé com filtros e paginação _(RF-FAT-003)_
+- [x] T-FAT-4.3 Cartões de resumo (situação, documentos, faturas, total pendente) _(RF-FAT-003)_
+- [x] T-FAT-4.4 Tabela de uma linha por documento; produto/OBS e dias em atraso viram texto secundário na célula; colunas de pagamento removidas _(RF-FAT-003 · CT-FAT-004)_
+- [x] T-FAT-4.5 Faixa azul de total geral e estado vazio em bloco próprio _(RF-FAT-003)_
+- [x] T-FAT-4.6 Larguras conferidas contra o texto mais largo de cada coluna; amostras de 26 linhas (2 páginas) e vazia renderizadas e conferidas; 18 testes verdes _(CT-FAT-004)_

@@ -69,3 +69,23 @@ Verificação visual do PDF: amostra com 60 documentos sintéticos gerada em 202
 ## Impacto e Riscos
 
 Rotas e arquivos novos; nada existente muda. Risco: o PDF de milhares de documentos leva alguns segundos no ReportLab — dentro do timeout do gunicorn para a base atual (centenas). O FedHub corta em 5.000 linhas.
+
+## Redesenho do PDF (PA-017, 2026-09-21)
+
+O PDF era cópia fiel do relatório do legado e o dono pediu o padrão visual do voucher de comissão. O voucher é HTML renderizado pelo Chromium no FedHub; aqui é ReportLab no Django, então a linguagem foi **traduzida**, não reaproveitada.
+
+| Elemento do voucher | Como ficou no ReportLab |
+|---|---|
+| Faixa navy do topo, com marca e título | Retângulos desenhados no canvas, em 48 faixas finas para simular o degradê; repete em toda página porque está no canvas, não no fluxo |
+| Cartões de metadados | `Table` de duas linhas (rótulo pequeno em cinza, dado grande), fundo claro e divisórias brancas |
+| Tabela com cabeçalho navy e zebrado | `TableStyle` com `BACKGROUND` no cabeçalho, zebra nas ímpares e linha fina embaixo |
+| Valores em verde e monoespaçados | `Courier-Bold` com a cor do voucher |
+| Bloco de total em destaque | Faixa azul de largura total no fim do fluxo |
+
+**Uma linha por documento.** O legado usava dois renglões porque espremia dez colunas, duas delas (data e valor de pagamento) sempre vazias num relatório de pendentes. Removidas, sobra largura para uma linha só: produto e OBS viram texto secundário sob o sacado, e os dias em atraso sob o vencimento.
+
+**Larguras.** Medidas contra o texto mais largo de cada coluna — documento e vencimento têm dez caracteres em Courier 7,2, cerca de 43 pt — porque o ReportLab quebra a palavra em silêncio quando não cabe, e foi o que aconteceu na primeira tentativa.
+
+| Caso | Requisitos | O que prova |
+|---|---|---|
+| CT-FAT-004 | RF-FAT-003 | `linhas_da_tabela` devolve uma linha por documento, cabeçalho de oito colunas sem "PAGAMENTO"/"PAGO", produto e OBS na célula do sacado, vencimento com o atraso; amostras renderizadas: 26 linhas em 2 páginas com cabeçalho repetido e faixa de total na última, e o caso vazio em bloco próprio |

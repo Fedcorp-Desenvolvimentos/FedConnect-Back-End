@@ -1,10 +1,13 @@
 """Planilha e PDF do relatório de faturas pendentes (RF-FAT-002, RF-FAT-003).
 
 Funções puras sobre a resposta do FedHub: recebem `dados` (`data`, `totais`,
-`filtros`, `referencia`) e devolvem bytes. O PDF reproduz o relatório do
-legado (PA-014): A4 retrato, cabeçalho com data, título e "Página N de M",
-linha "DATA: de A até", tabela com dois renglões por documento e rodapé com
-"N Fatura(s)" e TOTAL GERAL.
+`filtros`, `referencia`) e devolvem bytes.
+
+O PDF nasceu como cópia do relatório do legado (PA-014) e foi redesenhado em
+2026-09-21 (PA-036) com a linguagem visual do voucher de comissão: faixa azul
+institucional no topo, cartões de metadados, tabela zebrada com cabeçalho
+azul e uma linha por documento. O conteúdo é o mesmo, menos as duas colunas
+de pagamento do legado — num relatório de pendentes elas são sempre vazias.
 """
 from datetime import date, datetime
 from io import BytesIO
@@ -163,19 +166,39 @@ def gerar_planilha(dados: Dict[str, Any]) -> bytes:
 # PDF
 # ---------------------------------------------------------------------------
 
-AZUL = colors.HexColor("#0F3D5D")
+# Paleta do voucher (`voucher_controller.py`) trazida para o ReportLab.
+AZUL = colors.HexColor("#0F3D5D")          # institucional: faixas e títulos
+AZUL_CLARO = colors.HexColor("#1B5478")    # segundo tom da faixa do topo
 CINZA = colors.HexColor("#64748B")
+CINZA_CLARO = colors.HexColor("#94A3B8")
 PONTILHADO = colors.HexColor("#94A3B8")
+LINHA = colors.HexColor("#E2E8F0")
+ZEBRA = colors.HexColor("#F7FAFC")
+VERDE = colors.HexColor("#1F7A4D")         # valores, como no voucher
 
-_estilo_base = ParagraphStyle("base", fontName="Helvetica", fontSize=7.2, leading=8.6)
+_estilo_base = ParagraphStyle("base", fontName="Helvetica", fontSize=7.4, leading=9)
 _estilo_negrito = ParagraphStyle("negrito", parent=_estilo_base, fontName="Helvetica-Bold")
 _estilo_direita = ParagraphStyle("direita", parent=_estilo_base, alignment=TA_RIGHT)
-_estilo_cabecalho = ParagraphStyle("cab", parent=_estilo_negrito, fontSize=6.8, leading=8, alignment=TA_CENTER)
-_estilo_cinza = ParagraphStyle("cinza", parent=_estilo_base, textColor=CINZA)
+_estilo_cabecalho = ParagraphStyle(
+    "cab", parent=_estilo_negrito, fontSize=6.4, leading=7.6,
+    textColor=colors.white, alignment=TA_LEFT,
+)
+_estilo_cabecalho_dir = ParagraphStyle("cabdir", parent=_estilo_cabecalho, alignment=TA_RIGHT)
+_estilo_cinza = ParagraphStyle("cinza", parent=_estilo_base, fontSize=6.8, leading=8.2, textColor=CINZA)
+_estilo_mono = ParagraphStyle("mono", parent=_estilo_base, fontName="Courier", fontSize=7.2)
+_estilo_valor = ParagraphStyle(
+    "valor", parent=_estilo_base, fontName="Courier-Bold", fontSize=7.6,
+    textColor=VERDE, alignment=TA_RIGHT,
+)
+_estilo_rotulo = ParagraphStyle(
+    "rotulo", parent=_estilo_base, fontName="Helvetica-Bold", fontSize=5.9,
+    leading=7, textColor=CINZA,
+)
+_estilo_dado = ParagraphStyle("dado", parent=_estilo_negrito, fontSize=8.6, leading=10)
 
 
 class _CanvasNumerado(rl_canvas.Canvas):
-    """Canvas que escreve "Página N de M" no fim, quando M já é conhecido."""
+    """Faixa azul no topo e rodapé com "Página N de M" (M só é conhecido no fim)."""
 
     def __init__(self, *args, cabecalho=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -195,119 +218,236 @@ class _CanvasNumerado(rl_canvas.Canvas):
         super().save()
 
     def _desenhar_cabecalho(self, total):
+        """Faixa azul com a marca e o título, e o rodapé da página.
+
+        Desenhar no canvas, e não como elemento do fluxo, é o que faz a faixa
+        sangrar até a borda e se repetir em toda página — como o cabeçalho do
+        voucher de comissão.
+        """
         largura, altura = A4
-        topo = altura - 1.2 * cm
-        self.setFont("Helvetica-Bold", 8)
-        self.drawString(1.5 * cm, topo, self._cabecalho.get("data_geracao", ""))
-        self.setFont("Helvetica-Bold", 14)
-        self.drawCentredString(largura / 2, topo - 0.1 * cm, TITULO)
-        self.setFont("Helvetica-Bold", 8)
-        self.drawRightString(largura - 1.5 * cm, topo, f"Página {self._pageNumber} de {total}")
-        self.setFont("Helvetica-Bold", 8)
-        self.drawCentredString(largura / 2, topo - 0.75 * cm, self._cabecalho.get("linha_periodo", ""))
-        self.setFont("Helvetica", 7)
-        self.drawCentredString(largura / 2, topo - 1.2 * cm, self._cabecalho.get("linha_filtros", ""))
+        faixa = 2.35 * cm
+
+        # Degradê em faixas finas: o ReportLab não tem gradiente, e dois
+        # retângulos deixavam uma emenda visível no meio do cabeçalho.
+        passos = 48
+        for i in range(passos):
+            self.setFillColor(AZUL.clone() if i == 0 else _mistura(AZUL, AZUL_CLARO, i / (passos - 1)))
+            self.rect(largura * i / passos, altura - faixa,
+                      largura / passos + 0.6, faixa, stroke=0, fill=1)
+
+        self.setFillColor(colors.white)
+        self.setFont("Helvetica-Bold", 7.5)
+        self.drawString(1.2 * cm, altura - 0.95 * cm, "GRUPO FEDCORP")
+        self.setFont("Helvetica-Bold", 15)
+        self.drawString(1.2 * cm, altura - 1.75 * cm, "Faturas pendentes")
+
+        self.setFont("Helvetica", 7.5)
+        self.drawRightString(largura - 1.2 * cm, altura - 0.95 * cm,
+                             f"Emitido em {self._cabecalho.get('data_geracao', '')}")
+        self.drawRightString(largura - 1.2 * cm, altura - 1.75 * cm,
+                             self._cabecalho.get("linha_periodo", ""))
+
+        self.setFillColor(CINZA_CLARO)
+        self.setFont("Helvetica", 6.4)
+        self.drawString(1.2 * cm, 0.75 * cm, self._cabecalho.get("linha_filtros", "")[:150])
+        self.drawRightString(largura - 1.2 * cm, 0.75 * cm, f"Página {self._pageNumber} de {total}")
+        self.setStrokeColor(LINHA)
+        self.setLineWidth(0.4)
+        self.line(1.2 * cm, 1.05 * cm, largura - 1.2 * cm, 1.05 * cm)
+
+
+def _mistura(inicio, fim, t: float):
+    """Cor intermediária entre duas, para simular degradê."""
+    return colors.Color(
+        inicio.red + (fim.red - inicio.red) * t,
+        inicio.green + (fim.green - inicio.green) * t,
+        inicio.blue + (fim.blue - inicio.blue) * t,
+    )
+
+
+def _escapar(texto) -> str:
+    return (texto or "").replace("&", "&amp;").replace("<", "&lt;")
 
 
 def _paragrafo(texto, estilo=_estilo_base):
-    return Paragraph((texto or "").replace("&", "&amp;").replace("<", "&lt;"), estilo)
+    """Texto simples: escapa tudo, porque vem do ERP."""
+    return Paragraph(_escapar(texto), estilo)
+
+
+def _paragrafo_duplo(principal, secundario, estilo, cor="#64748B", tamanho="6.6"):
+    """Duas linhas na mesma célula: o dado e, abaixo, o complemento em cinza.
+
+    É o que substitui o segundo renglão do legado. As duas partes são
+    escapadas aqui; as tags são nossas.
+    """
+    if not secundario:
+        return Paragraph(_escapar(principal), estilo)
+    return Paragraph(
+        f"{_escapar(principal)}<br/><font color='{cor}' size='{tamanho}'>{_escapar(secundario)}</font>",
+        estilo,
+    )
 
 
 def linhas_da_tabela(linhas: List[Dict[str, Any]]):
-    """Cabeçalho (2 linhas) + 2 renglões por documento, e os comandos de estilo por par."""
-    dados = [
-        [_paragrafo("", _estilo_cabecalho), _paragrafo("", _estilo_cabecalho), _paragrafo("", _estilo_cabecalho),
-         _paragrafo("", _estilo_cabecalho), _paragrafo("DATA", _estilo_cabecalho),
-         _paragrafo("VALOR", _estilo_cabecalho), _paragrafo("DATA", _estilo_cabecalho), _paragrafo("VALOR", _estilo_cabecalho)],
-        [_paragrafo("FATURA", _estilo_cabecalho), _paragrafo("DOCUMENTO", _estilo_cabecalho),
-         _paragrafo("PRODUTO/OBS", _estilo_cabecalho), _paragrafo("VIGÊNCIA", _estilo_cabecalho),
-         _paragrafo("VENCIMENTO", _estilo_cabecalho), _paragrafo("DOCUMENTO", _estilo_cabecalho),
-         _paragrafo("PAGAMENTO", _estilo_cabecalho), _paragrafo("PAGO", _estilo_cabecalho)],
-    ]
+    """Cabeçalho + **uma** linha por documento, e os comandos de estilo.
+
+    O legado usava dois renglões por documento porque espremia dez colunas,
+    duas delas sempre vazias (data e valor de pagamento — em relatório de
+    pendentes não há pagamento). Sem elas cabe uma linha só, com o que era o
+    segundo renglão virando texto secundário na própria célula: produto e OBS
+    sob o sacado, dias em atraso sob o vencimento.
+    """
+    dados = [[
+        _paragrafo("FATURA", _estilo_cabecalho),
+        _paragrafo("DOCUMENTO", _estilo_cabecalho),
+        _paragrafo("SACADO / PRODUTO", _estilo_cabecalho),
+        _paragrafo("ADMINISTRADORA", _estilo_cabecalho),
+        _paragrafo("VIGÊNCIA", _estilo_cabecalho),
+        _paragrafo("VENCIMENTO", _estilo_cabecalho),
+        _paragrafo("PARC", _estilo_cabecalho),
+        _paragrafo("VALOR", _estilo_cabecalho_dir),
+    ]]
     estilos = [
-        ("SPAN", (2, 0), (3, 0)),
-        ("LINEBELOW", (0, 1), (-1, 1), 0.8, AZUL),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.2),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 2),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ("BACKGROUND", (0, 0), (-1, 0), AZUL),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
     ]
+
     for indice, linha in enumerate(linhas):
-        r1 = 2 + indice * 2
-        r2 = r1 + 1
+        r = indice + 1
+        sacado = linha.get("sacado") or ""
         produto_obs = linha.get("produto") or ""
         if linha.get("obs"):
             produto_obs = f"{produto_obs} — {linha['obs']}" if produto_obs else linha["obs"]
+        vencimento = _data_br(linha.get("vencimento"))
+        dias = linha.get("dias_atraso") or 0
+        atraso = f"há {dias} dias" if dias else "no prazo"
+
         dados.append([
             _paragrafo(str(linha.get("fatura") or ""), _estilo_negrito),
-            _paragrafo(linha.get("documento"), _estilo_negrito),
-            _paragrafo(linha.get("sacado")),
-            _paragrafo(linha.get("vigencia")),
-            _paragrafo(_data_br(linha.get("vencimento"))),
-            _paragrafo(moeda_br(linha.get("valor")), _estilo_direita),
-            _paragrafo(""),
-            _paragrafo(""),
+            _paragrafo(linha.get("documento"), _estilo_mono),
+            _paragrafo_duplo(sacado, produto_obs, _estilo_base),
+            _paragrafo(linha.get("administradora_nome") or linha.get("administradora"), _estilo_cinza),
+            _paragrafo(linha.get("vigencia"), _estilo_mono),
+            _paragrafo_duplo(vencimento, atraso, _estilo_mono, cor="#94A3B8", tamanho="6.2"),
+            _paragrafo(linha.get("parcela"), _estilo_mono),
+            _paragrafo(moeda_br(linha.get("valor")), _estilo_valor),
         ])
-        dados.append([
-            _paragrafo(""),
-            _paragrafo(produto_obs, _estilo_cinza),
-            _paragrafo(""),
-            _paragrafo(""),
-            _paragrafo(linha.get("parcela"), _estilo_negrito),
-            _paragrafo(linha.get("administradora_nome"), _estilo_negrito),
-            _paragrafo(""),
-            _paragrafo(""),
-        ])
-        estilos += [
-            ("SPAN", (1, r2), (3, r2)),          # produto/OBS ocupa documento..vigência
-            ("SPAN", (5, r2), (7, r2)),          # administradora ocupa valor..pago
-            ("LINEBELOW", (0, r2), (-1, r2), 0.4, PONTILHADO, None, (1, 2)),
-        ]
+        if indice % 2:
+            estilos.append(("BACKGROUND", (0, r), (-1, r), ZEBRA))
+        estilos.append(("LINEBELOW", (0, r), (-1, r), 0.4, LINHA))
     return dados, estilos
+
+
+def _cartoes_resumo(dados: Dict[str, Any], largura_util: float) -> Table:
+    """Faixa de metadados abaixo do título, no espírito dos cartões do voucher."""
+    totais = dados.get("totais", {})
+    filtros = dados.get("filtros", {})
+    celulas = [
+        ("SITUAÇÃO", ROTULO_SITUACAO.get(filtros.get("situacao", ""), "Todas")),
+        ("DOCUMENTOS", str(totais.get("documentos", 0))),
+        ("FATURAS", str(totais.get("faturas", 0))),
+        ("TOTAL PENDENTE", moeda_br(totais.get("valor_total", 0))),
+    ]
+    tabela = Table(
+        [[_paragrafo(r, _estilo_rotulo) for r, _ in celulas],
+         [_paragrafo(v, _estilo_dado) for _, v in celulas]],
+        colWidths=[largura_util / len(celulas)] * len(celulas),
+    )
+    tabela.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F7FAFC")),
+        ("BOX", (0, 0), (-1, -1), 0.5, LINHA),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.white),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, 0), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 0),
+        ("TOPPADDING", (0, 1), (-1, 1), 1),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 7),
+        ("TEXTCOLOR", (3, 1), (3, 1), AZUL),
+    ]))
+    return tabela
 
 
 def gerar_pdf(dados: Dict[str, Any]) -> bytes:
     linhas = dados.get("data", [])
     totais = dados.get("totais", {})
     filtros = dados.get("filtros", {})
+    periodo_ini = _data_br(filtros.get("vencimento_ini"))
+    periodo_fim = _data_br(filtros.get("vencimento_fim"))
+    if periodo_ini or periodo_fim:
+        periodo = f"Vencimento {periodo_ini or '...'} a {periodo_fim or '...'}"
+    else:
+        periodo = "Todos os vencimentos"
 
-    periodo_ini = _data_br(filtros.get("vencimento_ini")) or "__/__/____"
-    periodo_fim = _data_br(filtros.get("vencimento_fim")) or "__/__/____"
     cabecalho = {
         "data_geracao": datetime.now().strftime("%d/%m/%Y"),
-        "linha_periodo": f"DATA: {periodo_ini}   A   {periodo_fim}",
+        "linha_periodo": periodo,
         "linha_filtros": " · ".join(descrever_filtros(filtros)),
     }
 
     saida = BytesIO()
     doc = SimpleDocTemplate(
         saida, pagesize=A4,
-        leftMargin=1.2 * cm, rightMargin=1.2 * cm, topMargin=2.9 * cm, bottomMargin=1.3 * cm,
+        leftMargin=1.2 * cm, rightMargin=1.2 * cm, topMargin=2.9 * cm, bottomMargin=1.4 * cm,
         title=TITULO, author="FedConnect",
     )
     largura_util = A4[0] - doc.leftMargin - doc.rightMargin
-    proporcoes = [0.09, 0.12, 0.30, 0.08, 0.11, 0.11, 0.10, 0.09]
+    # Sem as colunas de pagamento sobra largura para o sacado e a administradora.
+    # Medidas conferidas contra o texto mais largo de cada coluna: documento e
+    # vencimento têm 10 caracteres em Courier 7,2 (~43 pt) e não podem quebrar.
+    proporcoes = [0.08, 0.115, 0.27, 0.155, 0.085, 0.115, 0.06, 0.12]
     larguras = [largura_util * p for p in proporcoes]
 
     dados_tabela, estilos = linhas_da_tabela(linhas)
-    tabela = Table(dados_tabela, colWidths=larguras, repeatRows=2)
+    tabela = Table(dados_tabela, colWidths=larguras, repeatRows=1)
     tabela.setStyle(TableStyle(estilos))
 
     rodape = Table(
         [[
-            _paragrafo(f"{totais.get('faturas', 0)} Fatura(s) · {totais.get('documentos', len(linhas))} documento(s)", _estilo_negrito),
-            _paragrafo("TOTAL GERAL", ParagraphStyle("tg", parent=_estilo_negrito, fontSize=8.5, alignment=TA_RIGHT)),
-            _paragrafo(moeda_br(totais.get("valor_total", 0)), ParagraphStyle("tv", parent=_estilo_negrito, fontSize=8.5, alignment=TA_RIGHT)),
-            _paragrafo(moeda_br(totais.get("valor_pago", 0)), ParagraphStyle("tp", parent=_estilo_negrito, fontSize=8.5, alignment=TA_RIGHT)),
+            _paragrafo(
+                f"{totais.get('faturas', 0)} fatura(s) · {totais.get('documentos', len(linhas))} documento(s)",
+                ParagraphStyle("rf", parent=_estilo_base, fontSize=8, textColor=colors.white),
+            ),
+            _paragrafo("TOTAL GERAL", ParagraphStyle(
+                "rt", parent=_estilo_negrito, fontSize=8, textColor=colors.white, alignment=TA_RIGHT)),
+            _paragrafo(moeda_br(totais.get("valor_total", 0)), ParagraphStyle(
+                "rv", parent=_estilo_negrito, fontName="Courier-Bold", fontSize=11,
+                textColor=colors.white, alignment=TA_RIGHT)),
         ]],
-        colWidths=[largura_util * 0.5, largura_util * 0.2, largura_util * 0.15, largura_util * 0.15],
+        colWidths=[largura_util * 0.55, largura_util * 0.2, largura_util * 0.25],
     )
-    rodape.setStyle(TableStyle([("LINEABOVE", (0, 0), (-1, 0), 0.8, AZUL), ("TOPPADDING", (0, 0), (-1, 0), 6)]))
+    rodape.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), AZUL),
+        ("VALIGN", (0, 0), (-1, 0), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, 0), 9),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 9),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+    ]))
 
-    elementos = [tabela, Spacer(1, 0.3 * cm), rodape]
-    if not linhas:
-        elementos.insert(1, _paragrafo("Nenhuma fatura pendente para os filtros informados.", _estilo_cinza))
-
+    elementos = [_cartoes_resumo(dados, largura_util), Spacer(1, 0.45 * cm)]
+    if linhas:
+        elementos += [tabela, Spacer(1, 0.35 * cm), rodape]
+    else:
+        # Sem linhas, uma tabela só com cabeçalho e uma faixa de total zerada
+        # ficam sem sentido: entra um aviso centralizado no lugar das duas.
+        vazio = Table(
+            [[_paragrafo("Nenhuma fatura pendente para os filtros informados.",
+                         ParagraphStyle("vz", parent=_estilo_base, fontSize=9,
+                                        textColor=CINZA, alignment=TA_CENTER))]],
+            colWidths=[largura_util],
+        )
+        vazio.setStyle(TableStyle([
+            ("BOX", (0, 0), (-1, -1), 0.5, LINHA),
+            ("BACKGROUND", (0, 0), (-1, -1), ZEBRA),
+            ("TOPPADDING", (0, 0), (-1, -1), 26),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 26),
+        ]))
+        elementos.append(vazio)
     doc.build(elementos, canvasmaker=lambda *a, **k: _CanvasNumerado(*a, cabecalho=cabecalho, **k))
     return saida.getvalue()
