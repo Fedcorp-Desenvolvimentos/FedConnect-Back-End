@@ -1,6 +1,6 @@
 # Tarefas — Consulta de voucher devolve exatamente o que entrou no documento
 
-> **Rastreabilidade** — RF: RF-VOU-002..004 · RNF: RNF-VOU-001 · ADR: ADR-0008 · Questões: PA-016
+> **Rastreabilidade** — RF: RF-VOU-002..005 · RNF: RNF-VOU-001 · ADR: ADR-0008 · Questões: PA-016
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-18
 > **Baseado em:** `design.md` (em revisão, 2026-09-18). Código feito na branch `feat/consulta-espelho-voucher` no dia da decisão do dono; aprovação formal do design e destas tarefas pendente.
 
@@ -22,3 +22,9 @@
 - [ ] T-VOU-3.2 Emitir um voucher de teste e consultar pelo número: `total_registros` igual ao número de linhas do PDF e `espelho: true` _(INV-VOU-001)_
 - [x] T-VOU-3.3 Front: tela de consulta mostra o `aviso` quando `espelho` é `false` — feito em 2026-09-18 na branch `feat/planilha-espelho-voucher` do frontend (`useConsultaComissao.js` + `ConsultaComissao.jsx`), build OK _(RF-VOU-003)_
 - [ ] T-VOU-3.4 Decidir a pergunta em aberto de PA-016: parcela sem baixa deve entrar na lista de emissão?
+
+## Fase 4: Documentos anteriores ao registro
+
+- [x] T-VOU-4.1 Campo `reconstituido` em `VoucherEmitido` (migração 0002) e aviso na consulta quando o registro é inferido _(RF-VOU-005 · CT-VOU-005)_
+- [x] T-VOU-4.2 `manage.py reconstituir_espelho_voucher` (simula por padrão, `--confirmar` grava, `--favorecido`, `--refazer`); 8 testes verdes em 2026-09-18 _(RF-VOU-005 · CT-VOU-005)_
+- [ ] T-VOU-4.3 Rodar em produção para os vouchers antigos que o financeiro precisar consultar, conferindo o total contra o PDF de cada um _(RF-VOU-005)_

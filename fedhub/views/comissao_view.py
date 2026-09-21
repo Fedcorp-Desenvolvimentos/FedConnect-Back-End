@@ -271,7 +271,7 @@ class ConsultarComissaoView(APIView):
                 # (RF-VOU-003). O Firebird carimba o lançamento, não a parcela; numa
                 # comissão recorrente as parcelas não pagas na emissão herdariam o
                 # número e apareceriam aqui sem nunca terem estado no PDF.
-                linhas, espelho_aplicado, _ = espelho.aplicar_espelho(params["voucher"], linhas)
+                linhas, espelho_aplicado, registro = espelho.aplicar_espelho(params["voucher"], linhas)
                 total = len(linhas)
             corpo = {
                 "sucesso": True,
@@ -280,6 +280,13 @@ class ConsultarComissaoView(APIView):
             }
             if espelho_aplicado is not None:
                 corpo["espelho"] = espelho_aplicado
+                if espelho_aplicado and registro is not None and registro.reconstituido:
+                    # Registro inferido das parcelas baixadas, não gravado na
+                    # emissão: a lista reproduz o PDF, mas sem as retenções.
+                    corpo["aviso"] = (
+                        "Composição reconstituída a partir das parcelas pagas: confere com o documento, "
+                        "mas as retenções não são recuperáveis."
+                    )
                 if not espelho_aplicado:
                     corpo["aviso"] = (
                         "Documento emitido antes do registro de composição: a lista traz todas as "

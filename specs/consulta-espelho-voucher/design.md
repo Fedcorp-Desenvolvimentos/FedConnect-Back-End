@@ -1,6 +1,6 @@
 # Design — Consulta de voucher devolve exatamente o que entrou no documento
 
-> **Rastreabilidade** — RF: RF-VOU-002..004 · RNF: RNF-VOU-001 · ADR: ADR-0008 · Questões: PA-016
+> **Rastreabilidade** — RF: RF-VOU-002..005 · RNF: RNF-VOU-001 · ADR: ADR-0008 · Questões: PA-016
 > **Status:** em revisão · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-18
 > **Baseado em:** `requirements.md` (aprovado em 2026-09-18)
 
@@ -59,7 +59,7 @@ O front atual ignora campos que não conhece; mostrar o `aviso` é tarefa dele (
 - **Memória no Django, não no Firebird (ADR-0008).** O ERP legado não tem coluna por parcela e não se altera o schema dele. O Django já intermedeia emissão e consulta, tem Postgres e migrações.
 - **Filtrar, não substituir.** A consulta continua devolvendo as linhas como o FedHub as monta (com todos os campos que a tela usa); o registro só decide quais passam. Assim a tela não precisa de novo contrato.
 - **Falha do registro não derruba a emissão.** A alternativa (transação que reverte o carimbo) exigiria uma chamada de desfazer no FedHub e deixaria um PDF órfão no cliente.
-- **Vouchers antigos não são reconstituídos.** Não há dado para isso: a data de repasse falta em parte deles e a lista de emissão não fica registrada. A resposta avisa.
+- **Vouchers antigos são reconstituíveis por comando, nunca automaticamente.** A inferência usa as parcelas hoje baixadas — foi assim que o 20131244 fechou em 169 —, mas a lista de baixas cresce ao longo do dia (PA-016, complemento), então o registro nasce marcado `reconstituido` e a consulta avisa. Sem rodar o comando, a resposta segue dizendo que não é espelho.
 
 ## Divergência vs. produção
 
@@ -72,6 +72,7 @@ O front atual ignora campos que não conhece; mostrar o `aviso` é tarefa dele (
 |---|---|---|
 | CT-VOU-002 | RF-VOU-002, RNF-VOU-001 | Registro grava documento, totais e 3 itens com a chave natural; reemissão do mesmo número soma 1 item sem duplicar; sem número levanta erro; a view de emissão grava com o usuário logado |
 | CT-VOU-003 | RF-VOU-003, INV-VOU-001 | De 5 linhas do FedHub (2 registradas da fatura 176779, 1 não paga, 1 paga depois, 1 de outra fatura registrada) voltam exatamente as 3 registradas; favorecido `5912` casa com `0000005912` e fatura `0000176779` com `176779`; voucher sem registro volta inteiro com `espelho: false` e `aviso`; consulta sem `voucher` não ganha os campos |
+| CT-VOU-005 | RF-VOU-005 | Comando simula por padrão; `--confirmar` grava marcando `reconstituido`, com bruto somado e retenções zeradas; não toca registro gravado na emissão; `--refazer` só vale para reconstituído; sem parcela baixada não grava; `--favorecido` descobre os números; consulta de registro reconstituído avisa |
 | CT-VOU-004 | RF-VOU-004 | Cancelamento marca `cancelado_em` uma vez, mantém os 3 itens, é idempotente; a view de cancelamento marca após sucesso do FedHub |
 
 `fedhub/test_consulta_espelho_voucher.py`: 12 testes, FedHub falsificado por `unittest.mock.patch`, banco sqlite em memória (`--settings=settings_sqlite`).
