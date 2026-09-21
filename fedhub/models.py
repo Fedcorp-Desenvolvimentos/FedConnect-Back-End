@@ -33,6 +33,10 @@ class VoucherEmitido(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="vouchers_emitidos"
     )
     cancelado_em = models.DateTimeField(null=True, blank=True)
+    reconstituido = models.BooleanField(
+        "registro inferido das parcelas baixadas, não gravado na emissão",
+        default=False,
+    )
 
     class Meta:
         verbose_name = "voucher emitido"

@@ -1,6 +1,6 @@
 # Requisitos — Consulta de voucher devolve exatamente o que entrou no documento
 
-> **Rastreabilidade** — RF: RF-VOU-002..004 · RNF: RNF-VOU-001 · ADR: ADR-0008 · Questões: PA-016
+> **Rastreabilidade** — RF: RF-VOU-002..005 · RNF: RNF-VOU-001 · ADR: ADR-0008 · Questões: PA-016
 > **Status:** aprovado · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-18
 > **Aprovado em 2026-09-18 pela decisão do dono, registrada em PA-016: "não tem que trazer parcelas sem baixa, tem que trazer EXATAMENTE o que tem no voucher".**
 
@@ -46,6 +46,16 @@
 ### RF-VOU-004: Cancelamento preserva o registro
 
 - **QUANDO** `POST /comissoes/cancelar/` cancela com sucesso no FedHub, **ENTÃO** o sistema **DEVE** gravar `cancelado_em` nos registros dos vouchers envolvidos e manter os itens, para auditoria. `[E]` o FedHub cancela o voucher inteiro (`WHERE VOUCHER = ?`)
+
+### RF-VOU-005: Reconstituir documentos anteriores ao registro
+
+**Como** financeiro, **quero** poder recompor o registro de vouchers antigos, **para** que a consulta deles também reproduza o documento.
+
+- **QUANDO** rodo `manage.py reconstituir_espelho_voucher <números>` ou `--favorecido <código>`, **ENTÃO** o sistema **DEVE** montar o registro a partir das parcelas hoje **baixadas** de cada voucher e marcar `reconstituido`. `[D]` ADR-0008
+- **QUANDO** o comando roda sem `--confirmar`, **ENTÃO** ele **DEVE** apenas simular, listando o que gravaria.
+- **SE** o voucher já tem registro gravado na emissão, **ENTÃO** o comando **NÃO DEVE** tocá-lo; registro reconstituído só é refeito com `--refazer`.
+- **QUANDO** a consulta devolve um registro reconstituído, **ENTÃO** a resposta **DEVE** avisar que a composição foi inferida e que as retenções não são recuperáveis. `[E]` retenções eram escolha da tela, não ficam no ERP
+- **SE** uma parcela que não estava no documento for paga antes da reconstituição, **ENTÃO** ela entrará no registro: a inferência vale para o estado de hoje, e a lista de baixas cresce ao longo do dia (PA-016, complemento). `[P]` PA-016
 
 ## Requisitos Não Funcionais
 
