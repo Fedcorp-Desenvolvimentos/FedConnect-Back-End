@@ -1024,15 +1024,26 @@ class FedhubService:
             logger.error(f"Erro ao consultar comissões: {e}")
             return None
     
-    def buscar_produtos_por_favorecido(self, favorecido: str) -> Optional[Dict[str, Any]]:
+    def buscar_produtos_por_favorecido(
+        self, favorecido: str, com_voucher: Optional[bool] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Busca lista de produtos distintos por favorecido
-        GET /api/vouchers/produtos-por-favorecido?favorecido=...
+        GET /api/vouchers/produtos-por-favorecido?favorecido=...&com_voucher=...
+
+        `com_voucher` escolhe de que lado do voucher ler: True = comissões já
+        emitidas (tela de Consulta), False = comissões sem voucher (tela de
+        Emissão). None omite o parâmetro e deixa o FedHub aplicar o padrão,
+        para que um FedHub antigo continue respondendo.
         """
         try:
+            params = {"favorecido": favorecido}
+            if com_voucher is not None:
+                params["com_voucher"] = "true" if com_voucher else "false"
+
             response = requests.get(
                 f"{self.base_url}/api/vouchers/produtos-por-favorecido",
-                params={"favorecido": favorecido},
+                params=params,
                 headers=get_headers(),
                 timeout=30,
             )
