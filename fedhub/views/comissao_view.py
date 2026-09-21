@@ -301,6 +301,13 @@ class ConsultarComissaoView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+def _interpretar_com_voucher(bruto):
+    """Lê o `com_voucher` da query string; devolve None quando não foi enviado."""
+    if bruto is None or str(bruto).strip() == '':
+        return None
+    return str(bruto).strip().lower() in ('1', 'true', 't', 'sim', 'yes')
+
+
 class BuscarProdutosPorFavorecidoView(APIView):
     """
     Retorna lista de produtos distintos para um favorecido
@@ -318,8 +325,16 @@ class BuscarProdutosPorFavorecidoView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             
+            # `com_voucher` diz de que lado do voucher ler os produtos: a tela
+            # de Emissão lista comissões sem voucher e manda `false`, a de
+            # Consulta lista as emitidas e manda `true`. Ausente, repassamos
+            # None e o FedHub aplica o padrão antigo (emitidas).
+            com_voucher = _interpretar_com_voucher(
+                request.query_params.get('com_voucher')
+            )
+
             service = FedhubService()
-            dados = service.buscar_produtos_por_favorecido(favorecido)
+            dados = service.buscar_produtos_por_favorecido(favorecido, com_voucher)
             
             if not dados:
                 return Response(
