@@ -197,16 +197,35 @@ class FaturasPendentesPDFTests(_Base):
 class DocumentosTests(APITestCase):
     """Funções puras: linhas da tabela, filtros descritos, moeda."""
 
-    def test_dois_renglioes_por_documento_com_produto_obs_e_administradora(self):
+    def test_uma_linha_por_documento_com_produto_obs_e_administradora(self):
+        """Redesenho de 2026-09-21 (PA-036): o segundo renglão do legado virou
+        texto secundário dentro da célula, e as colunas de pagamento saíram."""
         dados, estilos = documentos.linhas_da_tabela([linha(obs="Aguardando síndico")])
 
-        self.assertEqual(len(dados), 4)  # 2 de cabeçalho + 2 do documento
-        self.assertIn("PROGRAMA DE GESTÃO", dados[3][1].text)
-        self.assertIn("Aguardando síndico", dados[3][1].text)
-        self.assertEqual(dados[3][4].text, "4/1")
-        self.assertEqual(dados[3][5].text, "ADMINISTRADORA EXEMPLO LTDA")
-        self.assertEqual(dados[2][5].text, "R$ 190,80")
-        self.assertTrue(any(e[0] == "LINEBELOW" and e[1] == (0, 3) for e in estilos))
+        self.assertEqual(len(dados), 2)  # 1 de cabeçalho + 1 do documento
+        cabecalho = [c.text for c in dados[0]]
+        self.assertEqual(len(cabecalho), 8)
+        self.assertNotIn("PAGAMENTO", " ".join(cabecalho))
+        self.assertNotIn("PAGO", " ".join(cabecalho))
+
+        celulas = dados[1]
+        self.assertIn("PROGRAMA DE GESTÃO", celulas[2].text)      # produto sob o sacado
+        self.assertIn("Aguardando síndico", celulas[2].text)      # e a OBS junto
+        self.assertIn("CONDOMINIO", celulas[2].text)
+        self.assertEqual(celulas[3].text, "ADMINISTRADORA EXEMPLO LTDA")
+        self.assertEqual(celulas[6].text, "4/1")
+        self.assertIn("R$ 190,80", celulas[7].text)
+        self.assertIn("20/05/2026", celulas[5].text)              # vencimento e atraso juntos
+        self.assertTrue(any(e[0] == "BACKGROUND" and e[1] == (0, 0) for e in estilos))
+
+    def test_cabecalho_da_tabela_e_o_do_relatorio_redesenhado(self):
+        dados, _ = documentos.linhas_da_tabela([])
+
+        self.assertEqual(
+            [c.text for c in dados[0]],
+            ["FATURA", "DOCUMENTO", "SACADO / PRODUTO", "ADMINISTRADORA",
+             "VIGÊNCIA", "VENCIMENTO", "PARC", "VALOR"],
+        )
 
     def test_descricao_dos_filtros_e_moeda(self):
         texto = documentos.descrever_filtros({"situacao": "a_vencer", "classificacao": "deposito_cc", "administradora": "5"})

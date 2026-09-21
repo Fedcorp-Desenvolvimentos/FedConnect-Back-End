@@ -127,3 +127,10 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Complemento (2026-09-18, fim do dia):** a lista de emissão **muda ao longo do dia**, porque a baixa do retorno bancário entra aos poucos. Medido na ACPL no mesmo dia: 129 parcelas baixadas às 11h10, 169 no momento da emissão do voucher 20131244, 171 às 15h22 — as 42 que entraram no intervalo venceram em 17/09 e foram baixadas em 17/09, mas só apareceram no sistema durante o dia 18. Cancelado o voucher, as comissões voltaram à lista e ela mostrou 171. **Não é divergência: é o conjunto de parcelas pagas crescendo.** É exatamente por isso que o documento precisa de composição registrada, e não de um filtro recalculado.
 - **Em aberto:** parcela sem baixa deve continuar entrando na **lista de emissão** (80 das 209 pendentes da ACPL, R$ 3.995,90)? É regra de negócio; enquanto não decidida, a lista fica como está e o espelho garante que o que saiu no PDF é o que a consulta mostra.
 
+## PA-017 — PDF de faturas pendentes no padrão visual do voucher
+
+- **Status:** fechada (2026-09-21) · **Dono:** Ingrid Aylana · **Severidade:** baixa
+- **Trava:** RF-FAT-003 (`specs/relatorio-faturas-pendentes/`).
+- **Questão:** o PDF foi entregue como cópia fiel do relatório do legado (PA-014) e o dono perguntou se não dava para deixá-lo visualmente melhor, no padrão do voucher de comissão.
+- **Resposta (2026-09-21):** sim. O PDF passa a usar a linguagem visual do voucher — faixa azul institucional, cartões de resumo, tabela zebrada com cabeçalho azul, valores em verde monoespaçado e faixa de total no fim. As duas colunas de pagamento do legado saem: em relatório de pendentes são sempre vazias, e sem elas cabe uma linha por documento em vez de dois renglões. O conteúdo é o mesmo; muda a forma. PA-014 continua valendo para as regras de negócio do relatório, não para o layout.
+

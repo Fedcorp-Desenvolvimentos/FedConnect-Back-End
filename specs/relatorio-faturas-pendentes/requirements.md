@@ -1,6 +1,6 @@
 # Requisitos — Relatório de faturas pendentes (proxy e exportações)
 
-> **Rastreabilidade** — RF: RF-FAT-001..003 · RNF: RNF-FAT-001..002 · Questões: PA-014, PA-015
+> **Rastreabilidade** — RF: RF-FAT-001..003 · RNF: RNF-FAT-001..002 · Questões: PA-014, PA-015, PA-017
 > **Status:** aprovado · **Dono:** Ingrid Aylana · **Atualizado:** 2026-09-09
 > **Aprovado pelo dono em 2026-09-09** (respostas às questões + confirmação da situação A vencer / Vencidas / Todas). **PA-014 fechada em 2026-09-09 com o PDF do legado como referência de layout.**
 
@@ -39,7 +39,7 @@
 
 **Como** analista, **quero** o relatório em PDF, **para** imprimir ou anexar, como fazia no legado.
 
-- **QUANDO** consulto `GET faturas/pendentes/exportar-pdf/`, **ENTÃO** o sistema **DEVE** devolver um PDF **A4 retrato** com o layout do legado: data de geração, título, "Página N de M", linha "DATA: de A até" com o período de vencimento filtrado e a situação escolhida; tabela com cabeçalho em duas linhas e **dois renglões por documento** (fatura, documento, sacado, vigência, vencimento, valor; depois produto/OBS, periodicidade e parcela, administradora), separador pontilhado; rodapé com "N Fatura(s)", TOTAL GERAL e total pago (R$ 0,00). Sem subtotais por grupo. `[D]` PA-014
+- **QUANDO** consulto `GET faturas/pendentes/exportar-pdf/`, **ENTÃO** o sistema **DEVE** devolver um PDF **A4 retrato** no padrão visual do voucher de comissão (PA-017): faixa azul institucional no topo com marca, título, data de emissão e período; cartões de resumo com situação, documentos, faturas e total; tabela com cabeçalho azul, zebrado e **uma linha por documento**; faixa azul de total geral no fim; rodapé com filtros e "Página N de M". As colunas de data e valor de pagamento do legado **NÃO DEVEM** existir — em relatório de pendentes são sempre vazias. `[D]` PA-017; `[E]` layout de `_gerar_html_voucher` no FedHub. Histórico: até 2026-09-21 o PDF era cópia do legado (PA-014), com dois renglões por documento. `[D]` PA-014 (substituída em parte por PA-017)ATA: de A até" com o período de vencimento filtrado e a situação escolhida; tabela com cabeçalho em duas linhas e **dois renglões por documento** (fatura, documento, sacado, vigência, vencimento, valor; depois produto/OBS, periodicidade e parcela, administradora), separador pontilhado; rodapé com "N Fatura(s)", TOTAL GERAL e total pago (R$ 0,00). Sem subtotais por grupo. `[D]` PA-014
 - **QUANDO** o relatório passa de uma página, **ENTÃO** o cabeçalho da tabela **DEVE** repetir em cada página e o rodapé trazer "página N de M". `[E]` ReportLab platypus já faz isso em `condomed/documentos.py`
 - **QUANDO** consulto sem filtros, **ENTÃO** o sistema **DEVE** gerar mesmo assim (todas as pendentes), respeitando o teto de linhas do FedHub. `[D]` PA-014
 

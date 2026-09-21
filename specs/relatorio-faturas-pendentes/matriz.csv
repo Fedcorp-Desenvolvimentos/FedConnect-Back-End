@@ -1,6 +1,6 @@
 requisito;origem;design;invariantes;tarefas;testes;questoes
 RF-FAT-001;fedhub/views/faturas_view.py|FedHub-Backend specs relatorio-faturas-pendentes RF-FAT-001;Arquitetura|Modelo de Dados e Contratos|Tratamento de Erros;;T-FAT-1.2|T-FAT-1.4|T-FAT-1.5;CT-FAT-001;
 RF-FAT-002;consultas/views.py ExportarFaturasComBoletosExcel|PA-014;Arquitetura|Modelo de Dados e Contratos|Decisões;;T-FAT-1.3|T-FAT-1.4|T-FAT-1.5|T-FAT-2.1;CT-FAT-002;PA-014
-RF-FAT-003;condomed/documentos.py|PA-014;Arquitetura|Modelo de Dados e Contratos|Decisões;;T-FAT-1.3|T-FAT-1.4|T-FAT-1.5|T-FAT-2.1;CT-FAT-003;PA-014
+RF-FAT-003;condomed/documentos.py|PA-014|PA-017;Arquitetura|Modelo de Dados e Contratos|Decisões;;T-FAT-1.3|T-FAT-1.4|T-FAT-1.5|T-FAT-2.1|T-FAT-4.1|T-FAT-4.2|T-FAT-4.3|T-FAT-4.4|T-FAT-4.5|T-FAT-4.6;CT-FAT-003|CT-FAT-004;PA-014|PA-017
 RNF-FAT-001;users/permissions.py IsCondomedOrAdmin|PA-015;Arquitetura|Tratamento de Erros;;T-FAT-1.1|T-FAT-1.5;CT-FAT-001;
 RNF-FAT-002;FedHub-Backend specs relatorio-faturas-pendentes RF-FAT-001;Modelo de Dados e Contratos|Divergência vs. produção;;T-FAT-1.2;CT-FAT-002;
