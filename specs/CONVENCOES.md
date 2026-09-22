@@ -32,6 +32,7 @@ Fixos. Não crie novos sem alterar esta tabela.
 | `INT` | integrações externas (BigDataCorp, BrasilAPI, FedBnk, Monday, e-mail) |
 | `CIP` | cursos CIPA da Condomed (turmas, inscritos, espelho na agenda) — app `condomed` |
 | `FAT` | relatórios de faturas do Financeiro (proxy ao FedHub e exportações Excel/PDF) — app `fedhub` |
+| `IEX` | indicadores executivos da produção de seguros (espelho da CORP, agregações por período e seguradora) — app `indicadores` |
 
 ### 2.2 Regras de identificador
 

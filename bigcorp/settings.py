@@ -101,6 +101,9 @@ INSTALLED_APPS = [
     # fedhub: até 2026-09-18 era só views (proxy do FedHub); passou a ter modelos
     # com o registro de composição dos vouchers (spec consulta-espelho-voucher).
     "fedhub",
+    # indicadores: espelho da CORP e agregações do painel executivo
+    # (spec indicadores-executivos, ADR-0009). Carga por management command.
+    "indicadores",
 ]
 
 MIDDLEWARE = [

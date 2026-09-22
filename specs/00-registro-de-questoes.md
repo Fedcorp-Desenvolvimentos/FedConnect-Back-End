@@ -1,6 +1,6 @@
 # Registro de questões abertas
 
-> **Atualizado:** 2026-08-31
+> **Atualizado:** 2026-09-22
 
 Toda `PA-###` citada em qualquer spec deste repositório nasce e vive aqui. Questão fechada não some: recebe status `fechada`, a resposta e a data. O número nunca é reciclado.
 
@@ -133,4 +133,35 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Trava:** RF-FAT-003 (`specs/relatorio-faturas-pendentes/`).
 - **Questão:** o PDF foi entregue como cópia fiel do relatório do legado (PA-014) e o dono perguntou se não dava para deixá-lo visualmente melhor, no padrão do voucher de comissão.
 - **Resposta (2026-09-21):** sim. O PDF passa a usar a linguagem visual do voucher — faixa azul institucional, cartões de resumo, tabela zebrada com cabeçalho azul, valores em verde monoespaçado e faixa de total no fim. As duas colunas de pagamento do legado saem: em relatório de pendentes são sempre vazias, e sem elas cabe uma linha por documento em vez de dois renglões. O conteúdo é o mesmo; muda a forma. PA-014 continua valendo para as regras de negócio do relatório, não para o layout.
+
+## PA-018 — Indicadores executivos da produção: pedido, origem dos dados e acesso
+
+- **Status:** fechada (2026-09-22) · **Dono:** Hamilton (gestor comercial) · **Severidade:** alta
+- **Trava:** RF-IEX-001..007, RNF-IEX-001 (`specs/indicadores-executivos/`).
+- **Questão:** registrada já com a resposta, para servir de decisão citável.
+- **Resposta (2026-09-22):** o gestor pediu um painel de indicadores da produção de seguros dentro do FedConnect, "sem fugir do padrão e da stack": filtro por dia/semana/mês e, por seguradora, valor fechado, renovações, captações novas, comissão trabalhada e não fechadas. Entregou um protótipo HTML funcional com um snapshot real da **API CORP** (sistema de gestão da corretora) e um documento técnico (`DEFINICAO-TECNICA.md`) com as regras de negócio já definidas por ele. Decisões por mensagem no mesmo dia: (1) é tela nativa, vai virar **um tile numa área de indicadores do FedConnect, "o primeiro de muitos"**; (2) acesso **"pode ser pra todos"**, público-alvo diretoria, sem controle de acesso por enquanto; (3) ordem de trabalho: **construir o indicador localmente no molde do FedConnect** a partir do snapshot, **depois pedir à Ingryd acesso ao lake**, depois ligar nos dados reais. A origem definitiva é o lake (que já tem uma POC lendo `/documento` da CORP), não a API CORP direta nem planilha.
+
+## PA-019 — Prêmio e comissão só existem para documentos enriquecidos
+
+- **Status:** aberta · **Dono:** Hamilton (gestor comercial) · **Severidade:** alta
+- **Trava:** RF-IEX-003, RF-IEX-004 (valor fechado e comissão trabalhada).
+- **Questão:** `pretot` (prêmio) e `val_c` (comissão) não vêm em `/producao`; vêm só do detalhe `/documento`. No snapshot de 22/09/2026 há valor em 1.575 de 25.760 documentos: em 2026, 1.320 de 7.145 emitidos (todos os 384 de setembro, quase nenhum dos meses anteriores — medição após a carga local em 22/09/2026; corrige a primeira leitura, que dizia "nenhum de 2026"). Fora do mês corrente os dois indicadores monetários saem com cobertura baixa ou em branco enquanto o enriquecimento não rodar. Hipótese de trabalho: o endpoint devolve a soma **e a cobertura** (quantos documentos do período têm valor) e a tela mostra a lacuna em vez de zero, exatamente como o protótipo. Quem roda o enriquecimento — o lake da Ingryd ou o FedConnect — decide se a v1 entrega três ou cinco números.
+
+## PA-020 — Lacunas do contrato da CORP: `codfil`, letras de `tipdoc`, `renovacao_situacao = 5`, corte do histórico
+
+- **Status:** aberta · **Dono:** Hamilton (gestor comercial) · **Severidade:** média
+- **Trava:** RF-IEX-001 (chave e universo do espelho).
+- **Questão:** (a) a `DEFINICAO-TECNICA.md` declara o grão `(codfil, nosnum)`, mas o snapshot só traz `nosnum` — existe mais de uma filial? Hipótese: chave por `nosnum` até prova em contrário, com `codfil` opcional no modelo. (b) `tipdoc` tem valores A, X, C, R, I, M, F; só A foi explicado ("apólice"). Hipótese: universo padrão só A, toggle para incluir os demais. (c) `renovacao_situacao = 5` não tem legenda (146 documentos). Hipótese: exibir como "sem legenda". (d) a base começa em 2024; em 2024 quase tudo aparece como captação porque não há histórico anterior. Hipótese: sem corte declarado, a tela avisa a lacuna.
+
+## PA-021 — Ingestão dos dados vivos: lake, periodicidade e agendamento
+
+- **Status:** aberta · **Dono:** Hamilton (gestor comercial) / Ingryd (lake) · **Severidade:** alta
+- **Trava:** RNF-IEX-004 (fase 2 — dados reais).
+- **Questão:** o FedConnect vai ler do lake (qual tecnologia, qual credencial, qual periodicidade) ou receber carga empurrada? O repositório não tem hoje nenhum job agendado na DigitalOcean. Hipótese de trabalho: a v1 carrega o snapshot por management command a partir de arquivo local fora do git; a fase 2 ganha spec própria de ingestão quando a Ingryd der o acesso.
+
+## PA-022 — Dado pessoal nas listas: mascaramento
+
+- **Status:** parcialmente fechada (2026-09-22) · **Dono:** Hamilton (gestor comercial) · **Severidade:** média
+- **Trava:** RNF-IEX-001.
+- **Questão:** o gestor disse que **"não tem dados sensíveis"**. Os cartões e as agregações de fato não têm. As listas de composição e de não fechadas, porém, trazem nome do cliente e CPF/CNPJ (13.768 clientes com documento no snapshot, 7.103 pessoas físicas). Hipótese de trabalho, igual ao protótipo: CPF sai mascarado (`***.456.789-**`), CNPJ sai completo, nome sai completo. Snapshot com dado real nunca entra em repositório, spec ou teste versionado; os testes usam dados sintéticos.
 
