@@ -31,6 +31,8 @@ Fixos. Não crie novos sem alterar esta tabela.
 | `USR` | usuários, autenticação, permissões — app `users` |
 | `INT` | integrações externas (BigDataCorp, BrasilAPI, FedBnk, Monday, e-mail) |
 | `CIP` | cursos CIPA da Condomed (turmas, inscritos, espelho na agenda) — app `condomed` |
+| `FAT` | relatórios de faturas do Financeiro (proxy ao FedHub e exportações Excel/PDF) — app `fedhub` |
+| `IEX` | indicadores executivos da produção de seguros (espelho da CORP, agregações por período e seguradora) — app `indicadores` |
 | `CAD` | cadastro novo (administradoras, condomínios, funcionários, comissionados, seguradoras, produtos, contratos, faturas) — proxy `cadastro/*` para `/api/etl/*` do FedHub, app `fedhub` |
 
 ### 2.2 Regras de identificador

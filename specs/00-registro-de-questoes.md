@@ -1,6 +1,6 @@
 # Registro de questões abertas
 
-> **Atualizado:** 2026-08-31
+> **Atualizado:** 2026-09-23
 
 Toda `PA-###` citada em qualquer spec deste repositório nasce e vive aqui. Questão fechada não some: recebe status `fechada`, a resposta e a data. O número nunca é reciclado.
 
@@ -105,6 +105,51 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Resposta (2026-09-08):** **nem cancelar**. Turma com certificado emitido não pode ser excluída nem ter a situação alterada para `cancelada`; permanece `realizada`. A inscrição com certificado também não pode ser removida.
 
 ## PA-014 — Quem acessa o cadastro novo pelo FedConnect: só `admin` ou também `ti`?
+
+## PA-018 — Indicadores executivos da produção: pedido, origem dos dados e acesso
+
+- **Status:** fechada (2026-09-22) · **Dono:** Hamilton (gestor comercial) · **Severidade:** alta
+- **Trava:** RF-IEX-001..007, RNF-IEX-001 (`specs/indicadores-executivos/`).
+- **Questão:** registrada já com a resposta, para servir de decisão citável.
+- **Resposta (2026-09-22):** o gestor pediu um painel de indicadores da produção de seguros dentro do FedConnect, "sem fugir do padrão e da stack": filtro por dia/semana/mês e, por seguradora, valor fechado, renovações, captações novas, comissão trabalhada e não fechadas. Entregou um protótipo HTML funcional com um snapshot real da **API CORP** (sistema de gestão da corretora) e um documento técnico (`DEFINICAO-TECNICA.md`) com as regras de negócio já definidas por ele. Decisões por mensagem no mesmo dia: (1) é tela nativa, vai virar **um tile numa área de indicadores do FedConnect, "o primeiro de muitos"**; (2) acesso **"pode ser pra todos"**, público-alvo diretoria, sem controle de acesso por enquanto; (3) ordem de trabalho: **construir o indicador localmente no molde do FedConnect** a partir do snapshot, **depois pedir à Ingryd acesso ao lake**, depois ligar nos dados reais. A origem definitiva é o lake (que já tem uma POC lendo `/documento` da CORP), não a API CORP direta nem planilha.
+
+## PA-019 — Prêmio e comissão só existem para documentos enriquecidos
+
+- **Status:** aberta · **Dono:** Hamilton (gestor comercial) · **Severidade:** alta
+- **Trava:** RF-IEX-003, RF-IEX-004 (valor fechado e comissão trabalhada).
+- **Questão:** `pretot` (prêmio) e `val_c` (comissão) não vêm em `/producao`; vêm só do detalhe `/documento`. No snapshot de 22/09/2026 há valor em 1.575 de 25.760 documentos: em 2026, 1.320 de 7.145 emitidos (todos os 384 de setembro, quase nenhum dos meses anteriores — medição após a carga local em 22/09/2026; corrige a primeira leitura, que dizia "nenhum de 2026"). Fora do mês corrente os dois indicadores monetários saem com cobertura baixa ou em branco enquanto o enriquecimento não rodar. Hipótese de trabalho: o endpoint devolve a soma **e a cobertura** (quantos documentos do período têm valor) e a tela mostra a lacuna em vez de zero, exatamente como o protótipo. Quem roda o enriquecimento — o lake da Ingryd ou o FedConnect — decide se a v1 entrega três ou cinco números.
+
+## PA-020 — Lacunas do contrato da CORP: `codfil`, letras de `tipdoc`, `renovacao_situacao = 5`, corte do histórico
+
+- **Status:** aberta · **Dono:** Hamilton (gestor comercial) · **Severidade:** média
+- **Trava:** RF-IEX-001 (chave e universo do espelho).
+- **Questão:** (a) a `DEFINICAO-TECNICA.md` declara o grão `(codfil, nosnum)`, mas o snapshot só traz `nosnum` — existe mais de uma filial? Hipótese: chave por `nosnum` até prova em contrário, com `codfil` opcional no modelo. (b) `tipdoc` tem valores A, X, C, R, I, M, F; só A foi explicado ("apólice"). Hipótese: universo padrão só A, toggle para incluir os demais. (c) `renovacao_situacao = 5` não tem legenda (146 documentos). Hipótese: exibir como "sem legenda". (d) a base começa em 2024; em 2024 quase tudo aparece como captação porque não há histórico anterior. Hipótese: sem corte declarado, a tela avisa a lacuna.
+
+## PA-021 — Ingestão dos dados vivos: lake, periodicidade e agendamento
+
+- **Status:** aberta · **Dono:** Hamilton (gestor comercial) / Ingryd (lake) · **Severidade:** alta
+- **Trava:** RNF-IEX-004 (fase 2 — dados reais).
+- **Questão:** o FedConnect vai ler do lake (qual tecnologia, qual credencial, qual periodicidade) ou receber carga empurrada? O repositório não tem hoje nenhum job agendado na DigitalOcean. Hipótese de trabalho: a v1 carrega o snapshot por management command a partir de arquivo local fora do git; a fase 2 ganha spec própria de ingestão quando a Ingryd der o acesso.
+
+## PA-022 — Dado pessoal nas listas: mascaramento
+
+- **Status:** parcialmente fechada (2026-09-22) · **Dono:** Hamilton (gestor comercial) · **Severidade:** média
+- **Trava:** RNF-IEX-001.
+- **Questão:** o gestor disse que **"não tem dados sensíveis"**. Os cartões e as agregações de fato não têm. As listas de composição e de não fechadas, porém, trazem nome do cliente e CPF/CNPJ (13.768 clientes com documento no snapshot, 7.103 pessoas físicas). Hipótese de trabalho, igual ao protótipo: CPF sai mascarado (`***.456.789-**`), CNPJ sai completo, nome sai completo. Snapshot com dado real nunca entra em repositório, spec ou teste versionado; os testes usam dados sintéticos.
+
+## PA-023 — Metas mensais: sempre em valor, por seguradora e ramo, contra o total do mês
+
+- **Status:** fechada (2026-09-23) · **Dono:** Hamilton (gestor comercial), via Lucas Guidi · **Severidade:** alta
+- **Trava:** RF-IEX-008 (`specs/indicadores-executivos/`).
+- **Questão:** o painel de indicadores (PA-018) nasceu sem metas ("fora do escopo" na v1). O gestor pediu a comparação meta × realizado. Em que unidade a meta é medida (valor, quantidade de apólices, captações), em que grão e contra qual número ela é comparada?
+- **Resposta (2026-09-23, por mensagem via Lucas):** "Meta é sempre em valor. Vale pro total, a meta não olha captação nem renovação. A meta vai ser 1 milhão em condomínio na Allianz e vai contra o total do mês." Decisões derivadas: (1) a meta é **mensal**, em **R$**, e compara-se com o **valor fechado do mês** (soma de `pretot` do dia 1 até a referência), nunca com contagem de captações ou renovações; (2) o grão é **seguradora × ramo × competência** — exemplo do dono: Allianz × Condomínio × setembro/2026 = R$ 1.000.000,00; (3) **todos os autenticados podem cadastrar e alterar** metas, sem restrição por nível (mesma linha de PA-018); (4) **Condomínio (COND) e Fiança (FIAN) são os ramos-chave** para as metas, mas o cadastro aceita qualquer ramo do espelho; (5) a meta é independente do `periodo` da tela — com a tela em "semana" ou "hoje", o cartão de meta continua olhando o mês inteiro; (6) o realizado comparado com a meta é o dos **pares seguradora × ramo que têm meta** — sem isso, a tela sem filtro comparava a única meta cadastrada (Allianz × Condomínio) com a carteira inteira e mostrava 158 % (medição de 2026-09-23). Decisão de implementação registrada no design.
+
+## PA-024 — Painel de TV: de onde vem o dado e quem autentica
+
+- **Status:** fechada (2026-09-23) · **Dono:** Ingryd Aylana (arquitetura de dados) · **Severidade:** alta
+- **Trava:** RF-IEX-009 (`specs/indicadores-painel-tv/`).
+- **Questão:** o card "Painel de TV" abria um protótipo com valores fixos. O número (mês corrente × mesmo mês do ano anterior, por seguradora × ramo, com meta) deve ser calculado aqui sobre o espelho, ou vir pronto de fora? E como o monitor do setor se autentica?
+- **Resposta (2026-09-23, por mensagem):** "o painel tv foi pra ser alimentado também"; "a autenticação é pelo fedconnect, usuario loga, acessa o card e abre a tela de dashboard"; "pode manter essa classificação na view do lake". Decisões derivadas: (1) o dado vem do Data Lake CORP (`vw_painel_tv`), lido pelo FedHub em `/api/lake/painel-tv` e repassado por `GET indicadores/painel-tv/` sem recálculo; (2) o usuário autentica no FedConnect (JWT) e a página estática lê o mesmo token; (3) o espelho local não é origem deste número; (4) o monitor exibe só Allianz, Bradesco, AXA, Chubb, Porto Seguro, HDI e Tokio Marine (mensagem de 23/09/2026), lista mantida na página; (5) em produção, até o contrato do financeiro ser publicado no servidor do lake (depois do TLS), a rota responde `contrato_nao_publicado` e a página avisa — estado previsto.
 
 - **Status:** aberta · **Dono:** Daniel Mello · **Severidade:** baixa
 - **Trava:** a tupla `NIVEIS_TELA` de `fedhub/views/cadastro_view.py` (RF-CAD-003 de `specs/cadastro-etl/`).

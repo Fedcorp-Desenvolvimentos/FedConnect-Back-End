@@ -1,0 +1,13 @@
+requisito;origem;design;invariantes;tarefas;testes;questoes
+RF-IEX-001;PA-018|DEFINICAO-TECNICA §4 §7 §8 do pacote do dono|fedhub/management/commands;Modelo de Dados e Contratos|Fluxo Principal|Tratamento de Erros|Decisões;INV-IEX-002|INV-IEX-004;T-IEX-1.1|T-IEX-1.2|T-IEX-1.3|T-IEX-1.4;CT-IEX-001|CT-IEX-002;PA-018|PA-020
+RF-IEX-002;protótipo index.html montarRamos;Modelo de Dados e Contratos;;T-IEX-2.5;CT-IEX-003;
+RF-IEX-003;PA-018|DEFINICAO-TECNICA §4|protótipo index.html agregar periodos;Modelo de Dados e Contratos|Fluxo Principal|Tratamento de Erros;INV-IEX-001|INV-IEX-003;T-IEX-2.1|T-IEX-2.2|T-IEX-2.5;CT-IEX-003;PA-019
+RF-IEX-004;protótipo index.html renderTabSeg|DEFINICAO-TECNICA §8;Modelo de Dados e Contratos;INV-IEX-001;T-IEX-2.2|T-IEX-2.5;CT-IEX-004;PA-019
+RF-IEX-005;protótipo index.html renderChartDia meses|bigcorp/settings.py USE_TZ;Modelo de Dados e Contratos|Divergência vs. produção;;T-IEX-2.2|T-IEX-2.5;CT-IEX-005;
+RF-IEX-006;DEFINICAO-TECNICA §4|protótipo index.html naoFechadas renderNf|PA-022;Modelo de Dados e Contratos|Fluxo Principal|Tratamento de Erros;INV-IEX-006;T-IEX-2.3|T-IEX-2.5;CT-IEX-006;PA-022
+RF-IEX-007;protótipo index.html renderComposicao|DEFINICAO-TECNICA §8;Modelo de Dados e Contratos;INV-IEX-005;T-IEX-2.4|T-IEX-2.5;CT-IEX-007;
+RF-IEX-008;PA-023;Modelo de Dados e Contratos|Metas mensais (RF-IEX-008)|Tratamento de Erros|Impacto e Riscos;INV-IEX-003|INV-IEX-007|INV-IEX-008;T-IEX-4.1|T-IEX-4.2|T-IEX-4.3|T-IEX-4.4;CT-IEX-009|CT-IEX-010;PA-023
+RNF-IEX-001;PA-018|PA-022|CLAUDE.md segredos via env|CONVENCOES §8;Arquitetura|Impacto e Riscos;INV-IEX-006;T-IEX-2.5|T-IEX-2.6;CT-IEX-008;PA-018|PA-022
+RNF-IEX-002;DEFINICAO-TECNICA §3|fedhub/models.py DecimalField;Modelo de Dados e Contratos;INV-IEX-003;T-IEX-2.2;CT-IEX-003|CT-IEX-004;PA-019
+RNF-IEX-003;medição do snapshot 2026-09-22|docs/curso-cipa/RETROSPECTIVA_CURSO_CIPA.md;Visão Geral da Solução|Decisões;;T-IEX-2.2|T-IEX-2.5;CT-IEX-003;
+RNF-IEX-004;PA-021;Arquitetura|Impacto e Riscos;INV-IEX-004;T-IEX-1.2|T-IEX-3.1;CT-IEX-001;PA-021

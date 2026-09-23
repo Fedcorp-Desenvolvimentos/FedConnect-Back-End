@@ -10,6 +10,17 @@ class IsAdmin(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.nivel_acesso == 'admin'
 
 
+class IsAdminOrTi(permissions.BasePermission):
+    """
+    Permissão personalizada para permitir apenas usuários com nível de acesso 'admin' ou 'ti'.
+    Usada pelos indicadores executivos (PA-036, revisão de 2026-09-23).
+    """
+
+    def has_permission(self, request, view):
+        return (request.user and request.user.is_authenticated
+                and request.user.nivel_acesso in ('admin', 'ti'))
+
+
 class IsAdminOrModerador(permissions.BasePermission):
     """
     Permissão personalizada para permitir apenas usuários com nível de acesso 'admin' ou 'moderador'.

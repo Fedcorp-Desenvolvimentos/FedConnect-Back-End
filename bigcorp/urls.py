@@ -103,6 +103,17 @@ from fedhub.views.vistorias_view import (
 )
 from agenda.views import ReservaViewSet
 from condomed.views import CertificadoPdfView, InstrutorCipaViewSet, LocalCipaViewSet, TurmaCipaViewSet
+from indicadores.views import (
+    ComposicaoView,
+    DominiosView,
+    MetaDetalheView,
+    MetasView,
+    NaoFechadasView,
+    PorSeguradoraView,
+    ResumoView,
+    SerieView,
+    PainelTvView,
+)
 
 from cotacao.views import calcular_cotacao_incendio
 from questionarios.views import QuestionarioProcessoViewSet
@@ -324,5 +335,16 @@ urlpatterns = [
     
     # Reemissão de certificado CIPA pelo número (RF-HIS-006)
     path("certificados/<str:numero>/pdf/", CertificadoPdfView.as_view(), name="certificado-cipa-pdf"),
+
+    # INDICADORES EXECUTIVOS (spec indicadores-executivos) *******
+    path("indicadores/dominios/", DominiosView.as_view(), name="indicadores-dominios"),
+    path("indicadores/resumo/", ResumoView.as_view(), name="indicadores-resumo"),
+    path("indicadores/por-seguradora/", PorSeguradoraView.as_view(), name="indicadores-por-seguradora"),
+    path("indicadores/serie/", SerieView.as_view(), name="indicadores-serie"),
+    path("indicadores/nao-fechadas/", NaoFechadasView.as_view(), name="indicadores-nao-fechadas"),
+    path("indicadores/composicao/", ComposicaoView.as_view(), name="indicadores-composicao"),
+    path("indicadores/metas/", MetasView.as_view(), name="indicadores-metas"),
+    path("indicadores/painel-tv/", PainelTvView.as_view(), name="indicadores-painel-tv"),
+    path("indicadores/metas/<int:id>/", MetaDetalheView.as_view(), name="indicadores-meta-detalhe"),
     path("", include(router.urls)),
 ]
