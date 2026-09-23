@@ -1,6 +1,6 @@
 # Painel de status das specs
 
-> **Atualizado:** 2026-09-18
+> **Atualizado:** 2026-09-23
 
 Estado de cada documento. Se esta página divergir do cabeçalho de um documento, **esta página vence**. Significado dos estados em [CONVENCOES.md](./CONVENCOES.md) §4 — só `aprovado` vincula.
 
@@ -10,5 +10,5 @@ Estado de cada documento. Se esta página divergir do cabeçalho de um documento
 | `curso-cipa` | **em revisão** (2026-09-04) | **em revisão** (2026-09-04) | **em revisão** (2026-09-04) — Fases 1–3 concluídas (29 testes); Fase 4 (ADR-0004, vínculo no inscrito) **pendente de aprovação** |
 | `curso-cipa-historico` | aprovado (2026-09-09) — RF-HIS-001..006, RNF-HIS-001..003 | aprovado (2026-09-09) — fases A–D | aprovado (2026-09-09) — fases A (histórico e consulta), B (lista de presença em PDF), C (presença) e **D (certificado em lote, PDF e reemissão)** concluídas; 125 testes |
 | `curso-cipa-cadastros` | aprovado (2026-09-09) — palestrantes e locais editáveis (reverte PA-001 e Q3 de PA-008; PA-010/011 fechadas) | aprovado (2026-09-09) | aprovado (2026-09-09) — fases 1–3 concluídas (112 testes); pendente de operação: bucket S3 e variáveis no App Platform antes do deploy |
-| `auth-refresh-token` | formato legado (sem matriz — não verificado); cabeçalho diz Aprovado (2026-08-24) | — | — || `relatorio-faturas-pendentes` | aprovado (2026-09-09) — proxy e exportações Excel/PDF, layout do legado (PA-014 fechada) | aprovado (2026-09-09) | aprovado (2026-09-09) — fase 1 concluída (17 testes); fase 2 (comparação com o legado via túnel) pendente |
-
+| `auth-refresh-token` | formato legado (sem matriz — não verificado); cabeçalho diz Aprovado (2026-08-24) | — | — |
+| `cadastro-etl` | em revisão (2026-09-23) — RF-CAD-001..003, RNF-CAD-001..003; proxy `cadastro/<rota>` → `/api/etl/<rota>` do FedHub (spec `FedHub-Backend/specs/etl-cadastro-api/`); contexto `CAD` novo; PA-014 aberta (só `admin` por ora); **implementado por instrução do dono, aprovação retroativa pendente** | em revisão (2026-09-23) — ADR-0008 | em revisão (2026-09-23) — fase 1 implementada e testada; fase 2 (deploy, PA-014) do dono |

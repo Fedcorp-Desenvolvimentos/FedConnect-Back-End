@@ -104,33 +104,9 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Questão:** a hipótese anterior (mapeamento, 7b) era "não se exclui, só se cancela". Perguntado ao dono em 2026-09-08 se cancelar também deveria ser bloqueado.
 - **Resposta (2026-09-08):** **nem cancelar**. Turma com certificado emitido não pode ser excluída nem ter a situação alterada para `cancelada`; permanece `realizada`. A inscrição com certificado também não pode ser removida.
 
-## PA-014 — Layout do PDF e da planilha de faturas pendentes
+## PA-014 — Quem acessa o cadastro novo pelo FedConnect: só `admin` ou também `ti`?
 
-- **Status:** fechada (2026-09-09) · **Dono:** Ingrid Aylana · **Severidade:** média
-- **Resposta (2026-09-09):** o dono enviou o PDF "rel-faturas-pendentes-coimbra.pdf" gerado pelo legado em 09/09/2026 (6 páginas, 138 documentos, total R$ 45.581,23), enviado pelo dono em 2026-09-09. Layout a reproduzir: **A4 retrato**; cabeçalho com data de geração à esquerda, título "RELATÓRIO DE FATURAS PENDENTES" centralizado, "Página N de M" à direita e a linha "DATA: __/__/__ A __/__/__" com o período de vencimento filtrado; tabela com cabeçalho em duas linhas (FATURA · DOCUMENTO · PRODUTO/OBS · VIGÊNCIA · DATA VENCIMENTO · VALOR DOCUMENTO · DATA PAGAMENTO · VALOR PAGO); **cada documento ocupa duas linhas**: na primeira, fatura, documento, sacado, vigência MM/AAAA, vencimento e valor; na segunda, produto/OBS, periodicidade e parcela (MENSAL 12/1) e a administradora em negrito; separador pontilhado entre documentos; rodapé "N Fatura(s) · TOTAL GERAL R$ x · R$ pago". Sem subtotais por grupo. A planilha segue as mesmas colunas, uma linha por documento, mais uma linha de totais.
-- **Trava:** RF-FAT-002 e RF-FAT-003 (`specs/relatorio-faturas-pendentes/`).
-- **Questão:** o legado gera "relatório" (PDF) e "planilha". Não temos o modelo impresso do legado para reproduzir. Hipótese de trabalho: PDF A4 paisagem, cabeçalho com os filtros aplicados e a data de geração, agrupado pela ordenação escolhida quando ela é administradora ou cedente (subtotal por grupo), total geral no fim; planilha com uma linha por fatura, colunas iguais às da resposta do FedHub e linha de totais. Se a operação quiser o layout idêntico ao legado, precisamos de um PDF gerado por ele como referência.
-
-## PA-015 — Relatório de faturas pendentes: pedido e quem acessa
-
-- **Status:** fechada (2026-09-09) · **Dono:** Ingrid Aylana · **Severidade:** alta
-- **Trava:** RF-FAT-001, RNF-FAT-001 (`specs/relatorio-faturas-pendentes/`).
-- **Questão:** registrada já com a resposta, para servir de decisão citável nas regras do relatório de faturas pendentes.
-- **Resposta (2026-09-09):** o dono pediu o relatório de faturas pendentes no Financeiro, em Excel e PDF, reproduzindo o legado. **Acesso: financeiro, faturamento e admin.** A definição de pendente (vencimento passado há pelo menos 1 dia e sem baixa) vive no registro do FedHub.
-
-## PA-016 — Consulta por voucher traz parcelas que não estavam no documento
-
-- **Status:** parcialmente fechada (2026-09-18) · **Dono:** Ingrid Aylana · **Severidade:** alta
-- **Trava:** RF-VOU-002..004 (`specs/consulta-espelho-voucher/`).
-- **Questão:** o voucher 20131244 (favorecida ACPL ADMINISTRADORA DE IMÓVEIS) saiu com 169 parcelas e R$ 7.391,23; a consulta pelo número devolvia 186 linhas e R$ 8.086,09. As 17 a mais eram parcelas **sem baixa** de três lançamentos gerais — dezesseis já vencidas em 17/09, uma vencendo em 18/09 —, que herdam o número carimbado em `COMISSAO.VOUCHER` porque o carimbo é por lançamento e a consulta expande o lançamento em uma linha por parcela. Com o filtro de baixadas a consulta devolvia exatamente 169. O voucher não tem data de repasse gravada. Entre os 46 vouchers da mesma favorecida, 30 mostravam parcelas pagas depois do repasse (medição de 2026-09-18; a questão de mesmo teor no registro do frontend, em `FedConnect-FrontEnd-Prod/specs/00-registro-de-questoes.md`, traz o levantamento completo).
-- **Resposta (2026-09-18):** **"não tem que trazer parcelas sem baixa, tem que trazer EXATAMENTE o que tem no voucher."** Decisão: o Django registra a composição de cada documento na emissão e a consulta por voucher devolve só isso (ADR-0008). Filtrar por baixa foi recusado como solução.
-- **Complemento (2026-09-18, fim do dia):** a lista de emissão **muda ao longo do dia**, porque a baixa do retorno bancário entra aos poucos. Medido na ACPL no mesmo dia: 129 parcelas baixadas às 11h10, 169 no momento da emissão do voucher 20131244, 171 às 15h22 — as 42 que entraram no intervalo venceram em 17/09 e foram baixadas em 17/09, mas só apareceram no sistema durante o dia 18. Cancelado o voucher, as comissões voltaram à lista e ela mostrou 171. **Não é divergência: é o conjunto de parcelas pagas crescendo.** É exatamente por isso que o documento precisa de composição registrada, e não de um filtro recalculado.
-- **Em aberto:** parcela sem baixa deve continuar entrando na **lista de emissão** (80 das 209 pendentes da ACPL, R$ 3.995,90)? É regra de negócio; enquanto não decidida, a lista fica como está e o espelho garante que o que saiu no PDF é o que a consulta mostra.
-
-## PA-017 — PDF de faturas pendentes no padrão visual do voucher
-
-- **Status:** fechada (2026-09-21) · **Dono:** Ingrid Aylana · **Severidade:** baixa
-- **Trava:** RF-FAT-003 (`specs/relatorio-faturas-pendentes/`).
-- **Questão:** o PDF foi entregue como cópia fiel do relatório do legado (PA-014) e o dono perguntou se não dava para deixá-lo visualmente melhor, no padrão do voucher de comissão.
-- **Resposta (2026-09-21):** sim. O PDF passa a usar a linguagem visual do voucher — faixa azul institucional, cartões de resumo, tabela zebrada com cabeçalho azul, valores em verde monoespaçado e faixa de total no fim. As duas colunas de pagamento do legado saem: em relatório de pendentes são sempre vazias, e sem elas cabe uma linha por documento em vez de dois renglões. O conteúdo é o mesmo; muda a forma. PA-014 continua valendo para as regras de negócio do relatório, não para o layout.
-
+- **Status:** aberta · **Dono:** Daniel Mello · **Severidade:** baixa
+- **Trava:** a tupla `NIVEIS_TELA` de `fedhub/views/cadastro_view.py` (RF-CAD-003 de `specs/cadastro-etl/`).
+- **Evidência (2026-09-23):** o dono respondeu no FedHub (questão 053 do registro do FedHub) que "em um primeiro momento o acesso deve ser apenas dos administradores". O frontend guarda a rota com `ROUTE_ACCESS.cadastroPessoas = ["admin", "ti"]` (questão 035 do registro do frontend). Os outros proxies do FedHub aqui usam `("admin", "faturamento", "ti")`.
+- **Questão:** `ti` entra? Hipótese de trabalho: **só `admin`**, como o dono disse; `ti` entra quando ele pedir (é trocar a tupla). Responde: dono.

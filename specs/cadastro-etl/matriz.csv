@@ -1,0 +1,7 @@
+requisito;origem;design;invariantes;tarefas;testes;questoes
+RF-CAD-001;ADR-0008|envio_porto_service.py:33-46;Arquitetura|Contratos de API|ADR-0008;INV-CAD-003;T-CAD-1.1|T-CAD-1.3;CT-CAD-001|CT-CAD-002;
+RF-CAD-002;ADR-0008;Arquitetura|Contratos de API|Fluxo Principal;INV-CAD-002;T-CAD-1.1|T-CAD-1.2|T-CAD-1.3;CT-CAD-003;
+RF-CAD-003;settings.py:175-186|fedpay_view.py operador do JWT|PA-014;Arquitetura|Invariantes;INV-CAD-001;T-CAD-1.2|T-CAD-1.3|T-CAD-2.2;CT-CAD-001|CT-CAD-004;PA-014
+RNF-CAD-001;ADR-0008|CLAUDE.md incidente 14/08/2026;Tratamento de Erros|Impacto e Riscos;INV-CAD-002;T-CAD-1.1|T-CAD-1.3;CT-CAD-002|CT-CAD-005;
+RNF-CAD-002;get_headers.py|ADR-0008;Contratos de API|Invariantes;INV-CAD-001|INV-CAD-003;T-CAD-1.2|T-CAD-1.3;CT-CAD-004|CT-CAD-005;
+RNF-CAD-003;ADR-0008|CLAUDE.md god-object;Divergencia vs. producao;;T-CAD-1.2|T-CAD-2.1;CT-CAD-006;
