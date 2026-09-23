@@ -97,7 +97,7 @@
 
 ### RNF-IEX-001: Segurança
 
-Todas as rotas exigem JWT válido (`IsAuthenticated`); sem restrição por nível nesta versão, inclusive para gravar metas. `[D]` PA-018, PA-023. CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
+Todas as rotas exigem JWT válido e nível `admin` ou `ti` (`users.permissions.IsAdminOrTi`), inclusive para gravar metas; qualquer outro nível recebe 403. `[D]` PA-036 (revisão de 2026-09-23; antes só `IsAuthenticated`, por PA-018 e PA-023). CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
 
 ### RNF-IEX-002: Compatibilidade e contrato
 

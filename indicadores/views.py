@@ -1,18 +1,19 @@
 """Endpoints dos indicadores executivos (spec indicadores-executivos, RF-IEX-002..008).
 
 Seis leituras, uma por seção do painel, com os mesmos parâmetros de filtro,
-mais o cadastro de metas mensais (RF-IEX-008). Qualquer autenticado lê **e
-cadastra metas** (RNF-IEX-001, decisões do dono em PA-018 e PA-023); se a
-decisão mudar, a classe entra em `users/permissions.py` e troca-se uma linha
-em `_IndicadorBase`. Nada aqui passa pelo FedHub: o dado é o espelho local.
+mais o cadastro de metas mensais (RF-IEX-008). Só `admin` e `ti` leem **e
+cadastram metas** (RNF-IEX-001; PA-036 revisada em 2026-09-23 — antes, qualquer
+autenticado, por PA-018 e PA-023). A regra vive em `users.permissions.IsAdminOrTi`
+e é aplicada numa linha em `_IndicadorBase`. Nada aqui passa pelo FedHub: o dado
+é o espelho local.
 """
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
+import requests
 
 from django.utils import timezone
 
@@ -23,8 +24,9 @@ from indicadores.serializers import (
     MetaMensalEntradaSerializer,
     SerieParametrosSerializer,
 )
-from indicadores.services import agregacao, metas, nao_fechadas
+from indicadores.services import agregacao, metas, nao_fechadas, painel_tv
 from indicadores.services.periodos import ParametroInvalido
+from users.permissions import IsAdminOrTi
 
 PARAMETROS_COMUNS = [
     OpenApiParameter("periodo", OpenApiTypes.STR, description="hoje · semana · mes · ano · faixa (padrão mes)"),
@@ -41,7 +43,7 @@ PARAMETROS_COMUNS = [
 
 class _IndicadorBase(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrTi]
 
     def filtros(self, request):
         """`(Filtros, None)` ou `(None, Response 400)`."""
@@ -200,3 +202,29 @@ class MetaDetalheView(_IndicadorBase):
         if not apagadas:
             return Response({"sucesso": False, "erro": "meta não encontrada."}, status=status.HTTP_404_NOT_FOUND)
         return Response({"sucesso": True})
+
+
+class PainelTvView(_IndicadorBase):
+    """Painel de TV: mês corrente × mesmo mês do ano anterior, por seguradora × ramo,
+    com meta — lido pelo FedHub no Data Lake CORP e repassado sem recálculo.
+    Não usa o espelho local: o lake é o dono desse número (ADR-0018 do pacote do lake)."""
+
+    @extend_schema(
+        summary="Painel de TV (lake via FedHub)",
+        description="Linhas de `vw_painel_tv` do lake, repassadas. 503 com `erro` nomeado quando o FedHub ou o lake não respondem.",
+        responses={200: OpenApiTypes.OBJECT, 503: OpenApiTypes.OBJECT},
+    )
+    def get(self, request):
+        try:
+            linhas = painel_tv.linhas()
+        except painel_tv.LakeIndisponivel as erro:
+            return Response(
+                {"sucesso": False, "erro": erro.erro, "detalhe": erro.detalhe},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except requests.RequestException as erro:
+            return Response(
+                {"sucesso": False, "erro": "fedhub_indisponivel", "detalhe": str(erro)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({"sucesso": True, "gerado_em": timezone.now().isoformat(), "linhas": linhas})

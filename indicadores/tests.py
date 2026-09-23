@@ -101,7 +101,8 @@ class _ComCarga(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.carga = servico_carga.carregar_snapshot(snapshot(), arquivo="sintetico.json")
-        cls.usuario = Usuario.objects.create_user(email="usr@t.com", password="x", nivel_acesso="usuario")
+        cls.usuario = Usuario.objects.create_user(email="usr@t.com", password="x", nivel_acesso="admin")
+        cls.comum = Usuario.objects.create_user(email="comum@t.com", password="x", nivel_acesso="usuario")
 
     def setUp(self):
         self.client.force_authenticate(self.usuario)
@@ -593,18 +594,28 @@ class ComposicaoTests(_ComCarga):
 
 
 class SegurancaTests(_ComCarga):
-    """CT-IEX-008: sem JWT → 401; usuário comum → 200; nenhum CPF completo na resposta."""
+    """CT-IEX-008: sem JWT → 401; `usuario` comum → 403; `admin` e `ti` → 200; nenhum CPF completo na resposta."""
 
     def test_sem_login_401_em_todas_as_rotas(self):
         self.client.force_authenticate(None)
         for nome in URLS:
             self.assertEqual(self.get(nome).status_code, status.HTTP_401_UNAUTHORIZED, nome)
 
-    def test_usuario_comum_le_todas_as_rotas(self):
+    def test_usuario_comum_403_em_todas_as_rotas(self):
+        self.client.force_authenticate(self.comum)
+        for nome in URLS:
+            self.assertEqual(self.get(nome).status_code, status.HTTP_403_FORBIDDEN, nome)
+
+    def test_admin_le_todas_as_rotas(self):
         for nome in URLS:
             resposta = self.get(nome)
             self.assertEqual(resposta.status_code, status.HTTP_200_OK, nome)
-            self.assertTrue(resposta.data["sucesso"])
+
+    def test_ti_le_todas_as_rotas(self):
+        ti = Usuario.objects.create_user(email="ti@t.com", password="x", nivel_acesso="ti")
+        self.client.force_authenticate(ti)
+        for nome in URLS:
+            self.assertEqual(self.get(nome).status_code, status.HTTP_200_OK, nome)
 
     def test_nenhuma_resposta_traz_cpf_com_onze_digitos(self):
         for nome in ("nao_fechadas", "composicao", "por_seguradora", "resumo", "dominios"):

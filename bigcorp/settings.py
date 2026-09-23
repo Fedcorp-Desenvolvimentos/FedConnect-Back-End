@@ -325,3 +325,11 @@ logger.info(f"ROOT_URLCONF está definido como: {ROOT_URLCONF}")
 API_CONSULTA_TIMEOUT = 600
 
 CONSULTA_API_URL = "https://back-fedconnect-y46st.ondigitalocean.app/consultas/realizar"
+
+
+# --- Data Lake CORP (fase 2 da ADR-0009) ----------------------------------
+# Origem alternativa do espelho dos indicadores. Somente leitura: a credencial
+# deve ser a do papel `lake_financeiro`, que enxerga views e nenhuma tabela.
+# Vazia = a carga pelo lake nao roda, e `carregar_snapshot_corp` segue sendo o
+# unico caminho. Nao e erro de configuracao; e a fase 1.
+LAKE_DSN = os.environ.get("LAKE_DSN", "")

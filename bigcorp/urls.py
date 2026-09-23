@@ -111,6 +111,7 @@ from indicadores.views import (
     PorSeguradoraView,
     ResumoView,
     SerieView,
+    PainelTvView,
 )
 
 from cotacao.views import calcular_cotacao_incendio
@@ -339,6 +340,7 @@ urlpatterns = [
     path("indicadores/nao-fechadas/", NaoFechadasView.as_view(), name="indicadores-nao-fechadas"),
     path("indicadores/composicao/", ComposicaoView.as_view(), name="indicadores-composicao"),
     path("indicadores/metas/", MetasView.as_view(), name="indicadores-metas"),
+    path("indicadores/painel-tv/", PainelTvView.as_view(), name="indicadores-painel-tv"),
     path("indicadores/metas/<int:id>/", MetaDetalheView.as_view(), name="indicadores-meta-detalhe"),
     path("", include(router.urls)),
 ]

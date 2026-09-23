@@ -139,7 +139,7 @@ Só seguradoras com `fechados > 0`, `nao_fechadas > 0` ou `meta_mes` não nulo (
 
 ### Metas mensais (RF-IEX-008)
 
-Decisão do dono (PA-023): a meta é sempre em valor, por seguradora × ramo × mês, e compara-se com o valor fechado **total** do mês — sem separar captação de renovação e sem depender do `periodo` da tela. Qualquer autenticado grava (`_IndicadorBase`, mesma permissão das leituras).
+Decisão do dono (PA-023): a meta é sempre em valor, por seguradora × ramo × mês, e compara-se com o valor fechado **total** do mês — sem separar captação de renovação e sem depender do `periodo` da tela. Só `admin` e `ti` gravam (`_IndicadorBase` com `IsAdminOrTi`, mesma permissão das leituras; PA-036, revisão de 2026-09-23).
 
 `GET indicadores/metas/?competencia=AAAA-MM` (padrão: mês corrente em `America/Sao_Paulo`)
 ```json
@@ -210,6 +210,7 @@ Metas e realizado saem de duas consultas agregadas no banco (`Sum`/`Count`), uma
 | `periodo=faixa` sem `data_ini`/`data_fim` | 400 | RF-IEX-003 |
 | `data_referencia` posterior à extração | 200 com `dados_parciais: true` | RF-IEX-003 |
 | Sem JWT | 401 padrão do DRF (inclusive gravar e apagar metas) | RNF-IEX-001, RF-IEX-008 |
+| JWT de nível que não é `admin` nem `ti` | 403 em todas as rotas, inclusive metas | RNF-IEX-001 |
 | Meta para seguradora/ramo fora do espelho, valor ≤ 0, competência fora de `AAAA-MM` | 400, nada gravado | RF-IEX-008 |
 | `DELETE` de meta inexistente | 404 `{"sucesso": false}` | RF-IEX-008 |
 | Mês sem meta cadastrada | `meta_mes.meta`, `falta` e `percentual` vêm `null`; `realizado` e `projecao` saem normalmente | RF-IEX-008 |
@@ -239,7 +240,7 @@ Dados sintéticos gerados em `tests.py` (CPF/CNPJ fictícios evidentes, nomes "C
 | CT-IEX-005 | RF-IEX-005 | série: 30 pontos de dia com o último = referência; 12 meses com futuros marcados; emissão às 23h30 local cai no dia local |
 | CT-IEX-006 | RF-IEX-006 | não fechadas: vencida com `nosnum_ren` apontando → fechada; mesmo CPF com `inivig` dentro da janela em outro ramo → fechada; fora da janela → não fechada; `renovacao_situacao = 1` fica fora das vencidas decididas; a vencer separado; CPF mascarado; corte em 400 |
 | CT-IEX-007 | RF-IEX-007 | composição: `total` de cada lista igual ao Bloco do resumo e ao `vencidas_sem_nova_apolice` |
-| CT-IEX-008 | RNF-IEX-001 | sem JWT → 401; `usuario` comum → 200; nenhuma resposta com 11 dígitos consecutivos de CPF |
+| CT-IEX-008 | RNF-IEX-001 | sem JWT → 401; `usuario` comum → 403; `admin` e `ti` → 200; nenhuma resposta com 11 dígitos consecutivos de CPF |
 | CT-IEX-009 | RF-IEX-008, RNF-IEX-001 | metas: cadastro devolve a linha; mesma chave atualiza sem duplicar e preserva `criado_por`; `replicar_meses` cria os N seguintes virando o ano; seguradora/ramo desconhecidos, valor ≤ 0, competência inválida e `replicar_meses` fora de 0..11 → 400; listagem por competência ordenada com `total_meta`; competência padrão é o mês local; exclusão e 404; 401 sem JWT em listar, gravar e apagar; `PROTECT` em seguradora e ramo (`test_metas.py`) |
 | CT-IEX-010 | RF-IEX-008, RNF-IEX-002, RNF-IEX-003 | `meta_mes`: `meta` `null` sem metas com `realizado` e `projecao` presentes; soma conforme filtro (todas, uma seguradora, seguradora + ramo, só ramo, outro mês fora); `realizado` na janela do mês com `periodo` semana/hoje/ano; `falta`, `percentual` (uma decimal, > 100) e `projecao`; meta sem realizado → `falta = meta`, `percentual = 0.0`; toggles valem para o realizado; por-seguradora com `meta_mes`/`realizado_mes`/`percentual_meta` por linha e no total, inclusão da seguradora que só tem meta, filtro de ramo na meta da linha (`test_metas.py`) |
 

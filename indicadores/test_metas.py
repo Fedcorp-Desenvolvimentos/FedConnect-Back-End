@@ -85,7 +85,7 @@ class MetasCrudTests(_ComCarga):
 
     def test_upsert_na_mesma_chave_atualiza_em_vez_de_duplicar(self):
         primeira = self.post().data["metas"][0]
-        outro = Usuario.objects.create_user(email="outro@t.com", password="x", nivel_acesso="usuario", nome_completo="Fulano de Tal")
+        outro = Usuario.objects.create_user(email="outro@t.com", password="x", nivel_acesso="ti", nome_completo="Fulano de Tal")
         self.client.force_authenticate(outro)
 
         segunda = self.post(valor_meta="1500000").data["metas"][0]
