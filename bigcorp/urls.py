@@ -53,6 +53,7 @@ from fedhub.views.relatorios_view import (
 )
 from fedhub.views.fedbnk_view import CancelarBoletoFedBnkView, SincronizarBoletosView
 from fedhub.views.fedpay_view import ConsultarFedPayView, TratamentoFedPayView
+from fedhub.views.cadastro_view import CadastroProxyView
 from fedhub.views.envio_porto_view import (
     GerarAssistenciaView, ListarJobsView, JobView, DownloadJobView, EnviarSftpView,
     VidaSubgruposView, VidaGerarView, VidaInconsistenciasView, DentalView,
@@ -280,6 +281,9 @@ urlpatterns = [
     path('faturamento/emissao-segunda-via-boleto/<str:fatura>/', EmissaoSegundaViaBoletoView.as_view(), name='faturamento-emissao-segunda-via-boleto'),
     path('fedpay/consulta/<str:fatura>/', ConsultarFedPayView.as_view(), name='fedpay-consulta'),
     path('fedpay/tratamento/', TratamentoFedPayView.as_view(), name='fedpay-tratamento'),
+
+    # CADASTRO NOVO (proxy transparente da API /api/etl/* do FedHub — specs/cadastro-etl, ADR-0008) *******
+    path('cadastro/<path:rota>', CadastroProxyView.as_view(), name='cadastro-etl'),
 
     # ENVIO PORTO (proxy da API /api/envio-porto/* do FedHub) *******
     path('envio-porto/assistencia/gerar/', GerarAssistenciaView.as_view(), name='envio-porto-assistencia-gerar'),
