@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from indicadores.models import CargaCorp, Cliente, Documento, DocumentoNegocio, Producao, Ramo, Seguradora
+from indicadores.models import CargaCorp, Cliente, Documento, DocumentoNegocio, MetaMensal, Producao, Ramo, Seguradora
 
 
 @admin.register(CargaCorp)
@@ -47,3 +47,12 @@ class DocumentoAdmin(admin.ModelAdmin):
 class DocumentoNegocioAdmin(admin.ModelAdmin):
     list_display = ("producao", "codigo_negocio", "datinc_negocio")
     raw_id_fields = ("producao",)
+
+
+@admin.register(MetaMensal)
+class MetaMensalAdmin(admin.ModelAdmin):
+    list_display = ("competencia", "seguradora", "ramo", "valor_meta", "atualizado_por", "atualizado_em")
+    list_filter = ("seguradora", "ramo")
+    date_hierarchy = "competencia"
+    raw_id_fields = ("criado_por", "atualizado_por")
+    readonly_fields = ("criado_em", "atualizado_em")

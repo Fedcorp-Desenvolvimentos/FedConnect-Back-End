@@ -1,7 +1,8 @@
-"""Endpoints dos indicadores executivos (spec indicadores-executivos, RF-IEX-002..007).
+"""Endpoints dos indicadores executivos (spec indicadores-executivos, RF-IEX-002..008).
 
-Seis leituras, uma por seção do painel, com os mesmos parâmetros de filtro.
-Qualquer autenticado lê (RNF-IEX-001, decisão do dono em PA-018); se a
+Seis leituras, uma por seção do painel, com os mesmos parâmetros de filtro,
+mais o cadastro de metas mensais (RF-IEX-008). Qualquer autenticado lê **e
+cadastra metas** (RNF-IEX-001, decisões do dono em PA-018 e PA-023); se a
 decisão mudar, a classe entra em `users/permissions.py` e troca-se uma linha
 em `_IndicadorBase`. Nada aqui passa pelo FedHub: o dado é o espelho local.
 """
@@ -13,8 +14,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from indicadores.serializers import FiltrosSerializer, SerieParametrosSerializer
-from indicadores.services import agregacao, nao_fechadas
+from django.utils import timezone
+
+from indicadores.models import MetaMensal
+from indicadores.serializers import (
+    CompetenciaSerializer,
+    FiltrosSerializer,
+    MetaMensalEntradaSerializer,
+    SerieParametrosSerializer,
+)
+from indicadores.services import agregacao, metas, nao_fechadas
 from indicadores.services.periodos import ParametroInvalido
 
 PARAMETROS_COMUNS = [
@@ -40,6 +49,13 @@ class _IndicadorBase(APIView):
             return FiltrosSerializer.validar(request.query_params), None
         except ParametroInvalido as erro:
             return None, Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _erro_400(serializer) -> Response:
+    """Primeiro erro do serializer no formato `{"sucesso": false, "erro": "campo: mensagem"}`."""
+    campo, mensagens = next(iter(serializer.errors.items()))
+    mensagem = mensagens[0] if isinstance(mensagens, list) else mensagens
+    return Response({"sucesso": False, "erro": f"{campo}: {mensagem}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DominiosView(_IndicadorBase):
@@ -113,3 +129,74 @@ class ComposicaoView(_IndicadorBase):
         if erro:
             return erro
         return Response({"sucesso": True, **agregacao.composicao(filtros)})
+
+
+class MetasView(_IndicadorBase):
+    """`GET/POST indicadores/metas/` — metas mensais por seguradora × ramo (RF-IEX-008, PA-023)."""
+
+    @extend_schema(
+        parameters=[OpenApiParameter("competencia", OpenApiTypes.STR, description="AAAA-MM; padrão mês corrente")],
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["indicadores"],
+    )
+    def get(self, request, *args, **kwargs):
+        parametros = CompetenciaSerializer(data=request.query_params)
+        if not parametros.is_valid():
+            return _erro_400(parametros)
+        competencia = parametros.validated_data.get("competencia") or timezone.localdate().replace(day=1)
+        return Response({"sucesso": True, **metas.listar(competencia)})
+
+    @extend_schema(request=MetaMensalEntradaSerializer, responses={201: OpenApiTypes.OBJECT}, tags=["indicadores"])
+    def post(self, request, *args, **kwargs):
+        entrada = MetaMensalEntradaSerializer(data=request.data)
+        if not entrada.is_valid():
+            return _erro_400(entrada)
+        dados = entrada.validated_data
+        gravadas = metas.gravar(
+            seguradora=dados["seguradora"],
+            ramo=dados["ramo"],
+            competencia=dados["competencia"],
+            valor_meta=dados["valor_meta"],
+            usuario=request.user,
+            replicar_meses=dados["replicar_meses"],
+        )
+        return Response(
+            {"sucesso": True, "metas": [metas.serializar(m) for m in gravadas]}, status=status.HTTP_201_CREATED
+        )
+
+
+class MetaDetalheView(_IndicadorBase):
+    """`PUT`/`DELETE indicadores/metas/<id>/` — edita ou remove uma meta (RF-IEX-008)."""
+
+    @extend_schema(
+        request=MetaMensalEntradaSerializer,
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT},
+        tags=["indicadores"],
+    )
+    def put(self, request, id, *args, **kwargs):
+        """Edita esta meta (inclusive seguradora, ramo e mês) sem criar outra; `replicar_meses` é ignorado."""
+        entrada = MetaMensalEntradaSerializer(data=request.data)
+        if not entrada.is_valid():
+            return _erro_400(entrada)
+        dados = entrada.validated_data
+        try:
+            meta = metas.atualizar(
+                meta_id=id,
+                seguradora=dados["seguradora"],
+                ramo=dados["ramo"],
+                competencia=dados["competencia"],
+                valor_meta=dados["valor_meta"],
+                usuario=request.user,
+            )
+        except metas.MetaNaoEncontrada as erro:
+            return Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_404_NOT_FOUND)
+        except metas.MetaDuplicada as erro:
+            return Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"sucesso": True, "metas": [metas.serializar(meta)]})
+
+    @extend_schema(responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}, tags=["indicadores"])
+    def delete(self, request, id, *args, **kwargs):
+        apagadas, _ = MetaMensal.objects.filter(pk=id).delete()
+        if not apagadas:
+            return Response({"sucesso": False, "erro": "meta não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"sucesso": True})

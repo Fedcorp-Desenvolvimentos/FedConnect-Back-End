@@ -105,6 +105,8 @@ from condomed.views import CertificadoPdfView, InstrutorCipaViewSet, LocalCipaVi
 from indicadores.views import (
     ComposicaoView,
     DominiosView,
+    MetaDetalheView,
+    MetasView,
     NaoFechadasView,
     PorSeguradoraView,
     ResumoView,
@@ -336,5 +338,7 @@ urlpatterns = [
     path("indicadores/serie/", SerieView.as_view(), name="indicadores-serie"),
     path("indicadores/nao-fechadas/", NaoFechadasView.as_view(), name="indicadores-nao-fechadas"),
     path("indicadores/composicao/", ComposicaoView.as_view(), name="indicadores-composicao"),
+    path("indicadores/metas/", MetasView.as_view(), name="indicadores-metas"),
+    path("indicadores/metas/<int:id>/", MetaDetalheView.as_view(), name="indicadores-meta-detalhe"),
     path("", include(router.urls)),
 ]

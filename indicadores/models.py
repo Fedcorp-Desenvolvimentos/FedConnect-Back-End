@@ -10,7 +10,14 @@ falarem a mesma língua (RNF-IEX-002).
 pela regra do gestor (cadeia `nosnum_ren` ou apólice anterior do mesmo
 CPF/CNPJ). O espelho é somente leitura: divergência com a origem se resolve
 recarregando, nunca editando a cópia.
+
+`MetaMensal` é a exceção: não vem da CORP, é cadastrada na tela pelos gestores
+(RF-IEX-008, PA-023) e comparada com o valor fechado do mês.
 """
+from decimal import Decimal
+
+from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -162,3 +169,44 @@ class DocumentoNegocio(models.Model):
 
     def __str__(self):
         return f"negócio {self.codigo_negocio} de {self.producao_id}"
+
+
+class MetaMensal(models.Model):
+    """Meta mensal de valor fechado por seguradora × ramo (RF-IEX-008, PA-023).
+
+    Decisão do dono (Hamilton, 2026-09-23): "meta é sempre em valor. Vale pro
+    total, a meta não olha captação nem renovação (...) vai contra o total do
+    mês". Uma linha por seguradora × ramo × competência (INV-IEX-007);
+    `competencia` é sempre o dia 1 do mês. Qualquer autenticado cadastra e
+    altera; `criado_por`/`atualizado_por` guardam quem foi.
+    """
+
+    seguradora = models.ForeignKey(Seguradora, on_delete=models.PROTECT, related_name="metas")
+    ramo = models.ForeignKey(Ramo, on_delete=models.PROTECT, related_name="metas")
+    competencia = models.DateField("mês da meta — sempre dia 1")
+    valor_meta = models.DecimalField(
+        "meta em R$ (valor fechado = soma de pretot)",
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="metas_criadas"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="metas_atualizadas"
+    )
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "meta mensal"
+        verbose_name_plural = "metas mensais"
+        constraints = [
+            models.UniqueConstraint(fields=("seguradora", "ramo", "competencia"), name="iex_meta_seg_ramo_comp"),
+        ]
+        indexes = [models.Index(fields=("competencia",), name="iex_meta_competencia")]
+        ordering = ("competencia", "seguradora", "ramo")
+
+    def __str__(self):
+        return f"meta {self.seguradora_id}×{self.ramo_id} {self.competencia:%Y-%m} = {self.valor_meta}"

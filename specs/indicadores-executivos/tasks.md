@@ -1,7 +1,7 @@
 # Tarefas — Indicadores executivos da produção (espelho da CORP e agregações)
 
-> **Rastreabilidade** — RF: RF-IEX-001..007 · CT: CT-IEX-001..008
-> **Status:** em revisão · **Dono:** Hamilton (gestor comercial), via Lucas Guidi · **Atualizado:** 2026-09-22
+> **Rastreabilidade** — RF: RF-IEX-001..008 · CT: CT-IEX-001..010
+> **Status:** em revisão · **Dono:** Hamilton (gestor comercial), via Lucas Guidi · **Atualizado:** 2026-09-23
 > **Baseado em:** `design.md` (em revisão em 2026-09-22; implementação autorizada pelo dono por mensagem para a usuária "mexer e ver")
 
 ## Fase 1 — Espelho e carga
@@ -24,9 +24,16 @@
 
 - [ ] T-IEX-3.1 Carregador do lake gravando nas mesmas tabelas com `origem = lake` _(RNF-IEX-004)_
 
+## Fase 4 — Metas mensais (PA-023)
+
+- [x] T-IEX-4.1 Modelo `MetaMensal` (única em seguradora × ramo × competência, `PROTECT`, auditoria de quem gravou), migração `0002_meta_mensal`, registro no admin _(RF-IEX-008 · CT-IEX-009)_
+- [x] T-IEX-4.2 `services/metas.py` (listagem, upsert com `replicar_meses`, aritmética de meses), serializers de entrada, `GET/POST indicadores/metas/` e `DELETE indicadores/metas/<id>/` com `IsAuthenticated` e `extend_schema`, rotas em `bigcorp/urls.py` _(RF-IEX-008, RNF-IEX-001 · CT-IEX-009)_
+- [x] T-IEX-4.3 `meta_mes` no `resumo` (meta × realizado do mês, `falta`, `percentual`, `projecao`) e `meta_mes`/`realizado_mes`/`percentual_meta` por linha e no total do `por-seguradora`, com inclusão da seguradora que só tem meta _(RF-IEX-008, RNF-IEX-003 · CT-IEX-010)_
+- [x] T-IEX-4.4 `test_metas.py` cobrindo CT-IEX-009 e CT-IEX-010 com dados sintéticos _(CT-IEX-009, CT-IEX-010)_
+
 ## Verificação Final
 
-- [x] Todos os CT da matriz passando (`python manage.py test indicadores`)
+- [x] Todos os CT da matriz passando (`python manage.py test indicadores` — 66 testes em 2026-09-23)
 - [x] Views duplicadas (consultas/ × fedhub/) em sincronia, se tocadas — nenhuma tocada
 - [x] `bash specs/verificar.sh` sem violações
 - [ ] Spec e código não divergem (se divergiu, a spec foi atualizada primeiro)

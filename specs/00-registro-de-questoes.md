@@ -1,6 +1,6 @@
 # Registro de questões abertas
 
-> **Atualizado:** 2026-09-22
+> **Atualizado:** 2026-09-23
 
 Toda `PA-###` citada em qualquer spec deste repositório nasce e vive aqui. Questão fechada não some: recebe status `fechada`, a resposta e a data. O número nunca é reciclado.
 
@@ -165,3 +165,9 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Trava:** RNF-IEX-001.
 - **Questão:** o gestor disse que **"não tem dados sensíveis"**. Os cartões e as agregações de fato não têm. As listas de composição e de não fechadas, porém, trazem nome do cliente e CPF/CNPJ (13.768 clientes com documento no snapshot, 7.103 pessoas físicas). Hipótese de trabalho, igual ao protótipo: CPF sai mascarado (`***.456.789-**`), CNPJ sai completo, nome sai completo. Snapshot com dado real nunca entra em repositório, spec ou teste versionado; os testes usam dados sintéticos.
 
+## PA-023 — Metas mensais: sempre em valor, por seguradora e ramo, contra o total do mês
+
+- **Status:** fechada (2026-09-23) · **Dono:** Hamilton (gestor comercial), via Lucas Guidi · **Severidade:** alta
+- **Trava:** RF-IEX-008 (`specs/indicadores-executivos/`).
+- **Questão:** o painel de indicadores (PA-018) nasceu sem metas ("fora do escopo" na v1). O gestor pediu a comparação meta × realizado. Em que unidade a meta é medida (valor, quantidade de apólices, captações), em que grão e contra qual número ela é comparada?
+- **Resposta (2026-09-23, por mensagem via Lucas):** "Meta é sempre em valor. Vale pro total, a meta não olha captação nem renovação. A meta vai ser 1 milhão em condomínio na Allianz e vai contra o total do mês." Decisões derivadas: (1) a meta é **mensal**, em **R$**, e compara-se com o **valor fechado do mês** (soma de `pretot` do dia 1 até a referência), nunca com contagem de captações ou renovações; (2) o grão é **seguradora × ramo × competência** — exemplo do dono: Allianz × Condomínio × setembro/2026 = R$ 1.000.000,00; (3) **todos os autenticados podem cadastrar e alterar** metas, sem restrição por nível (mesma linha de PA-018); (4) **Condomínio (COND) e Fiança (FIAN) são os ramos-chave** para as metas, mas o cadastro aceita qualquer ramo do espelho; (5) a meta é independente do `periodo` da tela — com a tela em "semana" ou "hoje", o cartão de meta continua olhando o mês inteiro; (6) o realizado comparado com a meta é o dos **pares seguradora × ramo que têm meta** — sem isso, a tela sem filtro comparava a única meta cadastrada (Allianz × Condomínio) com a carteira inteira e mostrava 158 % (medição de 2026-09-23). Decisão de implementação registrada no design.

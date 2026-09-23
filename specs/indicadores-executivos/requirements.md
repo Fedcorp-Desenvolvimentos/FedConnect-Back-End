@@ -1,7 +1,7 @@
 # Requisitos — Indicadores executivos da produção (espelho da CORP e agregações)
 
-> **Rastreabilidade** — RF: RF-IEX-001..007 · RNF: RNF-IEX-001..004 · Questões: PA-018, PA-019, PA-020, PA-021, PA-022
-> **Status:** em revisão · **Dono:** Hamilton (gestor comercial), via Lucas Guidi · **Atualizado:** 2026-09-22
+> **Rastreabilidade** — RF: RF-IEX-001..008 · RNF: RNF-IEX-001..004 · Questões: PA-018, PA-019, PA-020, PA-021, PA-022, PA-023
+> **Status:** em revisão · **Dono:** Hamilton (gestor comercial), via Lucas Guidi · **Atualizado:** 2026-09-23
 > **Lado frontend:** `FedConnect-FrontEnd/specs/indicadores-executivos/`. **Referências recebidas do dono em 2026-09-22:** protótipo `index.html`, snapshot `dados-teste.json` (dado real, fora do git) e `DEFINICAO-TECNICA.md` do pacote `pacote-indicador-executivo`.
 
 ## Contexto e Problema
@@ -14,10 +14,11 @@
 - App Django novo `indicadores` com o espelho normalizado das tabelas da CORP que o indicador usa (produção, cliente, ramo, seguradora, documento, negócio de origem) e o registro de cada carga.
 - Management command que carrega o snapshot (arquivo local, fora do git) e calcula a classificação de renovação.
 - Endpoints de leitura, já agregados, para cada seção do painel: resumo, por seguradora, séries por dia e por mês, não fechadas do mês, composição, domínios.
+- Metas mensais de valor por seguradora × ramo, cadastradas na tela e comparadas com o valor fechado do mês (RF-IEX-008). `[D]` PA-023
 
 **Fora do escopo:**
 - Cliente HTTP da API CORP e ingestão agendada dos dados vivos (fase 2, PA-021, spec própria).
-- `/itens` e tabelas de item segurado; exportação xlsx/PDF; metas; substituição dos dashboards Power BI de `/metricas`.
+- `/itens` e tabelas de item segurado; exportação xlsx/PDF; metas por quantidade de apólices ou por vendedor (a meta é só em valor, PA-023); substituição dos dashboards Power BI de `/metricas`.
 - Controle de acesso por nível além de estar autenticado (decisão do dono em PA-018).
 
 ## User Stories e Critérios de Aceitação
@@ -77,11 +78,26 @@
 - **QUANDO** consulto `GET indicadores/composicao/` com os filtros, **ENTÃO** o sistema **DEVE** devolver três listas — captações, renovações (emitidas no período, ordem de emissão decrescente e cliente) e vencidas sem nova apólice (ordem de `fimvig` decrescente) — cada linha com objeto/cliente, seguradora, ramo, apólice e data. `[E]` `renderComposicao()` do protótipo
 - **QUANDO** a resposta volta, **ENTÃO** as quantidades das listas **DEVEM** ser exatamente as dos cartões de RF-IEX-003 e RF-IEX-006 para os mesmos filtros. `[E]` `DEFINICAO-TECNICA.md` §8
 
+### RF-IEX-008: Metas mensais por seguradora e ramo
+
+> Complemento de 2026-09-23 (relato do dono ao testar): editar uma meta e salvar criava outra quando a seguradora ou o ramo mudavam, porque o `POST` é upsert pela chave. Entra `PUT indicadores/metas/<id>/`: **QUANDO** edito uma meta existente, **ENTÃO** o sistema **DEVE** atualizar aquela linha, inclusive seguradora, ramo e mês, sem criar outra; **SE** a chave nova já tem meta no mês, **ENTÃO** **DEVE** recusar com 400 dizendo qual. `[D]` PA-023
+
+**Como** gestor comercial, **quero** cadastrar uma meta mensal em R$ por seguradora e ramo e ver quanto falta para ela, **para** acompanhar o mês contra o combinado (exemplo do dono: R$ 1.000.000 em Condomínio na Allianz em setembro/2026).
+
+- **QUANDO** consulto `GET indicadores/metas/?competencia=AAAA-MM` (padrão: mês corrente em `America/Sao_Paulo`), **ENTÃO** o sistema **DEVE** devolver as metas da competência ordenadas por seguradora e ramo, cada uma com `id`, seguradora e nome, ramo e nome, `valor_meta` (string decimal), `atualizado_em` e `atualizado_por` (nome ou e-mail), mais `total_meta` (soma; `null` sem nenhuma). `[D]` PA-023
+- **QUANDO** envio `POST indicadores/metas/` com `seguradora`, `ramo`, `competencia` (`AAAA-MM`), `valor_meta` e `replicar_meses` (0..11), **ENTÃO** o sistema **DEVE** gravar ou atualizar a meta daquela chave (seguradora × ramo × competência) e, se `replicar_meses > 0`, o mesmo valor nos N meses seguintes (virando o ano), respondendo 201 com as linhas gravadas. `[D]` PA-023
+- **SE** a seguradora ou o ramo não existem no espelho, `valor_meta ≤ 0`, `competencia` fora do formato ou `replicar_meses` fora de 0..11, **ENTÃO** o sistema **DEVE** responder 400 `{"sucesso": false, "erro": "..."}` sem gravar nada. `[E]` padrão de erro dos demais endpoints (design, "Parâmetros comuns")
+- **QUANDO** envio `DELETE indicadores/metas/<id>/`, **ENTÃO** o sistema **DEVE** apagar a meta e responder `{"sucesso": true}`; inexistente → 404. `[D]` PA-023
+- **QUANDO** consulto `GET indicadores/resumo/` com qualquer `periodo`, **ENTÃO** a resposta **DEVE** trazer `meta_mes` com a competência do mês da `data_referencia`, dias do mês e decorridos, `meta` (soma das metas do mês restrita aos filtros de `seguradora` e `ramo`; filtro vazio = todas; `null` sem nenhuma), `realizado` (valor fechado do universo do dia 1 até a referência, respeitando toggles e filtros — sempre o mês, nunca o `periodo`), `documentos_com_valor`, `falta`, `percentual`, `projecao` e `metas_consideradas`. `[D]` PA-023 ("vai contra o total do mês")
+- **ENQUANTO** a meta é comparada, o sistema **DEVE** usar o valor fechado total do mês, sem separar captação de renovação. `[D]` PA-023 ("a meta não olha captação nem renovação")
+- **QUANDO** consulto `GET indicadores/por-seguradora/`, **ENTÃO** cada linha e o total **DEVEM** trazer `meta_mes`, `realizado_mes` e `percentual_meta` (`null` quando a seguradora não tem meta no mês para os ramos filtrados), e uma seguradora com meta **DEVE** aparecer mesmo com zero fechados no período. `[D]` PA-023
+- **ENQUANTO** o usuário está autenticado, o sistema **DEVE** permitir cadastrar, alterar e apagar metas, sem restrição por nível. `[D]` PA-023 ("todos podem cadastrar/alterar")
+
 ## Requisitos Não Funcionais
 
 ### RNF-IEX-001: Segurança
 
-Todas as rotas exigem JWT válido (`IsAuthenticated`); sem restrição por nível nesta versão. `[D]` PA-018. CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
+Todas as rotas exigem JWT válido (`IsAuthenticated`); sem restrição por nível nesta versão, inclusive para gravar metas. `[D]` PA-018, PA-023. CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
 
 ### RNF-IEX-002: Compatibilidade e contrato
 
@@ -95,7 +111,7 @@ Agregações no banco (ORM), nunca no Python linha a linha, nem no navegador. Ba
 
 O modelo e os endpoints não sabem de onde veio a carga: `CargaCorp.origem` distingue `snapshot` de `lake`. A fase 2 substitui só o carregador. `[P]` PA-021
 
-**Verificação prevista (detalhada no design, após aprovação):** CT-IEX-001 — carga do snapshot sintético: contagens, rejeitos nomeados, datas inválidas nulas, idempotência. CT-IEX-002 — classificação de renovação: cadeia `nosnum_ren`, CPF com apólice anterior, empate por `nosnum`, cliente sem documento. CT-IEX-003 — resumo: universo padrão, toggles, períodos e períodos anteriores, cobertura, `dados_parciais`. CT-IEX-004 — por seguradora: soma das linhas = total, `fechados = ren + cap`. CT-IEX-005 — séries: 30 dias, 12 meses, futuro marcado, fuso local no corte do dia. CT-IEX-006 — não fechadas: janela, nova apólice por cadeia e por CPF em outro ramo, `renovacao_situacao`, mascaramento, corte em 400. CT-IEX-007 — composição: quantidades iguais aos cartões. CT-IEX-008 — segurança: sem JWT → 401; com JWT de qualquer nível → 200; nenhum CPF completo na resposta.
+**Verificação prevista (detalhada no design, após aprovação):** CT-IEX-001 — carga do snapshot sintético: contagens, rejeitos nomeados, datas inválidas nulas, idempotência. CT-IEX-002 — classificação de renovação: cadeia `nosnum_ren`, CPF com apólice anterior, empate por `nosnum`, cliente sem documento. CT-IEX-003 — resumo: universo padrão, toggles, períodos e períodos anteriores, cobertura, `dados_parciais`. CT-IEX-004 — por seguradora: soma das linhas = total, `fechados = ren + cap`. CT-IEX-005 — séries: 30 dias, 12 meses, futuro marcado, fuso local no corte do dia. CT-IEX-006 — não fechadas: janela, nova apólice por cadeia e por CPF em outro ramo, `renovacao_situacao`, mascaramento, corte em 400. CT-IEX-007 — composição: quantidades iguais aos cartões. CT-IEX-008 — segurança: sem JWT → 401; com JWT de qualquer nível → 200; nenhum CPF completo na resposta. CT-IEX-009 — metas: cadastro, upsert na mesma chave, `replicar_meses` virando o ano, 400 para seguradora/ramo desconhecidos e valor ≤ 0, listagem por competência com total, exclusão, 401 sem JWT. CT-IEX-010 — `meta_mes`: `null` sem metas; soma por filtro (todas / uma seguradora / seguradora + ramo); realizado na janela do mês mesmo com `periodo=semana`; `falta`, `percentual` e `projecao`; colunas de meta no por-seguradora e inclusão da seguradora com meta e zero fechados.
 
 ## Questões em Aberto
 
