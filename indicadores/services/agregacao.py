@@ -19,7 +19,7 @@ from decimal import Decimal
 
 from indicadores.services import fedhub_lake
 from indicadores.services import metas as servico_metas
-from indicadores.services.periodos import Filtros, janelas_padrao, ultimo_dia_do_mes
+from indicadores.services.periodos import Filtros, janelas_padrao, mes_da_referencia, ultimo_dia_do_mes
 
 LIMITE_LINHAS = 400
 ROTULOS_MES = ("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
@@ -167,20 +167,25 @@ def _percentual(realizado, meta) -> float | None:
 
 
 def meta_mes(filtros: Filtros, metas_mes: list | None = None) -> dict:
-    """Meta × realizado do mês da referência, sempre do dia 1 até a referência, seja qual for o `periodo`."""
+    """Meta × realizado do **mês civil inteiro** da referência, seja qual for o `periodo`.
+
+    Até 2026-09-24 o realizado ia do dia 1 até a referência, enquanto o cartão
+    "Valor fechado" (em "este mês") mostrava o mês inteiro: a diferença entre os
+    dois números fazia "faltam" sair maior do que meta − valor fechado (relato do
+    dono, PA-028). Agora as duas contas usam a mesma janela, e a projeção pelo
+    ritmo dos dias deixa de fazer sentido: sai `null`.
+    """
     ref = filtros.data_referencia
     dias_no_mes = ultimo_dia_do_mes(ref.year, ref.month)
     dias_decorridos = ref.day
     metas_mes = _metas_do_mes(filtros) if metas_mes is None else metas_mes
     meta = sum(Decimal(m["valor_meta"]) for m in metas_mes) if metas_mes else None
-    fechado = _realizado_dos_pares(filtros, metas_mes, ref.replace(day=1), ref)
+    fechado = _realizado_dos_pares(filtros, metas_mes, *mes_da_referencia(ref))
     realizado = fechado["valor"]
 
     falta = projecao = None
     if meta is not None:
         falta = max(meta - (realizado or 0), Decimal(0))
-    if realizado is not None:
-        projecao = Decimal(realizado) / dias_decorridos * dias_no_mes
 
     return {
         "competencia": f"{ref.year:04d}-{ref.month:02d}",
@@ -214,7 +219,8 @@ def por_seguradora(filtros: Filtros) -> dict:
     metas_mes = _metas_do_mes(filtros)
     metas_por_seg = _metas_por_seguradora(metas_mes)
     ref = filtros.data_referencia
-    realizado = _realizado_dos_pares(filtros, metas_mes, ref.replace(day=1), ref)
+    # Mesma janela de `meta_mes`: o mês civil inteiro (PA-028).
+    realizado = _realizado_dos_pares(filtros, metas_mes, *mes_da_referencia(ref))
     realizado_por_seg = realizado["por_seguradora"]
 
     por_sigla = {l["seguradora_sigla"]: formatar_bloco(l) for l in linhas_lake}

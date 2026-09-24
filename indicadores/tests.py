@@ -267,18 +267,19 @@ class PeriodosTests(APITestCase):
         ref = date(2026, 9, 22)
         self.assertEqual(janela("hoje", ref), (ref, ref))
         self.assertEqual(janela("semana", ref), (date(2026, 9, 21), ref))
-        self.assertEqual(janela("mes", ref), (date(2026, 9, 1), ref))
+        # Mês inteiro, não até a referência (PA-028).
+        self.assertEqual(janela("mes", ref), (date(2026, 9, 1), date(2026, 9, 30)))
         self.assertEqual(janela("ano", ref), (date(2026, 1, 1), ref))
 
     def test_janelas_anteriores(self):
         ref = date(2026, 9, 22)
         self.assertEqual(janela_anterior("hoje", ref), (date(2026, 9, 21), date(2026, 9, 21)))
         self.assertEqual(janela_anterior("semana", ref), (date(2026, 9, 14), date(2026, 9, 15)))
-        self.assertEqual(janela_anterior("mes", ref), (date(2026, 8, 1), date(2026, 8, 22)))
+        self.assertEqual(janela_anterior("mes", ref), (date(2026, 8, 1), date(2026, 8, 31)))  # mês anterior inteiro (PA-028)
         self.assertEqual(janela_anterior("ano", ref), (date(2025, 1, 1), date(2025, 9, 22)))
         # Dia limitado ao último do mês anterior; janeiro volta para dezembro.
         self.assertEqual(janela_anterior("mes", date(2026, 3, 31)), (date(2026, 2, 1), date(2026, 2, 28)))
-        self.assertEqual(janela_anterior("mes", date(2026, 1, 15)), (date(2025, 12, 1), date(2025, 12, 15)))
+        self.assertEqual(janela_anterior("mes", date(2026, 1, 15)), (date(2025, 12, 1), date(2025, 12, 31)))
         self.assertEqual(janela_anterior("ano", date(2028, 2, 29)), (date(2027, 1, 1), date(2027, 2, 28)))
         self.assertEqual(
             janela_anterior("faixa", ref, date(2026, 9, 10), date(2026, 9, 19)), (date(2026, 8, 31), date(2026, 9, 9))
@@ -314,9 +315,9 @@ class ResumoTests(_ComCarga):
         self.assertEqual(atual["comissao"], "100.05")
         self.assertEqual(atual["documentos_com_comissao"], 1)
         self.assertEqual(resposta.data["filtros"]["periodo_ini"], "2026-09-01")
-        self.assertEqual(resposta.data["filtros"]["periodo_fim"], REF)
+        self.assertEqual(resposta.data["filtros"]["periodo_fim"], "2026-09-30")
         self.assertEqual(resposta.data["filtros"]["anterior_ini"], "2026-08-01")
-        self.assertEqual(resposta.data["filtros"]["anterior_fim"], "2026-08-22")
+        self.assertEqual(resposta.data["filtros"]["anterior_fim"], "2026-08-31")
         self.assertFalse(resposta.data["dados_parciais"])
 
     def test_toggles_incluem_tipdoc_x_e_cancelados(self):
@@ -333,7 +334,7 @@ class ResumoTests(_ComCarga):
         self.assertEqual(periodos["semana"]["fechados"], 2)  # segunda 21 e terça 22; domingo 20 fica fora
         self.assertEqual(periodos["mes"]["fechados"], 12)
         self.assertEqual(periodos["ano"]["fechados"], 15)  # por vigencia: + 111
-        self.assertEqual(self.get("resumo", periodo="mes").data["anterior"]["fechados"], 1)  # 2026-08-10; 25/08 fora
+        self.assertEqual(self.get("resumo", periodo="mes").data["anterior"]["fechados"], 2)  # agosto inteiro: 10/08 e 25/08 (PA-028)
         self.assertEqual(self.get("resumo", periodo="hoje").data["anterior"]["fechados"], 1)  # 21/09
         self.assertEqual(self.get("resumo", periodo="semana").data["anterior"]["fechados"], 3)  # 14..15/09
 

@@ -196,7 +196,7 @@ class MetaMesTests(_ComFedHub):
         self.assertEqual(bloco["documentos_com_valor"], 2)
         self.assertIsNone(bloco["falta"])
         self.assertIsNone(bloco["percentual"])
-        self.assertEqual(bloco["projecao"], "1473.34")  # 1080.45 / 22 × 30
+        self.assertIsNone(bloco["projecao"])  # sem projeção: o realizado já é o mês inteiro (PA-028)
         self.assertEqual(bloco["metas_consideradas"], 0)
 
     def test_meta_soma_conforme_o_filtro(self):
@@ -238,7 +238,7 @@ class MetaMesTests(_ComFedHub):
         self.assertEqual(alli["falta"], "1099.55")
         self.assertEqual(alli["percentual"], 45.0)  # 45.0225 arredonda para uma decimal
         self.assertIsInstance(alli["percentual"], float)
-        self.assertEqual(alli["projecao"], "1227.89")  # 900.45 / 22 × 30
+        self.assertIsNone(alli["projecao"])  # sem projeção: o realizado já é o mês inteiro (PA-028)
 
         port = self.meta_mes(seguradora="PORT")
         self.assertEqual(port["realizado"], "180.00")

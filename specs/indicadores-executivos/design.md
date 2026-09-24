@@ -100,7 +100,7 @@ Listas ordenadas por `total_base` decrescente, depois sigla (ordem fixa, para o 
               "meta": "1000000.00", "realizado": "793000.00", "documentos_com_valor": 380,
               "falta": "207000.00", "percentual": 79.3, "projecao": "1081363.64", "metas_consideradas": 1}}
 ```
-Períodos: hoje `[ref, ref]`; semana `[segunda-feira da ref, ref]`; mês `[dia 1, ref]`; ano `[1º jan, ref]`; faixa `[data_ini, data_fim]`. Anteriores: dia anterior; `[segunda−7, ref−7]`; mesmo trecho do mês anterior (dia limitado ao último do mês); mesmo trecho do ano anterior; intervalo imediatamente anterior de mesma duração. `dados_parciais` é `true` quando `data_referencia > extraido_em`. `meta_mes` está descrito em "Metas mensais (RF-IEX-008)".
+Períodos: hoje `[ref, ref]`; semana `[segunda-feira da ref, ref]`; mês `[dia 1, último dia do mês]` (inteiro, PA-028); ano `[1º jan, ref]`; faixa `[data_ini, data_fim]`. Anteriores: dia anterior; `[segunda−7, ref−7]`; mês anterior inteiro `[dia 1, último dia]` (PA-028); mesmo trecho do ano anterior; intervalo imediatamente anterior de mesma duração. `dados_parciais` é `true` quando `data_referencia > extraido_em`. `meta_mes` está descrito em "Metas mensais (RF-IEX-008)".
 
 `GET indicadores/por-seguradora/`
 ```json
@@ -139,7 +139,7 @@ Só seguradoras com `fechados > 0`, `nao_fechadas > 0` ou `meta_mes` não nulo (
 
 ### Metas mensais (RF-IEX-008)
 
-Decisão do dono (PA-023): a meta é sempre em valor, por seguradora × ramo × mês, e compara-se com o valor fechado **total** do mês — sem separar captação de renovação e sem depender do `periodo` da tela. Só `admin` e `ti` gravam (`_IndicadorBase` com `IsAdminOrTi`, mesma permissão das leituras; PA-036, revisão de 2026-09-23).
+Decisão do dono (PA-023): a meta é sempre em valor, por seguradora × ramo × mês, e compara-se com o valor fechado **total** do mês — sem separar captação de renovação e sem depender do `periodo` da tela. Só `admin` e `ti` gravam (`_IndicadorBase` com `IsAdminOrTi`, mesma permissão das leituras; PA-018, revisão de 2026-09-23).
 
 `GET indicadores/metas/?competencia=AAAA-MM` (padrão: mês corrente em `America/Sao_Paulo`)
 ```json
@@ -168,11 +168,11 @@ Ordem por seguradora, depois ramo. `total_meta` é a soma das metas listadas; `n
 | `competencia` | `AAAA-MM` do mês da `data_referencia` |
 | `dias_no_mes`, `dias_decorridos` | último dia do mês; dia da `data_referencia` |
 | `meta` | soma de `valor_meta` das metas da competência, restrita aos filtros `seguradora` e `ramo` da requisição (filtro vazio = todas as metas do mês); `null` sem nenhuma |
-| `realizado` | valor fechado (Sum `pretot`) com `datemi` do dia 1 do mês até a `data_referencia`, **seja qual for o `periodo`**, com toggles e filtros aplicados e **restrito aos pares seguradora × ramo que têm meta no mês** (a meta "vai contra o total do mês" daquele par, PA-023); sem nenhuma meta, é o universo inteiro. Sem a restrição, a tela sem filtro compararia uma única meta com a carteira toda e mostraria 158 % (medição de 2026-09-23). `null` sem documento com valor (INV-IEX-003) |
+| `realizado` | valor fechado do **mês civil inteiro** da `data_referencia` (dia 1 ao último dia, a mesma janela do cartão em "este mês" — PA-028, complemento de 2026-09-24; antes ia só até a referência), **seja qual for o `periodo`**, com toggles e filtros aplicados e **restrito aos pares seguradora × ramo que têm meta no mês** (a meta "vai contra o total do mês" daquele par, PA-023); sem nenhuma meta, é o universo inteiro. Sem a restrição, a tela sem filtro compararia uma única meta com a carteira toda e mostraria 158 % (medição de 2026-09-23). `null` sem documento com valor (INV-IEX-003) |
 | `documentos_com_valor` | cobertura do `realizado` |
 | `falta` | `max(meta − realizado, 0)` (INV-IEX-008); sem `realizado`, `falta = meta`; sem `meta`, `null` |
 | `percentual` | `realizado / meta × 100`, número com uma decimal, pode passar de 100 (INV-IEX-008); sem `meta`, `null`; com meta e sem `realizado`, `0.0` |
-| `projecao` | `realizado / dias_decorridos × dias_no_mes`, string decimal com duas casas; `null` sem `realizado` |
+| `projecao` | sempre `null` desde 2026-09-24 (PA-028): com o realizado do mês inteiro, extrapolar pelo ritmo dos dias não faz sentido. O campo fica no contrato para não quebrar a tela, que só o mostra quando não é nulo |
 | `metas_consideradas` | quantas linhas de `MetaMensal` entraram em `meta` |
 
 Metas e realizado saem de duas consultas agregadas no banco (`Sum`/`Count`), uma para o total e uma agrupada por seguradora — nada é somado em Python (RNF-IEX-003).

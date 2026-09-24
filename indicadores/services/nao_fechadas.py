@@ -46,6 +46,10 @@ class Resultado:
     vencem: list = field(default_factory=list)  # linhas de fn_ind_nao_fechadas
     vencidas: list = field(default_factory=list)
     decididas: list = field(default_factory=list)
+    # Vencidas que a CORP ainda marca como "vigente" (sem decisão): até 2026-09-24
+    # ficavam fora das duas abas e as contagens não fechavam com "vencem no mês"
+    # (relato do dono: 34 + 43 ≠ 180). Agora são a terceira lista.
+    sem_decisao: list = field(default_factory=list)
     sem_nova_apolice: list = field(default_factory=list)
     a_vencer: list = field(default_factory=list)
 
@@ -73,6 +77,7 @@ class Resultado:
                 ],
             },
             "vencidas": self._lista(self.decididas),
+            "vencidas_sem_decisao": self._lista(self.sem_decisao),
             "a_vencer": self._lista(self.a_vencer),
         }
 
@@ -124,6 +129,8 @@ def calcular(filtros: Filtros) -> Resultado:
                 resultado.decididas.append(l)
                 if not l.get("fechada"):
                     resultado.sem_nova_apolice.append(l)
+            else:
+                resultado.sem_decisao.append(l)
         else:
             resultado.a_vencer.append(l)
     return resultado
