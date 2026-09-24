@@ -21,8 +21,8 @@
 
 ## Fase 3 — Produção (depende de outros)
 
-- [ ] T-IEX-9.7 FedHub de produção com cliente de escopo `/api/lake` e `LAKE_DSN` (spec `lake-financeiro` do FedHub, Fase 3) _(RF-IEX-009)_
-- [ ] T-IEX-9.8 Contrato do financeiro publicado no servidor do lake (depois do TLS) — até lá a página mostra "dado do financeiro ainda não liberado no lake" _(RNF-IEX-005)_
+- [x] T-IEX-9.7 FedHub de produção com `LAKE_DSN` em 2026-09-23 — `/api/lake/painel-tv` respondendo 44 linhas pelo túnel; o cliente de escopo `/api/lake` em `AUTH_CLIENTS` fica para quando `AUTH_ENFORCE` ligar _(RF-IEX-009)_
+- [x] T-IEX-9.8 Contrato do financeiro publicado no servidor do lake em 2026-09-23, por autorização da gestão antes do TLS _(RNF-IEX-005)_
 
 ## Verificação Final
 

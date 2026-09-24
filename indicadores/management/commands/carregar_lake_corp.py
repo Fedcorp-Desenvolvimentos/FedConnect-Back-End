@@ -20,7 +20,21 @@ from django.core.management.base import BaseCommand, CommandError
 
 from indicadores.services import carga as servico_carga
 from indicadores.services import lake as servico_lake
-from indicadores.models import CargaCorp
+from indicadores.models import CargaCorp, Producao
+
+
+def remover_o_que_o_lake_nao_traz_mais(dados) -> int:
+    """Apaga do espelho as produções cujo `nosnum` não veio na extração do lake.
+
+    Devolve quantas saíram. Não roda com extração vazia: nenhum documento no lake
+    é sinal de origem indisponível, não de carteira zerada.
+    """
+    posicao = dados["colunas"].index("nosnum")
+    vistos = {int(linha[posicao]) for linha in dados["docs"] if linha[posicao] not in (None, "")}
+    if not vistos:
+        return 0
+    removidos, _ = Producao.objects.exclude(nosnum__in=vistos).delete()
+    return removidos
 
 
 class Command(BaseCommand):
@@ -63,7 +77,16 @@ class Command(BaseCommand):
         except servico_carga.SnapshotInvalido as erro:
             raise CommandError(f"o lake devolveu dado fora do contrato: {erro}") from erro
 
+        # O lake é a carteira inteira: o que ele não traz mais, a CORP apagou
+        # (ou o lake marcou como ausente na origem, decisão do pacote do lake de
+        # 23/09/2026). Upsert não remove; sem este passo o espelho guardaria
+        # para sempre a proposta que a CORP excluiu — e a tela a somaria.
+        # Só vale para a origem lake: o snapshot é um recorte, não a carteira.
+        removidos = remover_o_que_o_lake_nao_traz_mais(dados)
+
         self.stdout.write(self.style.SUCCESS(f"Carga {carga.pk} concluída em {carga.duracao_ms} ms."))
+        if removidos:
+            self.stdout.write(self.style.WARNING(f"  removidos do espelho (a origem não os tem mais): {removidos}"))
         self.stdout.write(f"  origem: {carga.origem} · extração: {carga.extraido_em}")
         self.stdout.write("  contagens:")
         for nome, valor in carga.contagens.items():

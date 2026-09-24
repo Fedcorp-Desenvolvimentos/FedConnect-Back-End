@@ -1,18 +1,22 @@
-"""Metas mensais por seguradora × ramo (RF-IEX-008, PA-023, T-IEX-4.2).
+"""Metas mensais por seguradora × ramo — gravadas NO LAKE (RF-IEX-010; antes RF-IEX-008).
 
-A meta é sempre em valor (R$) e vale contra o valor fechado do mês inteiro —
-não olha captação nem renovação (decisão do dono em PA-023). Uma linha por
-seguradora × ramo × competência (INV-IEX-007): cadastrar de novo a mesma
-chave atualiza o valor (upsert). `replicar_meses` repete o mesmo valor nos N
-meses seguintes, virando o ano quando preciso.
+Decisão da gestão em 23/09/2026: a meta mora no lake (`casa_meta_mensal`),
+onde o realizado é calculado, para a comparação ter um dono só. Este módulo
+deixou de ser dono do dado e virou a porta: cada operação é uma chamada ao
+FedHub (`/api/lake/metas`), que grava no lake. O CONTRATO que a tela consome
+não mudou — `id, seguradora, seguradora_nome, ramo, ramo_nome, competencia,
+valor_meta, atualizado_em, atualizado_por` — porque o FedHub o devolve pronto
+no mesmo formato.
+
+A regra continua a mesma (PA-023): meta sempre em valor, por seguradora × ramo
+× competência (dia 1), upsert pela chave, `replicar_meses` repete nos N meses
+seguintes. `MetaMensal` (o modelo local) fica no repositório só como histórico
+do que foi cadastrado antes da virada; nenhuma leitura nova sai dele.
 """
 from datetime import date
 from decimal import Decimal
 
-from django.db import transaction
-from django.db.models import Sum
-
-from indicadores.models import MetaMensal
+from indicadores.services import fedhub_lake
 
 REPLICAR_MAXIMO = 11
 
@@ -35,106 +39,100 @@ def rotulo(competencia: date) -> str:
     return f"{competencia.year:04d}-{competencia.month:02d}"
 
 
-def _decimal_texto(valor) -> str | None:
-    return None if valor is None else str(Decimal(valor).quantize(Decimal("0.01")))
-
-
 def _nome_ou_email(usuario) -> str | None:
-    if usuario is None:
+    if usuario is None or not getattr(usuario, "is_authenticated", False):
         return None
     return getattr(usuario, "nome_completo", "") or usuario.email
 
 
-def serializar(meta: MetaMensal) -> dict:
-    """Linha do contrato de `GET/POST indicadores/metas/` (design, "Metas mensais")."""
+def serializar(meta: dict) -> dict:
+    """Linha do contrato de `GET/POST indicadores/metas/`. O FedHub já a devolve
+    neste formato; aqui só se garante o conjunto de chaves que o front conhece."""
     return {
-        "id": meta.pk,
-        "seguradora": meta.seguradora_id,
-        "seguradora_nome": meta.seguradora.nome,
-        "ramo": meta.ramo_id,
-        "ramo_nome": meta.ramo.nome,
-        "competencia": rotulo(meta.competencia),
-        "valor_meta": _decimal_texto(meta.valor_meta),
-        "atualizado_em": meta.atualizado_em.isoformat() if meta.atualizado_em else None,
-        "atualizado_por": _nome_ou_email(meta.atualizado_por),
-    }
-
-
-def listar(competencia: date) -> dict:
-    """Metas da competência ordenadas por seguradora e ramo, mais a soma (`null` sem nenhuma)."""
-    metas = list(
-        MetaMensal.objects.filter(competencia=competencia)
-        .select_related("seguradora", "ramo", "atualizado_por")
-        .order_by("seguradora_id", "ramo_id")
-    )
-    total = MetaMensal.objects.filter(competencia=competencia).aggregate(total=Sum("valor_meta"))["total"]
-    return {
-        "competencia": rotulo(competencia),
-        "metas": [serializar(m) for m in metas],
-        "total_meta": _decimal_texto(total) if metas else None,
+        "id": meta["id"],
+        "seguradora": meta["seguradora"],
+        "seguradora_nome": meta.get("seguradora_nome") or "",
+        "ramo": meta["ramo"],
+        "ramo_nome": meta.get("ramo_nome") or "",
+        "competencia": meta["competencia"],
+        "valor_meta": meta["valor_meta"],
+        "atualizado_em": meta.get("atualizado_em"),
+        "atualizado_por": meta.get("atualizado_por"),
     }
 
 
 class MetaNaoEncontrada(LookupError):
-    """`PUT` em id inexistente."""
+    """`PUT`/`DELETE` em id inexistente."""
 
 
 class MetaDuplicada(ValueError):
     """`PUT` mudando a chave para uma combinação que já tem meta no mês."""
 
 
-@transaction.atomic
-def atualizar(meta_id: int, seguradora, ramo, competencia: date, valor_meta: Decimal, usuario) -> MetaMensal:
-    """Edita **esta** meta, inclusive seguradora, ramo e mês — sem criar outra.
-
-    Pedido do dono em 2026-09-23: editar uma linha e salvar criava uma meta
-    nova quando a chave mudava (o `POST` é upsert pela chave). Se a chave nova
-    já tem meta, recusa: são duas linhas distintas e cabe ao usuário decidir
-    qual fica.
-    """
-    try:
-        meta = MetaMensal.objects.select_for_update().get(pk=meta_id)
-    except MetaMensal.DoesNotExist as erro:
-        raise MetaNaoEncontrada("meta não encontrada.") from erro
-    colisao = (
-        MetaMensal.objects.filter(seguradora=seguradora, ramo=ramo, competencia=competencia)
-        .exclude(pk=meta.pk)
-        .exists()
-    )
-    if colisao:
-        raise MetaDuplicada(
-            f"já existe meta para {seguradora.sigla} × {ramo.abreviatura} em {rotulo(competencia)}; "
-            "edite aquela ou exclua uma das duas."
-        )
-    meta.seguradora = seguradora
-    meta.ramo = ramo
-    meta.competencia = competencia
-    meta.valor_meta = valor_meta
-    meta.atualizado_por = usuario
-    meta.save()
-    return MetaMensal.objects.select_related("seguradora", "ramo", "atualizado_por").get(pk=meta.pk)
+class ReferenciaDesconhecida(ValueError):
+    """Seguradora ou ramo que o lake não conhece."""
 
 
-@transaction.atomic
-def gravar(seguradora, ramo, competencia: date, valor_meta: Decimal, usuario, replicar_meses: int = 0) -> list:
+def _traduzir_recusa(erro: fedhub_lake.RecusaDoFedHub):
+    if erro.erro == "meta_inexistente":
+        return MetaNaoEncontrada("meta não encontrada.")
+    if erro.erro == "meta_duplicada":
+        return MetaDuplicada(erro.detalhe)
+    if erro.erro == "referencia_desconhecida":
+        return ReferenciaDesconhecida(erro.detalhe)
+    return ValueError(erro.detalhe)
+
+
+def listar(competencia: date) -> dict:
+    """Metas da competência ordenadas por seguradora e ramo, mais a soma (`null` sem nenhuma)."""
+    corpo = fedhub_lake.chamar("GET", "metas", params={"competencia": rotulo(competencia)})
+    return {
+        "competencia": corpo["competencia"],
+        "metas": [serializar(m) for m in corpo["metas"]],
+        "total_meta": corpo.get("total_meta"),
+    }
+
+
+def metas_da_competencia(competencia: date, ramos=(), seguradoras=()) -> list[dict]:
+    """As metas do mês para as agregações, já restritas aos ramos/seguradoras do filtro (vazio = todas)."""
+    metas = listar(competencia)["metas"]
+    if ramos:
+        metas = [m for m in metas if m["ramo"] in set(ramos)]
+    if seguradoras:
+        metas = [m for m in metas if m["seguradora"] in set(seguradoras)]
+    return metas
+
+
+def gravar(seguradora: str, ramo: str, competencia: date, valor_meta: Decimal, usuario, replicar_meses: int = 0) -> list:
     """Upsert em (seguradora, ramo, competência) e nos `replicar_meses` seguintes; devolve as linhas gravadas."""
     if not 0 <= replicar_meses <= REPLICAR_MAXIMO:
         raise ValueError(f"replicar_meses deve estar entre 0 e {REPLICAR_MAXIMO}.")
-    gravadas = []
-    for deslocamento in range(replicar_meses + 1):
-        meta, criada = MetaMensal.objects.update_or_create(
-            seguradora=seguradora,
-            ramo=ramo,
-            competencia=somar_meses(competencia, deslocamento),
-            defaults={"valor_meta": valor_meta, "atualizado_por": usuario},
-        )
-        if criada and usuario is not None:
-            meta.criado_por = usuario
-            meta.save(update_fields=("criado_por",))
-        gravadas.append(meta)
-    ids = [m.pk for m in gravadas]
-    return list(
-        MetaMensal.objects.filter(pk__in=ids)
-        .select_related("seguradora", "ramo", "atualizado_por")
-        .order_by("competencia", "seguradora_id", "ramo_id")
-    )
+    try:
+        corpo = fedhub_lake.chamar("POST", "metas", json={
+            "seguradora": seguradora, "ramo": ramo, "competencia": rotulo(competencia),
+            "valor_meta": str(Decimal(valor_meta).quantize(Decimal("0.01"))),
+            "replicar_meses": replicar_meses, "usuario": _nome_ou_email(usuario),
+        })
+    except fedhub_lake.RecusaDoFedHub as erro:
+        raise _traduzir_recusa(erro) from erro
+    return [serializar(m) for m in corpo["metas"]]
+
+
+def atualizar(meta_id: int, seguradora: str, ramo: str, competencia: date, valor_meta: Decimal, usuario) -> dict:
+    """Edita **esta** meta, inclusive seguradora, ramo e mês — sem criar outra (pedido do dono, 2026-09-23)."""
+    try:
+        corpo = fedhub_lake.chamar("PUT", f"metas/{int(meta_id)}", json={
+            "seguradora": seguradora, "ramo": ramo, "competencia": rotulo(competencia),
+            "valor_meta": str(Decimal(valor_meta).quantize(Decimal("0.01"))),
+            "usuario": _nome_ou_email(usuario),
+        })
+    except fedhub_lake.RecusaDoFedHub as erro:
+        raise _traduzir_recusa(erro) from erro
+    return serializar(corpo["metas"][0])
+
+
+def apagar(meta_id: int) -> None:
+    try:
+        fedhub_lake.chamar("DELETE", f"metas/{int(meta_id)}")
+    except fedhub_lake.RecusaDoFedHub as erro:
+        raise _traduzir_recusa(erro) from erro

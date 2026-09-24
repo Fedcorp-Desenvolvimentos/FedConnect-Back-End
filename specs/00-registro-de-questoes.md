@@ -104,7 +104,35 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Questão:** a hipótese anterior (mapeamento, 7b) era "não se exclui, só se cancela". Perguntado ao dono em 2026-09-08 se cancelar também deveria ser bloqueado.
 - **Resposta (2026-09-08):** **nem cancelar**. Turma com certificado emitido não pode ser excluída nem ter a situação alterada para `cancelada`; permanece `realizada`. A inscrição com certificado também não pode ser removida.
 
-## PA-014 — Quem acessa o cadastro novo pelo FedConnect: só `admin` ou também `ti`?
+## PA-014 — Layout do PDF e da planilha de faturas pendentes
+
+- **Status:** fechada (2026-09-09) · **Dono:** Ingrid Aylana · **Severidade:** média
+- **Resposta (2026-09-09):** o dono enviou o PDF "rel-faturas-pendentes-coimbra.pdf" gerado pelo legado em 09/09/2026 (6 páginas, 138 documentos, total R$ 45.581,23), enviado pelo dono em 2026-09-09. Layout a reproduzir: **A4 retrato**; cabeçalho com data de geração à esquerda, título "RELATÓRIO DE FATURAS PENDENTES" centralizado, "Página N de M" à direita e a linha "DATA: __/__/__ A __/__/__" com o período de vencimento filtrado; tabela com cabeçalho em duas linhas (FATURA · DOCUMENTO · PRODUTO/OBS · VIGÊNCIA · DATA VENCIMENTO · VALOR DOCUMENTO · DATA PAGAMENTO · VALOR PAGO); **cada documento ocupa duas linhas**: na primeira, fatura, documento, sacado, vigência MM/AAAA, vencimento e valor; na segunda, produto/OBS, periodicidade e parcela (MENSAL 12/1) e a administradora em negrito; separador pontilhado entre documentos; rodapé "N Fatura(s) · TOTAL GERAL R$ x · R$ pago". Sem subtotais por grupo. A planilha segue as mesmas colunas, uma linha por documento, mais uma linha de totais.
+- **Trava:** RF-FAT-002 e RF-FAT-003 (`specs/relatorio-faturas-pendentes/`).
+- **Questão:** o legado gera "relatório" (PDF) e "planilha". Não temos o modelo impresso do legado para reproduzir. Hipótese de trabalho: PDF A4 paisagem, cabeçalho com os filtros aplicados e a data de geração, agrupado pela ordenação escolhida quando ela é administradora ou cedente (subtotal por grupo), total geral no fim; planilha com uma linha por fatura, colunas iguais às da resposta do FedHub e linha de totais. Se a operação quiser o layout idêntico ao legado, precisamos de um PDF gerado por ele como referência.
+
+## PA-015 — Relatório de faturas pendentes: pedido e quem acessa
+
+- **Status:** fechada (2026-09-09) · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Trava:** RF-FAT-001, RNF-FAT-001 (`specs/relatorio-faturas-pendentes/`).
+- **Questão:** registrada já com a resposta, para servir de decisão citável nas regras do relatório de faturas pendentes.
+- **Resposta (2026-09-09):** o dono pediu o relatório de faturas pendentes no Financeiro, em Excel e PDF, reproduzindo o legado. **Acesso: financeiro, faturamento e admin.** A definição de pendente (vencimento passado há pelo menos 1 dia e sem baixa) vive no registro do FedHub.
+
+## PA-016 — Consulta por voucher traz parcelas que não estavam no documento
+
+- **Status:** parcialmente fechada (2026-09-18) · **Dono:** Ingrid Aylana · **Severidade:** alta
+- **Trava:** RF-VOU-002..004 (`specs/consulta-espelho-voucher/`).
+- **Questão:** o voucher 20131244 (favorecida ACPL ADMINISTRADORA DE IMÓVEIS) saiu com 169 parcelas e R$ 7.391,23; a consulta pelo número devolvia 186 linhas e R$ 8.086,09. As 17 a mais eram parcelas **sem baixa** de três lançamentos gerais — dezesseis já vencidas em 17/09, uma vencendo em 18/09 —, que herdam o número carimbado em `COMISSAO.VOUCHER` porque o carimbo é por lançamento e a consulta expande o lançamento em uma linha por parcela. Com o filtro de baixadas a consulta devolvia exatamente 169. O voucher não tem data de repasse gravada. Entre os 46 vouchers da mesma favorecida, 30 mostravam parcelas pagas depois do repasse (medição de 2026-09-18; a questão de mesmo teor no registro do frontend, em `FedConnect-FrontEnd-Prod/specs/00-registro-de-questoes.md`, traz o levantamento completo).
+- **Resposta (2026-09-18):** **"não tem que trazer parcelas sem baixa, tem que trazer EXATAMENTE o que tem no voucher."** Decisão: o Django registra a composição de cada documento na emissão e a consulta por voucher devolve só isso (ADR-0008). Filtrar por baixa foi recusado como solução.
+- **Complemento (2026-09-18, fim do dia):** a lista de emissão **muda ao longo do dia**, porque a baixa do retorno bancário entra aos poucos. Medido na ACPL no mesmo dia: 129 parcelas baixadas às 11h10, 169 no momento da emissão do voucher 20131244, 171 às 15h22 — as 42 que entraram no intervalo venceram em 17/09 e foram baixadas em 17/09, mas só apareceram no sistema durante o dia 18. Cancelado o voucher, as comissões voltaram à lista e ela mostrou 171. **Não é divergência: é o conjunto de parcelas pagas crescendo.** É exatamente por isso que o documento precisa de composição registrada, e não de um filtro recalculado.
+- **Em aberto:** parcela sem baixa deve continuar entrando na **lista de emissão** (80 das 209 pendentes da ACPL, R$ 3.995,90)? É regra de negócio; enquanto não decidida, a lista fica como está e o espelho garante que o que saiu no PDF é o que a consulta mostra.
+
+## PA-017 — PDF de faturas pendentes no padrão visual do voucher
+
+- **Status:** fechada (2026-09-21) · **Dono:** Ingrid Aylana · **Severidade:** baixa
+- **Trava:** RF-FAT-003 (`specs/relatorio-faturas-pendentes/`).
+- **Questão:** o PDF foi entregue como cópia fiel do relatório do legado (PA-014) e o dono perguntou se não dava para deixá-lo visualmente melhor, no padrão do voucher de comissão.
+- **Resposta (2026-09-21):** sim. O PDF passa a usar a linguagem visual do voucher — faixa azul institucional, cartões de resumo, tabela zebrada com cabeçalho azul, valores em verde monoespaçado e faixa de total no fim. As duas colunas de pagamento do legado saem: em relatório de pendentes são sempre vazias, e sem elas cabe uma linha por documento em vez de dois renglões. O conteúdo é o mesmo; muda a forma. PA-014 continua valendo para as regras de negócio do relatório, não para o layout.
 
 ## PA-018 — Indicadores executivos da produção: pedido, origem dos dados e acesso
 
@@ -151,7 +179,27 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Questão:** o card "Painel de TV" abria um protótipo com valores fixos. O número (mês corrente × mesmo mês do ano anterior, por seguradora × ramo, com meta) deve ser calculado aqui sobre o espelho, ou vir pronto de fora? E como o monitor do setor se autentica?
 - **Resposta (2026-09-23, por mensagem):** "o painel tv foi pra ser alimentado também"; "a autenticação é pelo fedconnect, usuario loga, acessa o card e abre a tela de dashboard"; "pode manter essa classificação na view do lake". Decisões derivadas: (1) o dado vem do Data Lake CORP (`vw_painel_tv`), lido pelo FedHub em `/api/lake/painel-tv` e repassado por `GET indicadores/painel-tv/` sem recálculo; (2) o usuário autentica no FedConnect (JWT) e a página estática lê o mesmo token; (3) o espelho local não é origem deste número; (4) o monitor exibe só Allianz, Bradesco, AXA, Chubb, Porto Seguro, HDI e Tokio Marine (mensagem de 23/09/2026), lista mantida na página; (5) em produção, até o contrato do financeiro ser publicado no servidor do lake (depois do TLS), a rota responde `contrato_nao_publicado` e a página avisa — estado previsto.
 
+## PA-025 — Onde a meta é gravada e contra o quê é comparada
+
+- **Status:** fechada (2026-09-23) · **Dono:** Ingryd Aylana (arquitetura de dados), a pedido da gestão · **Severidade:** alta
+- **Trava:** RF-IEX-010 (`specs/indicadores-meta-no-lake/`).
+- **Questão:** a meta (RF-IEX-008) vivia em `MetaMensal`, no banco do FedConnect, comparada com `pretot` por data de emissão; o painel de TV calcula o realizado no lake, em prêmio líquido por início de vigência, e mostrava meta nula. Onde a meta mora, e contra qual número ela é medida?
+- **Resposta (2026-09-23, por mensagem):** "vamos gravar a meta no lake" e "vamos manter o prêmio líquido". Decisões derivadas: (1) a meta é gravada em `casa_meta_mensal` do lake, pelo FedHub (`/api/lake/metas`), e o FedConnect vira proxy mantendo o contrato do front; (2) o realizado comparado com a meta é o prêmio líquido; (3) `MetaMensal` fica como histórico, sem leitura nova; (4) o restante da tela Produção CORP passa a ler o lake em spec própria ("vamos manter o que está no lake").
+
+## PA-026 — Quem é o dono do número da tela Produção CORP
+
+- **Status:** fechada (2026-09-23) · **Dono:** Ingryd Aylana (arquitetura de dados), a pedido da gestão · **Severidade:** alta
+- **Trava:** RF-IEX-011 (`specs/indicadores-lake-como-origem/`), ADR-0010.
+- **Questão:** com a meta no lake, o resumo (espelho, por data de emissão, prêmio total) e o painel de TV (lake, por início de vigência, prêmio líquido) mostravam atingimentos diferentes para a mesma meta (38,5 % × 69,8 %, medido em 23/09/2026). Qual regra vale, e onde ela mora?
+- **Resposta (2026-09-23, por mensagem):** "vamos manter o que está no lake". A tela passa a ler o lake pelo FedHub; nenhum número é calculado no FedConnect; o espelho deixa de ser origem (ADR-0010). Nada publicado na noite de 23/09 ("só não publica nada pra testarmos local amanhã e depois soltar pra prod").
+
+## PA-027 — Quem acessa o cadastro novo pelo FedConnect: só `admin` ou também `ti`?
+
+<!-- Registrada em 23/09/2026 como PA-014 no commit 2e062b4; o número já era da questão do layout
+     de faturas pendentes (fechada em 09/09). IDs não são reciclados (CONVENCOES §2.2): renumerada
+     no merge de 24/09/2026, sem mudança de conteúdo. -->
 - **Status:** aberta · **Dono:** Daniel Mello · **Severidade:** baixa
 - **Trava:** a tupla `NIVEIS_TELA` de `fedhub/views/cadastro_view.py` (RF-CAD-003 de `specs/cadastro-etl/`).
 - **Evidência (2026-09-23):** o dono respondeu no FedHub (questão 053 do registro do FedHub) que "em um primeiro momento o acesso deve ser apenas dos administradores". O frontend guarda a rota com `ROUTE_ACCESS.cadastroPessoas = ["admin", "ti"]` (questão 035 do registro do frontend). Os outros proxies do FedHub aqui usam `("admin", "faturamento", "ti")`.
 - **Questão:** `ti` entra? Hipótese de trabalho: **só `admin`**, como o dono disse; `ti` entra quando ele pedir (é trocar a tupla). Responde: dono.
+- **Decisão parcial (2026-09-24):** `financeiro` liberado. `NIVEIS_TELA = ("admin", "financeiro")`; o frontend acompanha em `ROUTE_ACCESS.cadastroPessoas` (questão 035 do registro do frontend). A entrada de `ti` segue em aberto.

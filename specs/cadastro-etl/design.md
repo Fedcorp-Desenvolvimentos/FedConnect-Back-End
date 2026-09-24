@@ -1,6 +1,6 @@
 # Design — Proxy do cadastro novo (`cadastro/*` → `/api/etl/*`)
 
-> **Rastreabilidade** — RF: RF-CAD-001..003 · RNF: RNF-CAD-001..003 · INV: INV-CAD-001..003 · ADR: ADR-0008 · Questões: PA-014
+> **Rastreabilidade** — RF: RF-CAD-001..003 · RNF: RNF-CAD-001..003 · INV: INV-CAD-001..003 · ADR: ADR-0008 · Questões: PA-027
 > **Status:** em revisão · **Dono:** Daniel Mello · **Atualizado:** 2026-09-23 · **Implementado junto (instrução do dono); aprovação retroativa pendente**
 > **Baseado em:** `requirements.md` (em revisão, 2026-09-23)
 
@@ -13,7 +13,7 @@ Um service (`CadastroService`) com um único método `repassar(metodo, rota, par
 | Arquivo | Mudança |
 |---|---|
 | `fedhub/services/cadastro_service.py` (novo) | `CadastroService.repassar(...)`; `TIMEOUT_LEITURA = 20`, `TIMEOUT_ESCRITA = 30`; `_resposta()` normaliza não-JSON em 503 no formato do FedHub |
-| `fedhub/views/cadastro_view.py` (novo) | `CadastroProxyView(APIView)`: `JWTAuthentication`, `IsAuthenticated`, `NIVEIS_TELA = ("admin",)`, métodos `get/post/put/patch`, 405 para o resto, validação de `rota` |
+| `fedhub/views/cadastro_view.py` (novo) | `CadastroProxyView(APIView)`: `JWTAuthentication`, `IsAuthenticated`, `NIVEIS_TELA = ("admin", "financeiro")` (PA-027, financeiro desde 2026-09-24), métodos `get/post/put/patch`, 405 para o resto, validação de `rota` |
 | `bigcorp/urls.py` | `path("cadastro/<path:rota>", CadastroProxyView.as_view(), name="cadastro-etl")` num bloco `# CADASTRO NOVO (proxy /api/etl do FedHub) *******` |
 | `fedhub/test_cadastro_proxy.py` (novo) | unittest com `requests` mockado e `APIRequestFactory` + `force_authenticate` com usuário falso (sem banco) |
 | `specs/CONVENCOES.md` | contexto `CAD` |
@@ -74,5 +74,5 @@ Headers que saem ao FedHub: `get_headers()` + `X-Operador: <email>` + `X-Request
 
 ## Impacto e Riscos
 - Deploy: sem env nova (o cliente `fedconnect` já existe no FedHub com escopo `*`); só código. Rollback: remover a linha de `urls.py`.
-- Nível só `admin` até PA-014.
+- Nível só `admin` até PA-027.
 - Cada GET de lista de condomínios segura um worker por até ~2 s (medição do FedHub); 20 s de timeout limita o dano de um túnel lento.

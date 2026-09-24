@@ -110,10 +110,19 @@ class ProxyTest(unittest.TestCase):
         r = self._chamar("get", "administradoras", usuario=Usuario("usuario"))
         self.assertEqual((r.status_code, r.data["erro"]), (403, "sem_acesso"))
         r = self._chamar("get", "administradoras", usuario=Usuario("ti"))
-        self.assertEqual(r.status_code, 403)  # PA-014: só admin por ora
+        self.assertEqual(r.status_code, 403)  # PA-027: ti ainda fora
         request.assert_not_called()
         r = self._chamar("get", "administradoras", usuario=None)
         self.assertEqual(r.status_code, 401)
+
+    # CT-CAD-004 (PA-027, 2026-09-24): financeiro passa pelo proxy
+    @patch.object(mod, "get_auth_headers", return_value={})
+    @patch.object(mod.requests, "request")
+    def test_financeiro_chega_ao_fedhub(self, request, _):
+        request.return_value = resposta(200, {"linhas": [], "total": 0})
+        r = self._chamar("get", "administradoras", usuario=Usuario("financeiro", email="fin@fedcorp.exemplo"))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(request.call_args.kwargs["headers"]["X-Operador"], "fin@fedcorp.exemplo")
 
     # CT-CAD-005
     @patch.object(mod.requests, "request")

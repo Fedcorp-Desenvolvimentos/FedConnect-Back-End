@@ -38,7 +38,9 @@ COLUNAS = [
 # dela funcionaria com um papel mais largo e quebraria no dia em que o lake
 # renomeasse uma coluna sem avisar — a view existe para absorver isso.
 # `tipdoc` NÃO é filtrado: o espelho quer endosso também, e quem decide o que
-# entra em cada indicador é o endpoint, não a carga.
+# entra em cada indicador é o endpoint, não a carga. Documento que a origem
+# deixou de devolver (`ausente_na_origem_em`, decisão do pacote do lake em
+# 23/09/2026) fica de fora: a CORP não o tem mais, e o espelho não pode tê-lo.
 # `nosnum_ren` é `renovacao_de_nosnum` (chave interna da apólice renovada);
 # `renovacao_de` na view é o número EXTERNO da apólice e não cabe num inteiro.
 SQL_DOCUMENTOS = """
@@ -47,6 +49,7 @@ SQL_DOCUMENTOS = """
            renovacao_de_nosnum,
            cancelado::int, sit_renovacao, sit_sinistro, cliente
       FROM vw_documento_financeiro
+     WHERE ausente_na_origem_em IS NULL
 """
 
 # Cadastros: só o que algum documento referencia — é tudo de que o espelho precisa.
@@ -74,7 +77,8 @@ SQL_RAMOS = """
 SQL_VALORES = """
     SELECT nosnum, premio_total, comissao_valor, premio_liquido
       FROM vw_documento_financeiro
-     WHERE premio_total IS NOT NULL OR comissao_valor IS NOT NULL OR premio_liquido IS NOT NULL
+     WHERE ausente_na_origem_em IS NULL
+       AND (premio_total IS NOT NULL OR comissao_valor IS NOT NULL OR premio_liquido IS NOT NULL)
 """
 
 # A última corrida do lake, para registrar de quando é a extração. Sem isto, a

@@ -1,6 +1,6 @@
 # Requisitos — Proxy do cadastro novo (`cadastro/*` → `/api/etl/*` do FedHub)
 
-> **Rastreabilidade** — RF: RF-CAD-001..003 · RNF: RNF-CAD-001..003 · Questões: PA-014
+> **Rastreabilidade** — RF: RF-CAD-001..003 · RNF: RNF-CAD-001..003 · Questões: PA-027
 > **Status:** em revisão · **Dono:** Daniel Mello · **Atualizado:** 2026-09-23 · **Implementado em 2026-09-23 por instrução do dono ("faça ele começar a consumir as rotas"); aprovação retroativa pendente**
 > **Par:** `FedHub-Backend/specs/etl-cadastro-api/` (o contrato) · `FedConnect-FrontEnd/specs/cadastro-clientes/` fase 10 (a tela)
 
@@ -35,7 +35,7 @@
 ### RF-CAD-003: Autorização
 
 - **QUANDO** a requisição não tem JWT válido, **ENTÃO** 401 (padrão DRF). `[E]` `bigcorp/settings.py:175-186`
-- **QUANDO** o usuário autenticado não tem `nivel_acesso` em `NIVEIS_TELA`, **ENTÃO** 403 `{"erro": "sem_acesso", "mensagem": ...}` **sem** chamar o FedHub. `[P]` PA-014 (hoje só `admin`)
+- **QUANDO** o usuário autenticado não tem `nivel_acesso` em `NIVEIS_TELA`, **ENTÃO** 403 `{"erro": "sem_acesso", "mensagem": ...}` **sem** chamar o FedHub. `[P]` PA-027 (hoje `admin` e `financeiro`; financeiro desde 2026-09-24)
 - **QUANDO** a chamada é repassada, **ENTÃO** o header `X-Operador` **DEVE** levar o e-mail do usuário autenticado (nunca do corpo). `[E]` mesmo princípio de `fedhub/views/fedpay_view.py` (operador vem do JWT)
 
 ## Requisitos Não Funcionais
@@ -61,4 +61,4 @@
 - CT-CAD-006 — nenhum arquivo de `consultas/services/fedhub_service.py` no diff; rota registrada em `bigcorp/urls.py`. _(RNF-CAD-003)_
 
 ## Questões em Aberto
-- PA-014 — `ti` acessa? — trava a tupla de RF-CAD-003
+- PA-027 — `ti` acessa? — trava a tupla de RF-CAD-003

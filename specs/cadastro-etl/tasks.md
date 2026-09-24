@@ -11,7 +11,7 @@
 
 ## Fase 2 — Do dono
 - [ ] T-CAD-2.1 Deploy no App Platform e teste com a tela (`FedConnect-FrontEnd/specs/cadastro-clientes/` fase 10) _(RNF-CAD-003)_
-- [ ] T-CAD-2.2 Fechar PA-014 (`ti`?) _(RF-CAD-003)_
+- [ ] T-CAD-2.2 Fechar PA-027 (`ti`?) _(RF-CAD-003)_
 
 ## Verificação Final
 - [x] `DJANGO_SETTINGS_MODULE=bigcorp.settings python -m unittest fedhub.test_cadastro_proxy`
