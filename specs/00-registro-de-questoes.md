@@ -193,3 +193,12 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Questão:** com a meta no lake, o resumo (espelho, por data de emissão, prêmio total) e o painel de TV (lake, por início de vigência, prêmio líquido) mostravam atingimentos diferentes para a mesma meta (38,5 % × 69,8 %, medido em 23/09/2026). Qual regra vale, e onde ela mora?
 - **Resposta (2026-09-23, por mensagem):** "vamos manter o que está no lake". A tela passa a ler o lake pelo FedHub; nenhum número é calculado no FedConnect; o espelho deixa de ser origem (ADR-0010). Nada publicado na noite de 23/09 ("só não publica nada pra testarmos local amanhã e depois soltar pra prod").
 
+## PA-027 — Quem acessa o cadastro novo pelo FedConnect: só `admin` ou também `ti`?
+
+<!-- Registrada em 23/09/2026 como PA-014 no commit 2e062b4; o número já era da questão do layout
+     de faturas pendentes (fechada em 09/09). IDs não são reciclados (CONVENCOES §2.2): renumerada
+     no merge de 24/09/2026, sem mudança de conteúdo. -->
+- **Status:** aberta · **Dono:** Daniel Mello · **Severidade:** baixa
+- **Trava:** a tupla `NIVEIS_TELA` de `fedhub/views/cadastro_view.py` (RF-CAD-003 de `specs/cadastro-etl/`).
+- **Evidência (2026-09-23):** o dono respondeu no FedHub (questão 053 do registro do FedHub) que "em um primeiro momento o acesso deve ser apenas dos administradores". O frontend guarda a rota com `ROUTE_ACCESS.cadastroPessoas = ["admin", "ti"]` (questão 035 do registro do frontend). Os outros proxies do FedHub aqui usam `("admin", "faturamento", "ti")`.
+- **Questão:** `ti` entra? Hipótese de trabalho: **só `admin`**, como o dono disse; `ti` entra quando ele pedir (é trocar a tupla). Responde: dono.
