@@ -74,7 +74,10 @@ class DominiosView(_IndicadorBase):
         filtros, erro = self.filtros(request)
         if erro:
             return erro
-        return Response({"sucesso": True, **agregacao.dominios(filtros)})
+        try:
+            return Response({"sucesso": True, **agregacao.dominios(filtros)})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
 
 
 class ResumoView(_IndicadorBase):
@@ -85,7 +88,10 @@ class ResumoView(_IndicadorBase):
         filtros, erro = self.filtros(request)
         if erro:
             return erro
-        return Response({"sucesso": True, **agregacao.resumo(filtros)})
+        try:
+            return Response({"sucesso": True, **agregacao.resumo(filtros)})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
 
 
 class PorSeguradoraView(_IndicadorBase):
@@ -96,7 +102,10 @@ class PorSeguradoraView(_IndicadorBase):
         filtros, erro = self.filtros(request)
         if erro:
             return erro
-        return Response({"sucesso": True, **agregacao.por_seguradora(filtros)})
+        try:
+            return Response({"sucesso": True, **agregacao.por_seguradora(filtros)})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
 
 
 class SerieView(_IndicadorBase):
@@ -114,7 +123,10 @@ class SerieView(_IndicadorBase):
         tipo = SerieParametrosSerializer(data=request.query_params)
         if not tipo.is_valid():
             return Response({"sucesso": False, "erro": "tipo deve ser dia ou mes."}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"sucesso": True, **agregacao.serie(filtros, tipo.validated_data["tipo"])})
+        try:
+            return Response({"sucesso": True, **agregacao.serie(filtros, tipo.validated_data["tipo"])})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
 
 
 class NaoFechadasView(_IndicadorBase):
@@ -125,7 +137,10 @@ class NaoFechadasView(_IndicadorBase):
         filtros, erro = self.filtros(request)
         if erro:
             return erro
-        return Response({"sucesso": True, **nao_fechadas.calcular(filtros).resposta()})
+        try:
+            return Response({"sucesso": True, **nao_fechadas.calcular(filtros).resposta()})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
 
 
 class ComposicaoView(_IndicadorBase):
@@ -136,7 +151,10 @@ class ComposicaoView(_IndicadorBase):
         filtros, erro = self.filtros(request)
         if erro:
             return erro
-        return Response({"sucesso": True, **agregacao.composicao(filtros)})
+        try:
+            return Response({"sucesso": True, **agregacao.composicao(filtros)})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
 
 
 class MetasView(_IndicadorBase):

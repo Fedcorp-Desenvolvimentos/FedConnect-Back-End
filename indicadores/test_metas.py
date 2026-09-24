@@ -255,19 +255,27 @@ class MetaMesTests(_ComFedHub):
 
 
 class MetaComLakeForaTests(_ComFedHub):
-    """RF-IEX-010: lake fora não derruba o resumo — a meta some, avisada, e o resto segue."""
+    """RF-IEX-010/011: so as metas fora -> o resumo segue sem meta, avisado; o lake inteiro
+    fora -> 503 nomeado, porque desde RF-IEX-011 nao existe numero local para mostrar."""
 
-    def test_resumo_e_por_seguradora_seguem_sem_meta_quando_o_lake_nao_responde(self):
-        self.fedhub.fora = True
+    def test_so_metas_fora_resumo_segue_sem_meta_avisado(self):
+        self.fedhub.metas_fora = True
         resumo = self.get("resumo")
         self.assertEqual(resumo.status_code, status.HTTP_200_OK, resumo.data)
         bloco = resumo.data["meta_mes"]
         self.assertIsNone(bloco["meta"])
         self.assertTrue(bloco["metas_indisponiveis"])
-        self.assertEqual(bloco["realizado"], "1080.45")  # o realizado é do espelho e continua
+        self.assertEqual(bloco["realizado"], "1080.45")  # o realizado vem do lake e continua
         por_seg = self.get("por_seguradora")
         self.assertEqual(por_seg.status_code, status.HTTP_200_OK, por_seg.data)
         self.assertIsNone(por_seg.data["total"]["meta_mes"])
+
+    def test_lake_inteiro_fora_da_503_nomeado_nas_leituras(self):
+        self.fedhub.fora = True
+        for nome in ("resumo", "por_seguradora", "dominios", "composicao", "nao_fechadas"):
+            resposta = self.get(nome)
+            self.assertEqual(resposta.status_code, status.HTTP_503_SERVICE_UNAVAILABLE, nome)
+            self.assertEqual(resposta.data["erro"], "lake_indisponivel")
 
 
 class ClienteFedHubLakeTests(SimpleTestCase):

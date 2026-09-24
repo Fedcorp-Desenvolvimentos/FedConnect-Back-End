@@ -1,83 +1,76 @@
-"""Agregações dos indicadores no banco (RF-IEX-002..005, RF-IEX-007, RF-IEX-008, T-IEX-2.2, T-IEX-2.4, T-IEX-4.3).
+"""Indicadores da tela "Produção CORP", montados a partir do LAKE via FedHub (RF-IEX-011).
 
-Primeira agregação com o ORM no repositório (ADR-0009): `Count`, `Sum`,
-`Q`-filter em `Count` e `TruncMonth`, tudo numa consulta por Bloco. Nada é
-somado em Python linha a linha (RNF-IEX-003). Toda soma monetária sai como
-string decimal ao lado da contagem de documentos que a compõem; sem nenhum,
-sai `null`, nunca `"0.00"` (INV-IEX-003, PA-019).
+Até 23/09/2026 este módulo agregava um espelho local por data de emissão e prêmio
+total; o painel de TV lia o lake por início de vigência e prêmio líquido, e a
+mesma meta tinha dois atingimentos. A gestão decidiu: "vamos manter o que está
+no lake". Desde então NENHUM número é calculado aqui. Cada seção pede ao FedHub
+(`/api/lake/indicadores/*`), que repassa as funções `fn_ind_*` do contrato do
+lake, e este módulo só MONTA a resposta no contrato que o front já consome:
+mesmas chaves, mesmos envelopes (RF-IEX-002..007). A regra — corte por início
+de vigência, valor fechado = prêmio líquido, renovação da casa, documento que a
+CORP apagou fora — mora no lake, e é a mesma do painel de TV.
 
-`meta_mes` (RF-IEX-008, PA-023) compara a soma das metas cadastradas para o
-mês da referência com o valor fechado do dia 1 até a referência — sempre o
-mês, independente do `periodo` pedido, porque a meta é mensal. Desde RF-IEX-010
-(23/09/2026) as metas vêm do LAKE, via FedHub, e o realizado comparado com a
-meta é o PRÊMIO LÍQUIDO (`preliq`), como a gestão decidiu para o lake — o
-cartão `valor_fechado` do período continua em `pretot` até a tela inteira
-passar a ler o lake.
+Toda soma monetária continua saindo como string decimal ao lado da contagem de
+documentos que a compõem; sem nenhum, `null` (INV-IEX-003).
 """
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from django.db.models import Count, Q, Sum
-from django.db.models.functions import TruncMonth
-
-from indicadores.models import CargaCorp, Producao, Ramo, Seguradora
 from indicadores.services import fedhub_lake
 from indicadores.services import metas as servico_metas
 from indicadores.services.periodos import Filtros, janelas_padrao, ultimo_dia_do_mes
 
 LIMITE_LINHAS = 400
 ROTULOS_MES = ("jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez")
-
-# As mesmas expressões servem para `aggregate()` (um Bloco) e para `annotate()`
-# agrupado (por seguradora, por dia, por mês). `documento` e `documentonegocio`
-# são OneToOne: o LEFT JOIN não multiplica linhas.
-EXPRESSOES_BLOCO = {
-    "fechados": Count("nosnum"),
-    "renovacoes": Count("nosnum", filter=Q(renovacao=True)),
-    "captacoes": Count("nosnum", filter=Q(renovacao=False)),
-    "com_negocio_origem": Count("documentonegocio"),
-    "valor_fechado": Sum("documento__pretot"),
-    "documentos_com_valor": Count("documento__pretot"),
-    "comissao": Sum("documento__val_c"),
-    "documentos_com_comissao": Count("documento__val_c"),
-}
-CAMPOS_BLOCO = tuple(EXPRESSOES_BLOCO)
+CAMPOS_BLOCO = ("fechados", "renovacoes", "captacoes", "com_negocio_origem", "valor_fechado",
+                "documentos_com_valor", "comissao", "documentos_com_comissao")
 
 
-def queryset_base(filtros: Filtros):
-    """Universo do painel: `tipdoc = 'A'` e não cancelado, salvo toggles; ramos e seguradoras escolhidos."""
-    qs = Producao.objects.all()
-    if not filtros.todos_tipdoc:
-        qs = qs.filter(tipdoc="A")
-    if not filtros.incluir_cancelados:
-        qs = qs.filter(cancelado=False)
-    if filtros.ramos:
-        qs = qs.filter(ramo__in=filtros.ramos)
-    if filtros.seguradoras:
-        qs = qs.filter(seguradora__in=filtros.seguradoras)
-    return qs
+# ------------------------------------------------------------------ FedHub
+
+def _parametros(filtros: Filtros, ramos=None, seguradoras=None, **extra) -> dict:
+    """Query string das rotas do FedHub. `None` em ramos/seguradoras = os do filtro; lista = sobrepõe."""
+    p = {
+        "ramo": list(filtros.ramos if ramos is None else ramos),
+        "seguradora": list(filtros.seguradoras if seguradoras is None else seguradoras),
+        "incluir_cancelados": "true" if filtros.incluir_cancelados else "false",
+        "todos_tipdoc": "true" if filtros.todos_tipdoc else "false",
+    }
+    p.update(extra)
+    return p
 
 
-def no_periodo(qs, ini: date, fim: date):
-    return qs.filter(datemi__range=(ini, fim))
+def _lake(rota: str, params: dict):
+    return fedhub_lake.chamar("GET", "indicadores/" + rota, params=params)
 
+
+def _bloco_lake(filtros: Filtros, ini: date, fim: date, ramos=None, seguradoras=None) -> dict:
+    corpo = _lake("bloco", _parametros(filtros, ramos, seguradoras, ini=ini.isoformat(), fim=fim.isoformat()))
+    return formatar_bloco(corpo.get("bloco") or {})
+
+
+def totais() -> dict:
+    return _lake("totais", {}).get("totais") or {}
+
+
+# ------------------------------------------------------------------ bloco
 
 def _decimal_texto(valor) -> str | None:
     if valor is None:
         return None
-    return str(Decimal(valor).quantize(Decimal("0.01")))
+    return str(Decimal(str(valor)).quantize(Decimal("0.01")))
 
 
 def formatar_bloco(bruto: dict) -> dict:
-    """Dicionário do `aggregate`/`annotate` → Bloco do contrato (Decimal → string; sem cobertura → `null`)."""
-    com_valor = bruto.get("documentos_com_valor") or 0
-    com_comissao = bruto.get("documentos_com_comissao") or 0
+    """Linha de `fn_ind_bloco` → Bloco do contrato (decimal → string; sem cobertura → `null`)."""
+    com_valor = int(bruto.get("documentos_com_valor") or 0)
+    com_comissao = int(bruto.get("documentos_com_comissao") or 0)
     return {
-        "fechados": bruto.get("fechados") or 0,
-        "renovacoes": bruto.get("renovacoes") or 0,
-        "captacoes": bruto.get("captacoes") or 0,
-        "com_negocio_origem": bruto.get("com_negocio_origem") or 0,
+        "fechados": int(bruto.get("fechados") or 0),
+        "renovacoes": int(bruto.get("renovacoes") or 0),
+        "captacoes": int(bruto.get("captacoes") or 0),
+        "com_negocio_origem": int(bruto.get("com_negocio_origem") or 0),
         "valor_fechado": _decimal_texto(bruto.get("valor_fechado")) if com_valor else None,
         "documentos_com_valor": com_valor,
         "comissao": _decimal_texto(bruto.get("comissao")) if com_comissao else None,
@@ -89,52 +82,54 @@ def bloco_vazio() -> dict:
     return formatar_bloco({})
 
 
-def bloco(qs, ini: date, fim: date) -> dict:
-    return formatar_bloco(no_periodo(qs, ini, fim).aggregate(**EXPRESSOES_BLOCO))
-
-
 # ------------------------------------------------------------------ carga vigente
 
+def _data(valor) -> date | None:
+    if not valor:
+        return None
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+    return datetime.fromisoformat(str(valor).replace("Z", "+00:00")).date()
 
-def ultima_carga():
-    return CargaCorp.objects.filter(sucesso=True).order_by("-concluida_em", "-id").first()
+
+def extraido_em(tot: dict | None = None) -> date | None:
+    """Data da última carga concluída do lake (`fn_ind_totais.extraido_em`)."""
+    return _data((tot if tot is not None else totais()).get("extraido_em"))
 
 
-def dados_parciais(filtros: Filtros, carga=None) -> bool:
-    """Referência depois da extração: a resposta sai normal, avisada (RF-IEX-003)."""
-    carga = carga or ultima_carga()
-    return bool(carga and carga.extraido_em and filtros.data_referencia > carga.extraido_em)
+def dados_parciais(filtros: Filtros, tot: dict | None = None) -> bool:
+    """Referência depois da última carga do lake: a resposta sai normal, avisada (RF-IEX-003)."""
+    quando = extraido_em(tot)
+    return bool(quando and filtros.data_referencia > quando)
 
 
 # ------------------------------------------------------------------ seções
 
-
 def resumo(filtros: Filtros) -> dict:
-    qs = queryset_base(filtros)
     ini, fim = filtros.janela
     ant_ini, ant_fim = filtros.janela_anterior
+    tot = totais()
     return {
         "filtros": filtros.como_dict(),
-        "dados_parciais": dados_parciais(filtros),
-        "atual": bloco(qs, ini, fim),
-        "anterior": bloco(qs, ant_ini, ant_fim),
-        "periodos": {nome: bloco(qs, *janela) for nome, janela in janelas_padrao(filtros.data_referencia).items()},
-        "meta_mes": meta_mes(filtros, qs),
+        "dados_parciais": dados_parciais(filtros, tot),
+        "atual": _bloco_lake(filtros, ini, fim),
+        "anterior": _bloco_lake(filtros, ant_ini, ant_fim),
+        "periodos": {nome: _bloco_lake(filtros, *janela) for nome, janela in janelas_padrao(filtros.data_referencia).items()},
+        "meta_mes": meta_mes(filtros),
     }
 
 
-# ------------------------------------------------------------------ metas (RF-IEX-008)
-
+# ------------------------------------------------------------------ metas (RF-IEX-008/010)
 
 class _MetasIndisponiveis(list):
-    """Lista vazia que sabe por quê: o lake não respondeu. A tela mostra o realizado
-    e avisa que a meta não veio, em vez de cair inteira por causa de um número."""
+    """Lista vazia que sabe por quê: o lake não respondeu à leitura das metas."""
 
     indisponiveis = True
 
 
 def _metas_do_mes(filtros: Filtros) -> list[dict]:
-    """Metas da competência da referência (lidas do lake via FedHub), restritas aos ramos e seguradoras do filtro."""
     try:
         return servico_metas.metas_da_competencia(
             filtros.data_referencia.replace(day=1), filtros.ramos, filtros.seguradoras
@@ -143,51 +138,43 @@ def _metas_do_mes(filtros: Filtros) -> list[dict]:
         return _MetasIndisponiveis()
 
 
-def _so_pares_com_meta(qs, metas: list[dict]):
-    """Restringe o universo aos pares seguradora × ramo que têm meta no mês.
+def _realizado_dos_pares(filtros: Filtros, metas: list[dict], ini: date, fim: date) -> dict:
+    """Valor fechado (líquido) do mês, restrito aos pares seguradora × ramo com meta (PA-023).
 
-    A meta "vai contra o total do mês" daquele par (PA-023). Sem esta restrição,
-    a tela sem filtro compararia a soma das metas cadastradas com o realizado
-    da carteira inteira — uma única meta apareceria "158 % atingida".
+    Sem meta, o universo inteiro do filtro. Um bloco por par: são poucas metas, e
+    é o mesmo número que o painel de TV mostra para aquele par.
     """
-    pares = {(m["seguradora"], m["ramo"]) for m in metas}
+    pares = sorted({(m["seguradora"], m["ramo"]) for m in metas})
     if not pares:
-        return qs
-    condicao = Q()
+        b = _bloco_lake(filtros, ini, fim)
+        return {"valor": Decimal(b["valor_fechado"]) if b["valor_fechado"] else None, "n": b["documentos_com_valor"],
+                "por_seguradora": {}}
+    valor, n, por_seg = Decimal(0), 0, {}
     for seguradora, ramo in pares:
-        condicao |= Q(seguradora_id=seguradora, ramo_id=ramo)
-    return qs.filter(condicao)
+        b = _bloco_lake(filtros, ini, fim, ramos=[ramo], seguradoras=[seguradora])
+        if b["documentos_com_valor"]:
+            v = Decimal(b["valor_fechado"])
+            valor += v
+            n += b["documentos_com_valor"]
+            por_seg[seguradora] = por_seg.get(seguradora, Decimal(0)) + v
+    return {"valor": valor if n else None, "n": n, "por_seguradora": por_seg}
 
 
 def _percentual(realizado, meta) -> float | None:
-    """`realizado / meta × 100` com uma decimal (INV-IEX-008); `null` sem meta. Pode passar de 100."""
     if meta is None or meta == 0:
         return None
     return float((Decimal(realizado or 0) / Decimal(meta) * 100).quantize(Decimal("0.1")))
 
 
-def meta_mes(filtros: Filtros, qs=None) -> dict:
-    """Meta × realizado do mês da referência, sempre do dia 1 até a referência, seja qual for o `periodo`.
-
-    `meta` é a soma das metas do mês (filtro vazio = todas); `null` quando
-    nenhuma. `realizado` é o valor fechado no mês **dos pares seguradora × ramo
-    que têm meta** (com meta cadastrada) ou do universo inteiro (sem meta)
-    (INV-IEX-003: `null` sem documento com valor). `falta = max(meta − realizado, 0)`;
-    `projecao` extrapola o ritmo do mês (`realizado / dias_decorridos × dias_no_mes`).
-    """
+def meta_mes(filtros: Filtros, metas_mes: list | None = None) -> dict:
+    """Meta × realizado do mês da referência, sempre do dia 1 até a referência, seja qual for o `periodo`."""
     ref = filtros.data_referencia
-    qs = queryset_base(filtros) if qs is None else qs
     dias_no_mes = ultimo_dia_do_mes(ref.year, ref.month)
     dias_decorridos = ref.day
-
-    metas_mes = _metas_do_mes(filtros)
-    metas = {"meta": sum(Decimal(m["valor_meta"]) for m in metas_mes), "n": len(metas_mes)}
-    # Realizado da meta em PRÊMIO LÍQUIDO (decisão da gestão para o lake, 23/09/2026).
-    fechado = no_periodo(_so_pares_com_meta(qs, metas_mes), ref.replace(day=1), ref).aggregate(
-        valor=Sum("documento__preliq"), n=Count("documento__preliq")
-    )
-    meta = metas["meta"] if metas["n"] else None
-    realizado = fechado["valor"] if fechado["n"] else None
+    metas_mes = _metas_do_mes(filtros) if metas_mes is None else metas_mes
+    meta = sum(Decimal(m["valor_meta"]) for m in metas_mes) if metas_mes else None
+    fechado = _realizado_dos_pares(filtros, metas_mes, ref.replace(day=1), ref)
+    realizado = fechado["valor"]
 
     falta = projecao = None
     if meta is not None:
@@ -205,69 +192,57 @@ def meta_mes(filtros: Filtros, qs=None) -> dict:
         "falta": _decimal_texto(falta),
         "percentual": _percentual(realizado, meta),
         "projecao": _decimal_texto(projecao),
-        "metas_consideradas": metas["n"] or 0,
+        "metas_consideradas": len(metas_mes),
         "metas_indisponiveis": bool(getattr(metas_mes, "indisponiveis", False)),
     }
 
 
 def _metas_por_seguradora(metas: list[dict]) -> dict:
-    """`{sigla: soma das metas do mês}` a partir das metas já filtradas."""
     por_sigla: dict = {}
     for m in metas:
         por_sigla[m["seguradora"]] = por_sigla.get(m["seguradora"], Decimal(0)) + Decimal(m["valor_meta"])
     return por_sigla
 
 
-def _realizado_mes_por_seguradora(qs, ref: date) -> dict:
-    """`{sigla: prêmio líquido fechado no mês até a referência}`; `null` para quem não tem documento com valor."""
-    consulta = (
-        no_periodo(qs, ref.replace(day=1), ref)
-        .values("seguradora")
-        .annotate(valor=Sum("documento__preliq"), n=Count("documento__preliq"))
-    )
-    return {linha["seguradora"]: (linha["valor"] if linha["n"] else None) for linha in consulta}
-
-
 def por_seguradora(filtros: Filtros) -> dict:
-    from indicadores.services import nao_fechadas  # evita import circular: nao_fechadas usa queryset_base
+    from indicadores.services import nao_fechadas
 
-    qs = queryset_base(filtros)
     ini, fim = filtros.janela
-    linhas_db = list(no_periodo(qs, ini, fim).values("seguradora").annotate(**EXPRESSOES_BLOCO))
+    linhas_lake = _lake("por-seguradora", _parametros(filtros, ini=ini.isoformat(), fim=fim.isoformat())).get("linhas") or []
     nao_fechadas_por_seg = nao_fechadas.calcular(filtros).sem_nova_por_seguradora()
 
-    # Metas do mês (RF-IEX-008/010): uma leitura do lake; seguradora com meta aparece mesmo sem fechado no período.
     metas_mes = _metas_do_mes(filtros)
     metas_por_seg = _metas_por_seguradora(metas_mes)
-    # Realizado da meta só nos ramos com meta de cada seguradora (mesma regra de `meta_mes`).
-    realizado_por_seg = _realizado_mes_por_seguradora(_so_pares_com_meta(qs, metas_mes), filtros.data_referencia)
+    ref = filtros.data_referencia
+    realizado = _realizado_dos_pares(filtros, metas_mes, ref.replace(day=1), ref)
+    realizado_por_seg = realizado["por_seguradora"]
 
-    por_sigla = {linha["seguradora"]: formatar_bloco(linha) for linha in linhas_db}
+    por_sigla = {l["seguradora_sigla"]: formatar_bloco(l) for l in linhas_lake}
+    nomes = {l["seguradora_sigla"]: l.get("seguradora") or "" for l in linhas_lake}
     for sigla in list(nao_fechadas_por_seg) + list(metas_por_seg):
         por_sigla.setdefault(sigla, bloco_vazio())
-    nomes = dict(Seguradora.objects.filter(sigla__in=[s for s in por_sigla if s]).values_list("sigla", "nome"))
 
     linhas = []
     for sigla, dados in por_sigla.items():
-        nao_fechadas_seg = nao_fechadas_por_seg.get(sigla, 0)
+        nf = nao_fechadas_por_seg.get(sigla, 0)
         meta_seg = metas_por_seg.get(sigla)
-        if dados["fechados"] <= 0 and nao_fechadas_seg <= 0 and meta_seg is None:
+        if dados["fechados"] <= 0 and nf <= 0 and meta_seg is None:
             continue
-        realizado_seg = realizado_por_seg.get(sigla)
+        realizado_seg = realizado_por_seg.get(sigla) if meta_seg is not None else None
         linhas.append({
             "seguradora": sigla or "",
             "nome": nomes.get(sigla, "" if sigla else "(sem seguradora)"),
             **dados,
-            "nao_fechadas": nao_fechadas_seg,
+            "nao_fechadas": nf,
             "meta_mes": _decimal_texto(meta_seg),
             "realizado_mes": _decimal_texto(realizado_seg),
             "percentual_meta": _percentual(realizado_seg, meta_seg),
         })
     linhas.sort(key=lambda linha: (-linha["fechados"], -linha["nao_fechadas"], linha["seguradora"]))
 
-    total = bloco(qs, ini, fim)
+    total = _bloco_lake(filtros, ini, fim)
     total["nao_fechadas"] = sum(nao_fechadas_por_seg.values())
-    geral = meta_mes(filtros, qs)
+    geral = meta_mes(filtros, metas_mes)
     total["meta_mes"] = geral["meta"]
     total["realizado_mes"] = geral["realizado"]
     total["percentual_meta"] = geral["percentual"]
@@ -276,129 +251,87 @@ def por_seguradora(filtros: Filtros) -> dict:
 
 def serie(filtros: Filtros, tipo: str) -> dict:
     ref = filtros.data_referencia
-    qs = queryset_base(filtros)
     if tipo == "dia":
         ini = ref - timedelta(days=29)
-        por_dia = {
-            linha["datemi"]: formatar_bloco(linha)
-            for linha in no_periodo(qs, ini, ref).values("datemi").annotate(**EXPRESSOES_BLOCO)
-        }
+        linhas = _lake("serie", _parametros(filtros, ini=ini.isoformat(), fim=ref.isoformat(), grao="dia")).get("linhas") or []
+        por_dia = {str(l["periodo"])[:10]: formatar_bloco(l) for l in linhas}
         pontos = []
         for deslocamento in range(30):
             dia = ini + timedelta(days=deslocamento)
-            pontos.append({
-                "periodo": dia.isoformat(),
-                "rotulo": dia.strftime("%d/%m"),
-                "futuro": False,
-                **por_dia.get(dia, bloco_vazio()),
-            })
+            pontos.append({"periodo": dia.isoformat(), "rotulo": dia.strftime("%d/%m"), "futuro": False,
+                           **por_dia.get(dia.isoformat(), bloco_vazio())})
         return {"tipo": "dia", "ano": ref.year, "pontos": pontos}
 
-    # `mes`: agrupado no banco por TruncMonth; `datemi` é DateField, o corte já é a data civil local.
-    por_mes = {}
-    consulta = (
-        no_periodo(qs, date(ref.year, 1, 1), ref)
-        .annotate(mes=TruncMonth("datemi"))
-        .values("mes")
-        .annotate(**EXPRESSOES_BLOCO)
-    )
-    for linha in consulta:
-        mes = linha["mes"]
-        por_mes[(mes.year, mes.month)] = formatar_bloco(linha)
+    linhas = _lake("serie", _parametros(filtros, ini=date(ref.year, 1, 1).isoformat(), fim=ref.isoformat(), grao="mes")).get("linhas") or []
+    por_mes = {str(l["periodo"])[:7]: formatar_bloco(l) for l in linhas}
     pontos = []
     for mes in range(1, 13):
         futuro = mes > ref.month
-        pontos.append({
-            "periodo": f"{ref.year}-{mes:02d}",
-            "rotulo": ROTULOS_MES[mes - 1],
-            "futuro": futuro,
-            **(bloco_vazio() if futuro else por_mes.get((ref.year, mes), bloco_vazio())),
-        })
+        chave = f"{ref.year}-{mes:02d}"
+        pontos.append({"periodo": chave, "rotulo": ROTULOS_MES[mes - 1], "futuro": futuro,
+                       **(bloco_vazio() if futuro else por_mes.get(chave, bloco_vazio()))})
     return {"tipo": "mes", "ano": ref.year, "pontos": pontos}
 
 
 def dominios(filtros: Filtros) -> dict:
-    """Ramos e seguradoras com total na base e fechados no período; metadados da última carga.
-
-    `total_base` é a base inteira, sem filtro: é o que mantém a ordem dos chips
-    fixa. `fechados_periodo` respeita o universo e o filtro cruzado (o contador
-    de ramo respeita as seguradoras escolhidas e vice-versa, RF-IEX-002).
-    """
+    """Ramos e seguradoras com total na base e fechados no período (filtro cruzado no lake); metadados da carga."""
     ini, fim = filtros.janela
-    carga = ultima_carga()
+    linhas = _lake("dominios", _parametros(filtros, ini=ini.isoformat(), fim=fim.isoformat())).get("linhas") or []
+    tot = totais()
 
-    totais_ramo = _contagem_por(Producao.objects.all(), "ramo")
-    totais_seg = _contagem_por(Producao.objects.all(), "seguradora")
-    # Filtro cruzado: o contador de ramo ignora o filtro de ramo e respeita o de seguradora; e vice-versa.
-    fechados_ramo = _contagem_por(no_periodo(queryset_base(replace(filtros, ramos=[])), ini, fim), "ramo")
-    fechados_seg = _contagem_por(no_periodo(queryset_base(replace(filtros, seguradoras=[])), ini, fim), "seguradora")
+    def lista(dominio):
+        itens = [{"sigla": l["sigla"], "nome": l.get("nome") or "", "total_base": int(l.get("total_base") or 0),
+                  "fechados_periodo": int(l.get("fechados_periodo") or 0)} for l in linhas if l["dominio"] == dominio]
+        itens.sort(key=lambda item: (-item["total_base"], item["sigla"]))
+        return itens
 
-    ramos = [
-        {"sigla": r.abreviatura, "nome": r.nome, "total_base": totais_ramo.get(r.abreviatura, 0),
-         "fechados_periodo": fechados_ramo.get(r.abreviatura, 0)}
-        for r in Ramo.objects.all()
-    ]
-    seguradoras = [
-        {"sigla": s.sigla, "nome": s.nome, "total_base": totais_seg.get(s.sigla, 0),
-         "fechados_periodo": fechados_seg.get(s.sigla, 0)}
-        for s in Seguradora.objects.all()
-    ]
-    ramos.sort(key=lambda item: (-item["total_base"], item["sigla"]))
-    seguradoras.sort(key=lambda item: (-item["total_base"], item["sigla"]))
-
+    quando = extraido_em(tot)
     return {
-        "extraido_em": carga.extraido_em.isoformat() if carga and carga.extraido_em else None,
-        "gerado_em": carga.gerado_em if carga else None,
-        "total_documentos": Producao.objects.count(),
-        "documentos_sem_datemi": Producao.objects.filter(datemi__isnull=True).count(),
+        "extraido_em": quando.isoformat() if quando else None,
+        "gerado_em": str(tot.get("extraido_em"))[:16].replace("T", " ") if tot.get("extraido_em") else None,
+        "total_documentos": int(tot.get("total_documentos") or 0),
+        "documentos_sem_datemi": int(tot.get("documentos_sem_datemi") or 0),
         "carga": {
-            "origem": carga.origem,
-            "concluida_em": carga.concluida_em.isoformat() if carga.concluida_em else None,
-            "rejeitos": carga.rejeitos,
-        } if carga else None,
-        "dados_parciais": dados_parciais(filtros, carga),
-        "ramos": ramos,
-        "seguradoras": seguradoras,
+            "origem": "lake",
+            "concluida_em": str(tot["extraido_em"]) if tot.get("extraido_em") else None,
+            "rejeitos": {"ausentes_na_origem": int(tot.get("ausentes_na_origem") or 0)},
+        },
+        "dados_parciais": dados_parciais(filtros, tot),
+        "ramos": lista("ramo"),
+        "seguradoras": lista("seguradora"),
     }
-
-
-def _contagem_por(qs, campo: str) -> dict:
-    """`{valor do campo: quantidade}` agrupado no banco."""
-    return {linha[campo]: linha["n"] for linha in qs.values(campo).annotate(n=Count("nosnum"))}
 
 
 def composicao(filtros: Filtros) -> dict:
-    """As três listas saem das mesmas querysets dos cartões (INV-IEX-005)."""
+    """As três listas saem do mesmo universo dos cartões (INV-IEX-005), agora no lake."""
     from indicadores.services import nao_fechadas
 
-    qs = queryset_base(filtros)
     ini, fim = filtros.janela
-    emitidas = no_periodo(qs, ini, fim).select_related("seguradora").order_by("-datemi", "cliente_nome", "nosnum")
-    captacoes = emitidas.filter(renovacao=False)
-    renovacoes = emitidas.filter(renovacao=True)
-    vencidas = sorted(
-        nao_fechadas.calcular(filtros).sem_nova_apolice, key=lambda p: (p.fimvig, p.nosnum), reverse=True
-    )
+    linhas = _lake("composicao", _parametros(filtros, ini=ini.isoformat(), fim=fim.isoformat())).get("linhas") or []
+    captacoes = [l for l in linhas if l["lista"] == "captacoes"]
+    renovacoes = [l for l in linhas if l["lista"] == "renovacoes"]
+    vencidas = sorted(nao_fechadas.calcular(filtros).sem_nova_apolice, key=lambda p: (p["fimvig"], p["nosnum"]), reverse=True)
     return {
-        "captacoes": _lista(captacoes.count(), list(captacoes[:LIMITE_LINHAS]), "datemi"),
-        "renovacoes": _lista(renovacoes.count(), list(renovacoes[:LIMITE_LINHAS]), "datemi"),
-        "vencidas_sem_nova_apolice": _lista(len(vencidas), vencidas[:LIMITE_LINHAS], "fimvig"),
+        "captacoes": _lista(captacoes, "data"),
+        "renovacoes": _lista(renovacoes, "data"),
+        "vencidas_sem_nova_apolice": _lista(vencidas, "fimvig"),
     }
 
 
-def _lista(total: int, exibidas: list, campo_data: str) -> dict:
+def _lista(linhas: list, campo_data: str) -> dict:
+    exibidas = linhas[:LIMITE_LINHAS]
     return {
-        "total": total,
+        "total": len(linhas),
         "exibidas": len(exibidas),
         "linhas": [
             {
-                "nosnum": p.nosnum,
-                "cliente": p.cliente_nome,
-                "seguradora": p.seguradora_id,
-                "seguradora_nome": p.seguradora.nome if p.seguradora else "",
-                "ramo": p.ramo_id,
-                "data": getattr(p, campo_data).isoformat() if getattr(p, campo_data) else None,
+                "nosnum": int(l["nosnum"]),
+                "cliente": l.get("cliente") or "",
+                "seguradora": l.get("seguradora_sigla") or "",
+                "seguradora_nome": l.get("seguradora") or "",
+                "ramo": l.get("ramo_sigla") or "",
+                "data": str(l[campo_data])[:10] if l.get(campo_data) else None,
             }
-            for p in exibidas
+            for l in exibidas
         ],
     }

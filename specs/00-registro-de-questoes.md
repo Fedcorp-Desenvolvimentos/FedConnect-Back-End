@@ -186,3 +186,10 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Questão:** a meta (RF-IEX-008) vivia em `MetaMensal`, no banco do FedConnect, comparada com `pretot` por data de emissão; o painel de TV calcula o realizado no lake, em prêmio líquido por início de vigência, e mostrava meta nula. Onde a meta mora, e contra qual número ela é medida?
 - **Resposta (2026-09-23, por mensagem):** "vamos gravar a meta no lake" e "vamos manter o prêmio líquido". Decisões derivadas: (1) a meta é gravada em `casa_meta_mensal` do lake, pelo FedHub (`/api/lake/metas`), e o FedConnect vira proxy mantendo o contrato do front; (2) o realizado comparado com a meta é o prêmio líquido; (3) `MetaMensal` fica como histórico, sem leitura nova; (4) o restante da tela Produção CORP passa a ler o lake em spec própria ("vamos manter o que está no lake").
 
+## PA-026 — Quem é o dono do número da tela Produção CORP
+
+- **Status:** fechada (2026-09-23) · **Dono:** Ingryd Aylana (arquitetura de dados), a pedido da gestão · **Severidade:** alta
+- **Trava:** RF-IEX-011 (`specs/indicadores-lake-como-origem/`), ADR-0010.
+- **Questão:** com a meta no lake, o resumo (espelho, por data de emissão, prêmio total) e o painel de TV (lake, por início de vigência, prêmio líquido) mostravam atingimentos diferentes para a mesma meta (38,5 % × 69,8 %, medido em 23/09/2026). Qual regra vale, e onde ela mora?
+- **Resposta (2026-09-23, por mensagem):** "vamos manter o que está no lake". A tela passa a ler o lake pelo FedHub; nenhum número é calculado no FedConnect; o espelho deixa de ser origem (ADR-0010). Nada publicado na noite de 23/09 ("só não publica nada pra testarmos local amanhã e depois soltar pra prod").
+

@@ -302,11 +302,14 @@ class ResumoTests(_ComCarga):
         self.assertEqual(resposta.status_code, status.HTTP_200_OK, resposta.data)
         self.assertTrue(resposta.data["sucesso"])
         atual = resposta.data["atual"]
-        self.assertEqual(atual["fechados"], 11)
+        # RF-IEX-011 (23/09/2026): o corte e por INICIO DE VIGENCIA, como no lake. O 111,
+        # que tem data de emissao invalida e vigencia em 09/09, passa a contar (12, nao 11);
+        # e o valor fechado e o PREMIO LIQUIDO (900.45 + 180.00), nao o total.
+        self.assertEqual(atual["fechados"], 12)
         self.assertEqual(atual["renovacoes"], 7)
-        self.assertEqual(atual["captacoes"], 4)
+        self.assertEqual(atual["captacoes"], 5)
         self.assertEqual(atual["com_negocio_origem"], 1)
-        self.assertEqual(atual["valor_fechado"], "1200.50")
+        self.assertEqual(atual["valor_fechado"], "1080.45")
         self.assertEqual(atual["documentos_com_valor"], 2)
         self.assertEqual(atual["comissao"], "100.05")
         self.assertEqual(atual["documentos_com_comissao"], 1)
@@ -317,10 +320,10 @@ class ResumoTests(_ComCarga):
         self.assertFalse(resposta.data["dados_parciais"])
 
     def test_toggles_incluem_tipdoc_x_e_cancelados(self):
-        self.assertEqual(self.get("resumo", todos_tipdoc="true").data["atual"]["fechados"], 12)
-        self.assertEqual(self.get("resumo", incluir_cancelados="true").data["atual"]["fechados"], 12)
+        self.assertEqual(self.get("resumo", todos_tipdoc="true").data["atual"]["fechados"], 13)
+        self.assertEqual(self.get("resumo", incluir_cancelados="true").data["atual"]["fechados"], 13)
         self.assertEqual(
-            self.get("resumo", incluir_cancelados="true", todos_tipdoc="true").data["atual"]["fechados"], 13
+            self.get("resumo", incluir_cancelados="true", todos_tipdoc="true").data["atual"]["fechados"], 14
         )
 
     def test_periodos_hoje_semana_mes_ano_e_anterior(self):
@@ -328,8 +331,8 @@ class ResumoTests(_ComCarga):
 
         self.assertEqual(periodos["hoje"]["fechados"], 1)
         self.assertEqual(periodos["semana"]["fechados"], 2)  # segunda 21 e terça 22; domingo 20 fica fora
-        self.assertEqual(periodos["mes"]["fechados"], 11)
-        self.assertEqual(periodos["ano"]["fechados"], 14)
+        self.assertEqual(periodos["mes"]["fechados"], 12)
+        self.assertEqual(periodos["ano"]["fechados"], 15)  # por vigencia: + 111
         self.assertEqual(self.get("resumo", periodo="mes").data["anterior"]["fechados"], 1)  # 2026-08-10; 25/08 fora
         self.assertEqual(self.get("resumo", periodo="hoje").data["anterior"]["fechados"], 1)  # 21/09
         self.assertEqual(self.get("resumo", periodo="semana").data["anterior"]["fechados"], 3)  # 14..15/09
@@ -337,7 +340,7 @@ class ResumoTests(_ComCarga):
     def test_faixa_e_filtros_de_ramo_e_seguradora(self):
         faixa = self.get("resumo", periodo="faixa", data_ini="2026-09-15", data_fim="2026-09-01").data
         self.assertEqual(faixa["filtros"]["periodo_ini"], "2026-09-01")
-        self.assertEqual(faixa["atual"]["fechados"], 8)
+        self.assertEqual(faixa["atual"]["fechados"], 9)  # por vigencia: + 111 (09/09)
 
         resposta = self.client.get(URLS["resumo"] + f"?data_referencia={REF}&seguradora=PORT&ramo=FIAN&ramo=AUTO")
         self.assertEqual(resposta.data["atual"]["fechados"], 5)
@@ -370,11 +373,14 @@ class ResumoTests(_ComCarga):
 
         dados = resposta.data
         self.assertEqual(dados["extraido_em"], "2026-09-22")
-        self.assertEqual(dados["gerado_em"], "2026-09-22 12:57")
+        # RF-IEX-011: os metadados vem do lake (ultima carga concluida), nao de CargaCorp.
+        self.assertTrue(dados["gerado_em"].startswith("2026-09-22"))
         self.assertEqual(dados["total_documentos"], 27)
         self.assertEqual(dados["documentos_sem_datemi"], 1)
-        self.assertEqual(dados["carga"]["origem"], "snapshot")
-        self.assertEqual(dados["carga"]["rejeitos"]["cliente_desconhecido"], 1)
+        self.assertEqual(dados["carga"]["origem"], "lake")
+        # Rejeitos de carga sao do espelho, que nao e mais a origem; o lake informa quantos
+        # documentos a CORP apagou (ausentes_na_origem), que e o que interessa a tela.
+        self.assertIn("ausentes_na_origem", dados["carga"]["rejeitos"])
         ramos = {r["sigla"]: r for r in dados["ramos"]}
         # total_base decrescente; FIAN e AUTO empatam (3) e desempatam por sigla.
         self.assertEqual([r["sigla"] for r in dados["ramos"]], ["COND", "AUTO", "FIAN"])
@@ -386,7 +392,7 @@ class ResumoTests(_ComCarga):
         # E vice-versa: sem filtro de ramo, a seguradora conta tudo dela.
         seguradoras = {s["sigla"]: s for s in dados["seguradoras"]}
         self.assertEqual(seguradoras["PORT"]["fechados_periodo"], 5)
-        self.assertEqual(seguradoras["ALLI"]["fechados_periodo"], 4)
+        self.assertEqual(seguradoras["ALLI"]["fechados_periodo"], 5)  # por vigencia: + 111
         por_ramo = {s["sigla"]: s for s in self.get("dominios", ramo="FIAN").data["seguradoras"]}
         self.assertEqual((por_ramo["PORT"]["fechados_periodo"], por_ramo["ALLI"]["fechados_periodo"]), (3, 0))
 
@@ -401,7 +407,7 @@ class ResumoTests(_ComCarga):
         self.assertEqual(resumo.data["atual"]["fechados"], 0)
         self.assertIsNone(resumo.data["atual"]["valor_fechado"])
         self.assertIsNone(dominios.data["extraido_em"])
-        self.assertIsNone(dominios.data["carga"])
+        self.assertIsNone(dominios.data["carga"]["concluida_em"])  # RF-IEX-011: o bloco existe, sem carga concluida
         self.assertEqual(dominios.data["total_documentos"], 0)
 
     def test_resposta_do_resumo_em_menos_de_dois_segundos(self):
@@ -421,16 +427,17 @@ class PorSeguradoraTests(_ComCarga):
 
         linhas = dados["linhas"]
         total = dados["total"]
-        self.assertEqual([l["seguradora"] for l in linhas], ["PORT", "ALLI", "TOKI"])
-        self.assertEqual(linhas[0]["nome"], "PORTO SEGURO")
+        # RF-IEX-011: por vigencia ALLI ganha o 111 e empata com PORT (5 a 5); o desempate e a sigla.
+        self.assertEqual([l["seguradora"] for l in linhas], ["ALLI", "PORT", "TOKI"])
+        self.assertEqual(linhas[0]["nome"], "ALLIANZ SEGUROS")
         for chave in ("fechados", "renovacoes", "captacoes", "com_negocio_origem", "documentos_com_valor", "nao_fechadas"):
             self.assertEqual(sum(l[chave] for l in linhas), total[chave], chave)
         for linha in linhas + [total]:
             self.assertEqual(linha["fechados"], linha["renovacoes"] + linha["captacoes"])  # INV-IEX-001
-        self.assertEqual(total["fechados"], 11)
-        self.assertEqual(total["valor_fechado"], "1200.50")
+        self.assertEqual(total["fechados"], 12)  # por vigencia (RF-IEX-011)
+        self.assertEqual(total["valor_fechado"], "1080.45")  # premio liquido
         self.assertEqual({l["seguradora"]: l["nao_fechadas"] for l in linhas}, {"ALLI": 1, "PORT": 1, "TOKI": 0})
-        self.assertEqual({l["seguradora"]: l["valor_fechado"] for l in linhas}, {"ALLI": "1000.50", "PORT": "200.00", "TOKI": None})
+        self.assertEqual({l["seguradora"]: l["valor_fechado"] for l in linhas}, {"ALLI": "900.45", "PORT": "180.00", "TOKI": None})
 
     def test_seguradora_sem_fechados_entra_se_tem_nao_fechadas(self):
         dados = self.get("por_seguradora", periodo="hoje").data
@@ -456,7 +463,7 @@ class SerieTests(_ComCarga):
         self.assertEqual(por_dia["2026-09-15"]["fechados"], 3)  # 105, 106, 121
         self.assertEqual(por_dia["2026-09-15"]["renovacoes"], 2)
         self.assertEqual(por_dia["2026-08-25"]["fechados"], 1)
-        self.assertEqual(sum(p["fechados"] for p in pontos), 12)  # mês (11) + 25/08
+        self.assertEqual(sum(p["fechados"] for p in pontos), 13)  # mes (12, por vigencia) + 25/08
 
     def test_serie_por_mes_com_futuro_marcado(self):
         dados = self.get("serie", tipo="mes").data
@@ -466,8 +473,8 @@ class SerieTests(_ComCarga):
         self.assertEqual(len(pontos), 12)
         self.assertEqual([p["futuro"] for p in pontos], [False] * 9 + [True] * 3)
         por_mes = {p["periodo"]: p for p in pontos}
-        self.assertEqual(por_mes["2026-09"]["fechados"], 11)
-        self.assertEqual(por_mes["2026-09"]["valor_fechado"], "1200.50")
+        self.assertEqual(por_mes["2026-09"]["fechados"], 12)
+        self.assertEqual(por_mes["2026-09"]["valor_fechado"], "1080.45")  # premio liquido
         self.assertEqual(por_mes["2026-08"]["fechados"], 2)
         self.assertEqual(por_mes["2026-03"]["fechados"], 1)
         self.assertEqual(por_mes["2026-03"]["rotulo"], "mar")
@@ -586,7 +593,7 @@ class ComposicaoTests(_ComCarga):
         composicao = self.get("composicao").data
 
         captacoes = composicao["captacoes"]["linhas"]
-        self.assertEqual([l["nosnum"] for l in captacoes], [116, 114, 105, 110])  # datemi decrescente
+        self.assertEqual([l["nosnum"] for l in captacoes], [116, 114, 105, 111, 110])  # inicio de vigencia decrescente
         self.assertEqual(captacoes[0], {
             "nosnum": 116, "cliente": "Cliente 10", "seguradora": "TOKI", "seguradora_nome": "TOKIO MARINE",
             "ramo": "AUTO", "data": "2026-09-21",
@@ -640,6 +647,6 @@ class ServicosDiretosTests(_ComCarga):
 
     def test_bloco_direto_e_nao_fechadas_por_seguradora(self):
         f = filtros()
-        bloco = agregacao.bloco(agregacao.queryset_base(f), *f.janela)
-        self.assertEqual((bloco["fechados"], bloco["renovacoes"], bloco["captacoes"]), (11, 7, 4))
+        bloco = agregacao._bloco_lake(f, *f.janela)  # o bloco vem do lake (RF-IEX-011)
+        self.assertEqual((bloco["fechados"], bloco["renovacoes"], bloco["captacoes"]), (12, 7, 5))  # por vigencia
         self.assertEqual(dict(nao_fechadas.calcular(f).sem_nova_por_seguradora()), {"ALLI": 1, "PORT": 1})
