@@ -1,7 +1,7 @@
 # Design — Painel de TV alimentado pelo Data Lake CORP (via FedHub)
 
 > **Rastreabilidade** — RF: RF-IEX-009 · INV: INV-IEX-005, INV-IEX-006 · ADR: — · Questões: PA-024
-> **Status:** aprovado (2026-09-23) · **Dono:** Ingryd Aylana · **Atualizado:** 2026-09-23
+> **Status:** aprovado (2026-09-23) · **Dono:** Ingryd Aylana · **Atualizado:** 2026-09-24
 > **Baseado em:** `requirements.md` (aprovado em 2026-09-23)
 
 ## Visão Geral da Solução
@@ -60,7 +60,9 @@ Erro (503): `{"sucesso": false, "erro": "lake_nao_configurado|lake_indisponivel|
 
 | Falha | Comportamento | Requisito |
 |---|---|---|
-| Sem JWT / expirado | 401; a página mostra "Sessão expirada — entre no FedConnect e abra o painel de novo" | RF-IEX-009 |
+| Access expirado (vale 30 min em `SIMPLE_JWT`) | 401; a página renova com `POST login/refresh/` e o `refreshToken` do `localStorage`, grava o access e o refresh rotacionado e repete a chamada — mesma regra de `src/services/api.js`. `[E]` fix de 2026-09-24: sem isso, a TV parava de atualizar a partir da 3ª recarga | RF-IEX-009 |
+| Sem JWT / refresh inválido | a página mostra "Sessão expirada — entre no FedConnect e abra o painel de novo" | RF-IEX-009 |
+| Qualquer falha com dado já na tela | o dado anterior **continua** e o relógio passa a "dado de HH:MM · <motivo curto>" em vermelho; nova tentativa em 1 min (em dia, 10 min) | RF-IEX-009 |
 | FedHub 503 | 503 com o `erro` do FedHub; a página traduz cada um em uma frase | RF-IEX-009, RNF-IEX-005 |
 | FedHub fora / timeout 15 s | 503 `fedhub_indisponivel` | RF-IEX-009 |
 | Nenhuma linha com valor | página mostra "Nenhuma seguradora com produção no período" | RF-IEX-009 |
@@ -91,5 +93,5 @@ Erro (503): `{"sucesso": false, "erro": "lake_nao_configurado|lake_indisponivel|
 ## Impacto e Riscos
 
 - Sem migração, sem mudança em rota existente; reverter é remover a URL e voltar o `painel.html` do git.
-- A página depende do `accessToken` no `localStorage` da mesma origem: se o app mudar onde guarda o token, o painel perde o dado (mostra "Sessão expirada").
+- A página depende do `accessToken`/`refreshToken` no `localStorage` da mesma origem: se o app mudar onde guarda o token, o painel perde o dado (mostra "Sessão expirada"). Com rotação de refresh ativa, uma aba do app aberta no mesmo navegador pode renovar ao mesmo tempo; a página aceita o access que a outra aba deixou quando o refresh dela já foi trocado.
 - Cadência de 10 min na página × 10 min no lake: no pior caso o número tem 20 min de idade. Aceito pelo dono para um monitor de setor.
