@@ -202,3 +202,4 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Trava:** a tupla `NIVEIS_TELA` de `fedhub/views/cadastro_view.py` (RF-CAD-003 de `specs/cadastro-etl/`).
 - **Evidência (2026-09-23):** o dono respondeu no FedHub (questão 053 do registro do FedHub) que "em um primeiro momento o acesso deve ser apenas dos administradores". O frontend guarda a rota com `ROUTE_ACCESS.cadastroPessoas = ["admin", "ti"]` (questão 035 do registro do frontend). Os outros proxies do FedHub aqui usam `("admin", "faturamento", "ti")`.
 - **Questão:** `ti` entra? Hipótese de trabalho: **só `admin`**, como o dono disse; `ti` entra quando ele pedir (é trocar a tupla). Responde: dono.
+- **Decisão parcial (2026-09-24):** `financeiro` liberado. `NIVEIS_TELA = ("admin", "financeiro")`; o frontend acompanha em `ROUTE_ACCESS.cadastroPessoas` (questão 035 do registro do frontend). A entrada de `ti` segue em aberto.

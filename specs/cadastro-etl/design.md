@@ -13,7 +13,7 @@ Um service (`CadastroService`) com um único método `repassar(metodo, rota, par
 | Arquivo | Mudança |
 |---|---|
 | `fedhub/services/cadastro_service.py` (novo) | `CadastroService.repassar(...)`; `TIMEOUT_LEITURA = 20`, `TIMEOUT_ESCRITA = 30`; `_resposta()` normaliza não-JSON em 503 no formato do FedHub |
-| `fedhub/views/cadastro_view.py` (novo) | `CadastroProxyView(APIView)`: `JWTAuthentication`, `IsAuthenticated`, `NIVEIS_TELA = ("admin",)`, métodos `get/post/put/patch`, 405 para o resto, validação de `rota` |
+| `fedhub/views/cadastro_view.py` (novo) | `CadastroProxyView(APIView)`: `JWTAuthentication`, `IsAuthenticated`, `NIVEIS_TELA = ("admin", "financeiro")` (PA-027, financeiro desde 2026-09-24), métodos `get/post/put/patch`, 405 para o resto, validação de `rota` |
 | `bigcorp/urls.py` | `path("cadastro/<path:rota>", CadastroProxyView.as_view(), name="cadastro-etl")` num bloco `# CADASTRO NOVO (proxy /api/etl do FedHub) *******` |
 | `fedhub/test_cadastro_proxy.py` (novo) | unittest com `requests` mockado e `APIRequestFactory` + `force_authenticate` com usuário falso (sem banco) |
 | `specs/CONVENCOES.md` | contexto `CAD` |
