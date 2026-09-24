@@ -1934,16 +1934,23 @@ class CertificadoTests(CipaTestBase):
 
 
 class DataPassadaTests(CipaTestBase):
-    """Turma não se agenda no passado; turma antiga continua editável."""
+    """Turma pode ser cadastrada no passado, para registrar o histórico."""
 
-    def test_criar_turma_em_data_passada_da_400(self):
+    def test_criar_turma_em_data_passada_e_permitido(self):
         ontem = timezone.localdate() - timedelta(days=1)
 
         resposta = self.client.post("/cursos-cipa/", dados_turma(data=ontem.isoformat()), format="json")
 
-        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("data", resposta.data)
-        self.assertEqual(TurmaCipa.objects.count(), 0)
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+        self.assertEqual(TurmaCipa.objects.get().status, "realizada")
+
+    def test_criar_turma_futura_continua_agendada(self):
+        amanha = timezone.localdate() + timedelta(days=1)
+
+        resposta = self.client.post("/cursos-cipa/", dados_turma(data=amanha.isoformat()), format="json")
+
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+        self.assertEqual(TurmaCipa.objects.get().status, "agendada")
 
     def test_criar_turma_hoje_e_permitido(self):
         resposta = self.client.post(
@@ -1952,7 +1959,7 @@ class DataPassadaTests(CipaTestBase):
 
         self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
 
-    def test_importar_planilha_em_data_passada_da_400(self):
+    def test_importar_planilha_em_data_passada_e_permitido(self):
         ontem = timezone.localdate() - timedelta(days=1)
 
         resposta = self.client.post(
@@ -1962,10 +1969,10 @@ class DataPassadaTests(CipaTestBase):
             format="json",
         )
 
-        self.assertEqual(resposta.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("data", resposta.data)
+        self.assertEqual(resposta.status_code, status.HTTP_201_CREATED, resposta.data)
+        self.assertEqual(resposta.data["status"], "realizada")
 
-    def test_turma_antiga_continua_editavel_mas_nao_remarca_para_o_passado(self):
+    def test_turma_antiga_continua_editavel_e_remarca_para_o_passado(self):
         ontem = timezone.localdate() - timedelta(days=1)
         antiga = TurmaCipa.objects.create(
             local=local_por_codigo(AUDITORIO), data=ontem, criado_por=self.operador
@@ -1984,5 +1991,4 @@ class DataPassadaTests(CipaTestBase):
 
         self.assertEqual(observacao.status_code, status.HTTP_200_OK, observacao.data)
         self.assertEqual(instrutor.status_code, status.HTTP_200_OK, instrutor.data)
-        self.assertEqual(remarcar.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("data", remarcar.data)
+        self.assertEqual(remarcar.status_code, status.HTTP_200_OK, remarcar.data)
