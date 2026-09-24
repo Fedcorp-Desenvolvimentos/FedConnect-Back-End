@@ -45,8 +45,8 @@
 
 - **QUANDO** consulto `GET indicadores/resumo/?periodo=hoje|semana|mes|ano|faixa&data_referencia=AAAA-MM-DD[&data_ini&data_fim][&ramo=..&seguradora=..][&incluir_cancelados][&todos_tipdoc][&janela_dias]`, **ENTÃO** o sistema **DEVE** aplicar o universo padrão (`tipdoc = 'A'`, não cancelado) e devolver, para o período pedido **e** para hoje/semana/mês/ano da mesma referência: `fechados`, `renovacoes`, `captacoes`, `com_negocio_origem`, `valor_fechado` com `documentos_com_valor`, `comissao` com `documentos_com_comissao`. `[E]` `agregar()` do protótipo; `[E]` `DEFINICAO-TECNICA.md` §4
 - **QUANDO** o período tem documentos sem valor conhecido, **ENTÃO** a resposta **DEVE** trazer a soma dos que têm e a cobertura; **NÃO DEVE** somar zero no lugar do ausente. `[P]` PA-019
-- **QUANDO** consulto, **ENTÃO** a resposta **DEVE** trazer também o período anterior equivalente (dia anterior, semana anterior, mesmo trecho do mês anterior, mesmo trecho do ano anterior, intervalo anterior de mesma duração) com os mesmos campos, para a tela calcular o delta. `[E]` `periodos()` do protótipo
-- **ENQUANTO** a semana é o período, o sistema **DEVE** contar de segunda-feira até a referência; mês do dia 1 até a referência; ano de 1º de janeiro até a referência; tudo pela `datemi`. `[E]` `DEFINICAO-TECNICA.md` §4 e glossário do protótipo
+- **QUANDO** consulto, **ENTÃO** a resposta **DEVE** trazer também o período anterior equivalente (dia anterior, semana anterior, **mês anterior inteiro**, mesmo trecho do ano anterior, intervalo anterior de mesma duração) com os mesmos campos, para a tela calcular o delta. `[E]` `periodos()` do protótipo; `[D]` PA-028 (mês)
+- **ENQUANTO** a semana é o período, o sistema **DEVE** contar de segunda-feira até a referência; **mês do dia 1 ao último dia do mês civil, inteiro** (não corta na referência); ano de 1º de janeiro até a referência; tudo pela `datemi`. `[E]` `DEFINICAO-TECNICA.md` §4 e glossário do protótipo; `[D]` PA-028 (o protótipo cortava o mês na referência; o dono corrigiu em 2026-09-24)
 - **SE** a `data_referencia` é posterior à extração, **ENTÃO** o sistema **DEVE** responder normalmente e marcar `dados_parciais: true`. `[E]` lacuna declarada no protótipo
 
 ### RF-IEX-004: Por seguradora
@@ -69,6 +69,7 @@
 
 - **QUANDO** consulto `GET indicadores/nao-fechadas/` com a referência e os filtros, **ENTÃO** o sistema **DEVE** considerar as apólices do universo com `fimvig` no mês da referência e devolver: contagens (vencem no mês, já vencidas até a referência, vencidas sem nova apólice, a vencer, distribuição de `renovacao_situacao` das vencidas) e duas listas, `vencidas` (só `renovacao_situacao ∈ {2, 3}` e `fimvig ≤ referência`) e `a_vencer`, cada linha com fim de vigência, cliente, CPF/CNPJ **mascarado**, seguradora, ramo, `nosnum`, emissão, situação CORP, novas apólices (código e seguradora) e situação de sinistro. `[E]` `naoFechadas()` e `renderNf()` do protótipo; `[D]` PA-022
 - **QUANDO** avalio se a apólice tem nova apólice, **ENTÃO** o sistema **DEVE** considerar (a) documento posterior com `nosnum_ren` apontando para ela, ou (b) apólice A não cancelada do mesmo CPF/CNPJ com `inivig` em `fimvig ± janela_dias` (padrão 30), **em qualquer ramo**. `[E]` `DEFINICAO-TECNICA.md` §4
+- **QUANDO** consulto, **ENTÃO** a resposta **DEVE** trazer também a lista `vencidas_sem_decisao` (vencidas até a referência que a CORP ainda marca como vigente), de modo que `vencidas + vencidas_sem_decisao + a_vencer` seja igual a `vencem_no_mes`. `[D]` PA-028 (complemento 2: o protótipo deixava essas fora das abas e a conta não fechava para o dono)
 - **QUANDO** a lista passa de 400 linhas, **ENTÃO** o sistema **DEVE** cortar em 400 e informar quantas ficaram de fora. `[E]` limite do protótipo
 
 ### RF-IEX-007: Composição dos indicadores
@@ -97,7 +98,7 @@
 
 ### RNF-IEX-001: Segurança
 
-Todas as rotas exigem JWT válido e nível `admin` ou `ti` (`users.permissions.IsAdminOrTi`), inclusive para gravar metas; qualquer outro nível recebe 403. `[D]` PA-036 (revisão de 2026-09-23; antes só `IsAuthenticated`, por PA-018 e PA-023). CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
+Todas as rotas exigem JWT válido e nível `admin` ou `ti` (`users.permissions.IsAdminOrTi`), inclusive para gravar metas; qualquer outro nível recebe 403. `[D]` PA-018 (revisão de 2026-09-23; antes só `IsAuthenticated`, por PA-018 e PA-023). CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
 
 ### RNF-IEX-002: Compatibilidade e contrato
 

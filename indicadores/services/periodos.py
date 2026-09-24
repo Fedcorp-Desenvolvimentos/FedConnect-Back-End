@@ -92,7 +92,10 @@ def janela(periodo: str, ref: date, data_ini: date | None = None, data_fim: date
     if periodo == "semana":
         return segunda_feira(ref), ref
     if periodo == "mes":
-        return ref.replace(day=1), ref
+        # Mês civil inteiro, do dia 1 ao último dia (PA-028, decisão do dono em
+        # 2026-09-24): não corta na referência. Emissões depois da referência só
+        # existem quando a referência é passado, e aí devem entrar.
+        return mes_da_referencia(ref)
     if periodo == "ano":
         return date(ref.year, 1, 1), ref
     if periodo == "faixa":
@@ -110,8 +113,9 @@ def janela_anterior(
     if periodo == "semana":
         return segunda_feira(ref) - timedelta(days=7), ref - timedelta(days=7)
     if periodo == "mes":
+        # Mês anterior inteiro, para comparar mês fechado com mês fechado (PA-028).
         ano, mes = (ref.year - 1, 12) if ref.month == 1 else (ref.year, ref.month - 1)
-        return date(ano, mes, 1), _mesmo_dia_ou_ultimo(ano, mes, ref.day)
+        return date(ano, mes, 1), date(ano, mes, ultimo_dia_do_mes(ano, mes))
     if periodo == "ano":
         return date(ref.year - 1, 1, 1), _mesmo_dia_ou_ultimo(ref.year - 1, ref.month, ref.day)
     if periodo == "faixa":
