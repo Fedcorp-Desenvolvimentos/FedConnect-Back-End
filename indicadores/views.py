@@ -17,14 +17,13 @@ import requests
 
 from django.utils import timezone
 
-from indicadores.models import MetaMensal
 from indicadores.serializers import (
     CompetenciaSerializer,
     FiltrosSerializer,
     MetaMensalEntradaSerializer,
     SerieParametrosSerializer,
 )
-from indicadores.services import agregacao, metas, nao_fechadas, painel_tv
+from indicadores.services import agregacao, fedhub_lake, metas, nao_fechadas, painel_tv
 from indicadores.services.periodos import ParametroInvalido
 from users.permissions import IsAdminOrTi
 
@@ -51,6 +50,13 @@ class _IndicadorBase(APIView):
             return FiltrosSerializer.validar(request.query_params), None
         except ParametroInvalido as erro:
             return None, Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _lake_fora(erro: fedhub_lake.LakeIndisponivel) -> Response:
+    """FedHub ou lake fora: 503 com o erro que o FedHub nomeou (RF-IEX-010)."""
+    return Response(
+        {"sucesso": False, "erro": erro.erro, "detalhe": erro.detalhe}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+    )
 
 
 def _erro_400(serializer) -> Response:
@@ -146,7 +152,10 @@ class MetasView(_IndicadorBase):
         if not parametros.is_valid():
             return _erro_400(parametros)
         competencia = parametros.validated_data.get("competencia") or timezone.localdate().replace(day=1)
-        return Response({"sucesso": True, **metas.listar(competencia)})
+        try:
+            return Response({"sucesso": True, **metas.listar(competencia)})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
 
     @extend_schema(request=MetaMensalEntradaSerializer, responses={201: OpenApiTypes.OBJECT}, tags=["indicadores"])
     def post(self, request, *args, **kwargs):
@@ -154,17 +163,20 @@ class MetasView(_IndicadorBase):
         if not entrada.is_valid():
             return _erro_400(entrada)
         dados = entrada.validated_data
-        gravadas = metas.gravar(
-            seguradora=dados["seguradora"],
-            ramo=dados["ramo"],
-            competencia=dados["competencia"],
-            valor_meta=dados["valor_meta"],
-            usuario=request.user,
-            replicar_meses=dados["replicar_meses"],
-        )
-        return Response(
-            {"sucesso": True, "metas": [metas.serializar(m) for m in gravadas]}, status=status.HTTP_201_CREATED
-        )
+        try:
+            gravadas = metas.gravar(
+                seguradora=dados["seguradora"].sigla,
+                ramo=dados["ramo"].abreviatura,
+                competencia=dados["competencia"],
+                valor_meta=dados["valor_meta"],
+                usuario=request.user,
+                replicar_meses=dados["replicar_meses"],
+            )
+        except metas.ReferenciaDesconhecida as erro:
+            return Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_400_BAD_REQUEST)
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
+        return Response({"sucesso": True, "metas": gravadas}, status=status.HTTP_201_CREATED)
 
 
 class MetaDetalheView(_IndicadorBase):
@@ -184,23 +196,28 @@ class MetaDetalheView(_IndicadorBase):
         try:
             meta = metas.atualizar(
                 meta_id=id,
-                seguradora=dados["seguradora"],
-                ramo=dados["ramo"],
+                seguradora=dados["seguradora"].sigla,
+                ramo=dados["ramo"].abreviatura,
                 competencia=dados["competencia"],
                 valor_meta=dados["valor_meta"],
                 usuario=request.user,
             )
         except metas.MetaNaoEncontrada as erro:
             return Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_404_NOT_FOUND)
-        except metas.MetaDuplicada as erro:
+        except (metas.MetaDuplicada, metas.ReferenciaDesconhecida) as erro:
             return Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"sucesso": True, "metas": [metas.serializar(meta)]})
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
+        return Response({"sucesso": True, "metas": [meta]})
 
     @extend_schema(responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT}, tags=["indicadores"])
     def delete(self, request, id, *args, **kwargs):
-        apagadas, _ = MetaMensal.objects.filter(pk=id).delete()
-        if not apagadas:
-            return Response({"sucesso": False, "erro": "meta não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            metas.apagar(id)
+        except metas.MetaNaoEncontrada as erro:
+            return Response({"sucesso": False, "erro": str(erro)}, status=status.HTTP_404_NOT_FOUND)
+        except fedhub_lake.LakeIndisponivel as erro:
+            return _lake_fora(erro)
         return Response({"sucesso": True})
 
 

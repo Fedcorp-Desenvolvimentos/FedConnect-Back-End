@@ -8,7 +8,11 @@ sai `null`, nunca `"0.00"` (INV-IEX-003, PA-019).
 
 `meta_mes` (RF-IEX-008, PA-023) compara a soma das metas cadastradas para o
 mês da referência com o valor fechado do dia 1 até a referência — sempre o
-mês, independente do `periodo` pedido, porque a meta é mensal.
+mês, independente do `periodo` pedido, porque a meta é mensal. Desde RF-IEX-010
+(23/09/2026) as metas vêm do LAKE, via FedHub, e o realizado comparado com a
+meta é o PRÊMIO LÍQUIDO (`preliq`), como a gestão decidiu para o lake — o
+cartão `valor_fechado` do período continua em `pretot` até a tela inteira
+passar a ler o lake.
 """
 from dataclasses import replace
 from datetime import date, timedelta
@@ -17,7 +21,9 @@ from decimal import Decimal
 from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
 
-from indicadores.models import CargaCorp, MetaMensal, Producao, Ramo, Seguradora
+from indicadores.models import CargaCorp, Producao, Ramo, Seguradora
+from indicadores.services import fedhub_lake
+from indicadores.services import metas as servico_metas
 from indicadores.services.periodos import Filtros, janelas_padrao, ultimo_dia_do_mes
 
 LIMITE_LINHAS = 400
@@ -120,24 +126,31 @@ def resumo(filtros: Filtros) -> dict:
 # ------------------------------------------------------------------ metas (RF-IEX-008)
 
 
-def _metas_do_mes(filtros: Filtros):
-    """Metas da competência da referência, restritas aos ramos e seguradoras do filtro (vazio = todas)."""
-    metas = MetaMensal.objects.filter(competencia=filtros.data_referencia.replace(day=1))
-    if filtros.ramos:
-        metas = metas.filter(ramo__in=filtros.ramos)
-    if filtros.seguradoras:
-        metas = metas.filter(seguradora__in=filtros.seguradoras)
-    return metas
+class _MetasIndisponiveis(list):
+    """Lista vazia que sabe por quê: o lake não respondeu. A tela mostra o realizado
+    e avisa que a meta não veio, em vez de cair inteira por causa de um número."""
+
+    indisponiveis = True
 
 
-def _so_pares_com_meta(qs, metas):
+def _metas_do_mes(filtros: Filtros) -> list[dict]:
+    """Metas da competência da referência (lidas do lake via FedHub), restritas aos ramos e seguradoras do filtro."""
+    try:
+        return servico_metas.metas_da_competencia(
+            filtros.data_referencia.replace(day=1), filtros.ramos, filtros.seguradoras
+        )
+    except fedhub_lake.LakeIndisponivel:
+        return _MetasIndisponiveis()
+
+
+def _so_pares_com_meta(qs, metas: list[dict]):
     """Restringe o universo aos pares seguradora × ramo que têm meta no mês.
 
     A meta "vai contra o total do mês" daquele par (PA-023). Sem esta restrição,
     a tela sem filtro compararia a soma das metas cadastradas com o realizado
     da carteira inteira — uma única meta apareceria "158 % atingida".
     """
-    pares = list(metas.values_list("seguradora_id", "ramo_id"))
+    pares = {(m["seguradora"], m["ramo"]) for m in metas}
     if not pares:
         return qs
     condicao = Q()
@@ -167,10 +180,11 @@ def meta_mes(filtros: Filtros, qs=None) -> dict:
     dias_no_mes = ultimo_dia_do_mes(ref.year, ref.month)
     dias_decorridos = ref.day
 
-    metas_qs = _metas_do_mes(filtros)
-    metas = metas_qs.aggregate(meta=Sum("valor_meta"), n=Count("id"))
-    fechado = no_periodo(_so_pares_com_meta(qs, metas_qs), ref.replace(day=1), ref).aggregate(
-        valor=Sum("documento__pretot"), n=Count("documento__pretot")
+    metas_mes = _metas_do_mes(filtros)
+    metas = {"meta": sum(Decimal(m["valor_meta"]) for m in metas_mes), "n": len(metas_mes)}
+    # Realizado da meta em PRÊMIO LÍQUIDO (decisão da gestão para o lake, 23/09/2026).
+    fechado = no_periodo(_so_pares_com_meta(qs, metas_mes), ref.replace(day=1), ref).aggregate(
+        valor=Sum("documento__preliq"), n=Count("documento__preliq")
     )
     meta = metas["meta"] if metas["n"] else None
     realizado = fechado["valor"] if fechado["n"] else None
@@ -192,23 +206,24 @@ def meta_mes(filtros: Filtros, qs=None) -> dict:
         "percentual": _percentual(realizado, meta),
         "projecao": _decimal_texto(projecao),
         "metas_consideradas": metas["n"] or 0,
+        "metas_indisponiveis": bool(getattr(metas_mes, "indisponiveis", False)),
     }
 
 
-def _metas_por_seguradora(filtros: Filtros) -> dict:
-    """`{sigla: soma das metas do mês}` respeitando o filtro de ramos e seguradoras."""
-    return {
-        linha["seguradora"]: linha["meta"]
-        for linha in _metas_do_mes(filtros).values("seguradora").annotate(meta=Sum("valor_meta"))
-    }
+def _metas_por_seguradora(metas: list[dict]) -> dict:
+    """`{sigla: soma das metas do mês}` a partir das metas já filtradas."""
+    por_sigla: dict = {}
+    for m in metas:
+        por_sigla[m["seguradora"]] = por_sigla.get(m["seguradora"], Decimal(0)) + Decimal(m["valor_meta"])
+    return por_sigla
 
 
 def _realizado_mes_por_seguradora(qs, ref: date) -> dict:
-    """`{sigla: valor fechado no mês até a referência}`; `null` para quem não tem documento com valor."""
+    """`{sigla: prêmio líquido fechado no mês até a referência}`; `null` para quem não tem documento com valor."""
     consulta = (
         no_periodo(qs, ref.replace(day=1), ref)
         .values("seguradora")
-        .annotate(valor=Sum("documento__pretot"), n=Count("documento__pretot"))
+        .annotate(valor=Sum("documento__preliq"), n=Count("documento__preliq"))
     )
     return {linha["seguradora"]: (linha["valor"] if linha["n"] else None) for linha in consulta}
 
@@ -221,12 +236,11 @@ def por_seguradora(filtros: Filtros) -> dict:
     linhas_db = list(no_periodo(qs, ini, fim).values("seguradora").annotate(**EXPRESSOES_BLOCO))
     nao_fechadas_por_seg = nao_fechadas.calcular(filtros).sem_nova_por_seguradora()
 
-    # Metas do mês (RF-IEX-008): seguradora com meta aparece mesmo sem fechado no período.
-    metas_por_seg = _metas_por_seguradora(filtros)
+    # Metas do mês (RF-IEX-008/010): uma leitura do lake; seguradora com meta aparece mesmo sem fechado no período.
+    metas_mes = _metas_do_mes(filtros)
+    metas_por_seg = _metas_por_seguradora(metas_mes)
     # Realizado da meta só nos ramos com meta de cada seguradora (mesma regra de `meta_mes`).
-    realizado_por_seg = _realizado_mes_por_seguradora(
-        _so_pares_com_meta(qs, _metas_do_mes(filtros)), filtros.data_referencia
-    )
+    realizado_por_seg = _realizado_mes_por_seguradora(_so_pares_com_meta(qs, metas_mes), filtros.data_referencia)
 
     por_sigla = {linha["seguradora"]: formatar_bloco(linha) for linha in linhas_db}
     for sigla in list(nao_fechadas_por_seg) + list(metas_por_seg):

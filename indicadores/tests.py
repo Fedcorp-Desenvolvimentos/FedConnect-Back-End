@@ -106,6 +106,15 @@ class _ComCarga(APITestCase):
 
     def setUp(self):
         self.client.force_authenticate(self.usuario)
+        # RF-IEX-010: as metas moram no lake e chegam pelo FedHub; a suíte nunca
+        # fala com o FedHub real.
+        from indicadores.fedhub_falso import FedHubFalso
+        from indicadores.services import fedhub_lake
+
+        self.fedhub = FedHubFalso()
+        patcher = patch.object(fedhub_lake, "chamar", self.fedhub.chamar)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def get(self, nome, **params):
         params.setdefault("data_referencia", REF)
