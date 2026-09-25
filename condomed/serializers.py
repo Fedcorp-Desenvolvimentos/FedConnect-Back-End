@@ -436,16 +436,13 @@ class TurmaCipaSerializer(serializers.ModelSerializer):
         ) or HORA_FIM_PADRAO
         status_turma = attrs.get("status", getattr(instancia, "status", "agendada"))
 
-        # Turma nova, ou remarcada, não pode cair em dia que já passou: não há
-        # o que agendar no passado. Editar outros campos de uma turma antiga
-        # continua permitido (é o caminho da presença e do certificado).
+        # Data passada é permitida: a Condomed cadastra turmas já realizadas
+        # para manter o histórico. Turma agendada que cai no passado já nasce
+        # (ou passa a ser) `realizada` — cancelada continua cancelada.
         from django.utils import timezone
 
-        data_mudou = "data" in attrs and (instancia is None or attrs["data"] != instancia.data)
-        if data_mudou and attrs["data"] < timezone.localdate():
-            raise serializers.ValidationError(
-                {"data": "Não é possível agendar turma em uma data que já passou."}
-            )
+        if "data" in attrs and attrs["data"] < timezone.localdate() and status_turma == "agendada":
+            status_turma = attrs["status"] = "realizada"
 
         # PA-013: com certificado emitido, a turma não pode virar cancelada.
         if instancia is not None and status_turma == "cancelada" and instancia.status != "cancelada":
