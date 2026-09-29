@@ -44,6 +44,8 @@ class Usuario(AbstractUser):
         ("recepcionista", "Recepcionista"),
         ("ti", "TI"),
         ("faturamento", "Faturista"),
+        # Faturista + acesso ao cadastro (ETL) do FedHub.
+        ("faturamento-analista", "Faturista Analista"),
         ("financeiro", "Financeiro"),
         ("vistoria", "Vistoria"),
         ("condomed", "Condomed"),

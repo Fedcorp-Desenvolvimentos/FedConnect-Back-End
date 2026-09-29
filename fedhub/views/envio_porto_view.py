@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 # PA-023 (FedHub, fechada 2026-08-27): operadores são "faturista" (nivel_acesso
 # "faturamento"), o Alberto é admin; "ti" = equipe técnica. Sem distinção entre
 # gerar e enviar — a confirmação digitada continua obrigatória para todos.
-NIVEIS_TELA = ("admin", "faturamento", "ti")   # gerar, acompanhar, baixar
-NIVEIS_ENVIO = ("admin", "faturamento", "ti")  # enviar à Porto (ato irreversível)
+NIVEIS_TELA = ("admin", "faturamento", "faturamento-analista", "ti")   # gerar, acompanhar, baixar
+NIVEIS_ENVIO = ("admin", "faturamento", "faturamento-analista", "ti")  # enviar à Porto (ato irreversível)
 
 TEXTO_CONFIRMACAO = "ENVIAR"
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

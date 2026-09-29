@@ -2,7 +2,7 @@
 #
 # Rota curinga `cadastro/<rota>` → CadastroService → /api/etl/<rota> do FedHub
 # (spec specs/cadastro-etl/, ADR-0008). JWT + IsAuthenticated + nível em
-# NIVEIS_TELA (PA-027: admin e financeiro). O operador vai no header X-Operador a
+# NIVEIS_TELA (PA-027). O operador vai no header X-Operador a
 # partir do JWT — nunca do corpo. Nenhum header do cliente além de
 # Idempotency-Key e X-Request-Id chega ao FedHub.
 
@@ -17,7 +17,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from fedhub.services.cadastro_service import METODOS, CadastroService
 
-NIVEIS_TELA = ("admin", "financeiro")  # PA-027 (financeiro liberado em 2026-09-24)
+NIVEIS_TELA = ("admin", "financeiro", "faturamento-analista", "comercial")  # PA-027 (financeiro 2026-09-24; faturamento-analista e comercial 2026-09-29)
 _ROTA_VALIDA = re.compile(r"^[A-Za-z0-9_\-./]+$")
 
 

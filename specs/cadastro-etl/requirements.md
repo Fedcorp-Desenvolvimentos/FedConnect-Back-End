@@ -35,7 +35,7 @@
 ### RF-CAD-003: Autorização
 
 - **QUANDO** a requisição não tem JWT válido, **ENTÃO** 401 (padrão DRF). `[E]` `bigcorp/settings.py:175-186`
-- **QUANDO** o usuário autenticado não tem `nivel_acesso` em `NIVEIS_TELA`, **ENTÃO** 403 `{"erro": "sem_acesso", "mensagem": ...}` **sem** chamar o FedHub. `[P]` PA-027 (hoje `admin` e `financeiro`; financeiro desde 2026-09-24)
+- **QUANDO** o usuário autenticado não tem `nivel_acesso` em `NIVEIS_TELA`, **ENTÃO** 403 `{"erro": "sem_acesso", "mensagem": ...}` **sem** chamar o FedHub. `[P]` PA-027 (hoje `admin`, `financeiro`, `faturamento-analista` e `comercial`; financeiro desde 2026-09-24, os dois últimos desde 2026-09-29)
 - **QUANDO** a chamada é repassada, **ENTÃO** o header `X-Operador` **DEVE** levar o e-mail do usuário autenticado (nunca do corpo). `[E]` mesmo princípio de `fedhub/views/fedpay_view.py` (operador vem do JWT)
 
 ## Requisitos Não Funcionais

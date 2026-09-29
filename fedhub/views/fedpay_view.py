@@ -20,7 +20,7 @@ from fedhub.services.fedpay_service import FedPayService
 logger = logging.getLogger(__name__)
 
 # Quem enxerga/usa a tela de tratamento
-NIVEIS_TELA = ("admin", "faturamento", "ti")
+NIVEIS_TELA = ("admin", "faturamento", "faturamento-analista", "ti")
 # Quem opera como "admin" no FedHub (pode alterar nome cobrado, CNPJ/CPF cobrado e endereço)
 NIVEIS_ADMIN_FEDHUB = ("admin", "ti")
 

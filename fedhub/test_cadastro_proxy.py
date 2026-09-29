@@ -115,6 +115,17 @@ class ProxyTest(unittest.TestCase):
         r = self._chamar("get", "administradoras", usuario=None)
         self.assertEqual(r.status_code, 401)
 
+    # CT-CAD-004 (PA-027, 2026-09-29): faturamento-analista e comercial passam; faturamento puro não
+    @patch.object(mod, "get_auth_headers", return_value={})
+    @patch.object(mod.requests, "request")
+    def test_faturamento_analista_e_comercial(self, request, _):
+        request.return_value = resposta(200, {"linhas": [], "total": 0})
+        for nivel in ("faturamento-analista", "comercial"):
+            r = self._chamar("get", "administradoras", usuario=Usuario(nivel))
+            self.assertEqual(r.status_code, 200, nivel)
+        r = self._chamar("get", "administradoras", usuario=Usuario("faturamento"))
+        self.assertEqual(r.status_code, 403)
+
     # CT-CAD-004 (PA-027, 2026-09-24): financeiro passa pelo proxy
     @patch.object(mod, "get_auth_headers", return_value={})
     @patch.object(mod.requests, "request")

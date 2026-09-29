@@ -204,6 +204,7 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Evidência (2026-09-23):** o dono respondeu no FedHub (questão 053 do registro do FedHub) que "em um primeiro momento o acesso deve ser apenas dos administradores". O frontend guarda a rota com `ROUTE_ACCESS.cadastroPessoas = ["admin", "ti"]` (questão 035 do registro do frontend). Os outros proxies do FedHub aqui usam `("admin", "faturamento", "ti")`.
 - **Questão:** `ti` entra? Hipótese de trabalho: **só `admin`**, como o dono disse; `ti` entra quando ele pedir (é trocar a tupla). Responde: dono.
 - **Decisão parcial (2026-09-24):** `financeiro` liberado. `NIVEIS_TELA = ("admin", "financeiro")`; o frontend acompanha em `ROUTE_ACCESS.cadastroPessoas` (questão 035 do registro do frontend). A entrada de `ti` segue em aberto.
+- **Decisão parcial (2026-09-29):** o dono pediu a nova role `nivel_acesso = faturamento-analista` (tudo que `faturamento` acessa + cadastro) e cadastro (consultar e cadastrar) também para `comercial`. `NIVEIS_TELA = ("admin", "financeiro", "faturamento-analista", "comercial")`; `faturamento-analista` entra nas telas de `faturamento` (fedpay, envio Porto, relatório de faturas pendentes). Frontend deve acompanhar `ROUTE_ACCESS`. `ti` segue em aberto.
 
 ## PA-028 — "Este mês" é o mês civil inteiro, não do dia 1 até hoje
 

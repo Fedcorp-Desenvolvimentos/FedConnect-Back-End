@@ -74,7 +74,7 @@ class IsFinanceiroOuFaturamentoOuAdmin(permissions.BasePermission):
     estar autenticado.
     """
 
-    NIVEIS = ('financeiro', 'faturamento', 'admin')
+    NIVEIS = ('financeiro', 'faturamento', 'faturamento-analista', 'admin')
 
     def has_permission(self, request, view):
         return (request.user and request.user.is_authenticated
