@@ -101,8 +101,18 @@ class ProxyTest(unittest.TestCase):
         self.assertEqual(kw["timeout"], 30)
         self.assertEqual(r["X-Request-Id"], "rid-123")
         self.assertEqual(r["Idempotent-Replayed"], "true")
-        r = self._chamar("delete", "administradoras/1")
+        r = self._chamar("head", "administradoras/1")
         self.assertEqual(r.status_code, 405)
+        # DELETE repassado desde 2026-09-29 (exclusão de linha de contrato.grupo_produto_papel pelo /admin/dados, modelo v21): query vai, corpo não
+        request.reset_mock()
+        request.return_value = resposta(200, {"antes": {}, "excluida": True, "sincronizacao": []})
+        r = self._chamar("delete", "admin/linhas/grupo_produto_papel/9.funcionario.fornecedor", QUERY_STRING="motivo=teste")
+        self.assertEqual(r.status_code, 200)
+        args, kw = request.call_args
+        self.assertEqual(args[0], "DELETE")
+        self.assertTrue(args[1].endswith("/api/etl/admin/linhas/grupo_produto_papel/9.funcionario.fornecedor"))
+        self.assertEqual(kw["params"].get("motivo"), "teste")
+        self.assertIsNone(kw["data"])
 
     # CT-CAD-004
     @patch.object(mod.requests, "request")

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 PREFIXO = "/api/etl/"
 TIMEOUT_LEITURA = 20
 TIMEOUT_ESCRITA = 30
-METODOS = ("GET", "POST", "PUT", "PATCH")
+METODOS = ("GET", "POST", "PUT", "PATCH", "DELETE")   # DELETE desde 2026-09-29 (exclusão de linha em admin/linhas, modelo v21)
 HEADERS_REPASSADOS = ("Idempotent-Replayed", "Retry-After")
 
 INDISPONIVEL = {"erro": "servico_indisponivel", "mensagem": "FedHub indisponível no momento — tente novamente em instantes.", "origem": "fedconnect"}
@@ -62,7 +62,7 @@ class CadastroService:
         timeout = TIMEOUT_LEITURA if metodo == "GET" else TIMEOUT_ESCRITA
         try:
             response = requests.request(
-                metodo, self._url(rota), params=params, data=corpo if metodo != "GET" else None,
+                metodo, self._url(rota), params=params, data=corpo if metodo not in ("GET", "DELETE") else None,
                 headers=self._headers(operador, request_id, idempotency_key), timeout=timeout,
             )
             return self._resposta(response)

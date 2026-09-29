@@ -12,7 +12,7 @@
 
 ## Escopo
 
-**Dentro do escopo:** rota `cadastro/<rota>` repassando `GET/POST/PUT/PATCH` a `/api/etl/<rota>`; autorização por nível; repasse de `Idempotency-Key` e `X-Request-Id`; 503 legível com o túnel fora; testes sem rede.
+**Dentro do escopo:** rota `cadastro/<rota>` repassando `GET/POST/PUT/PATCH/DELETE` a `/api/etl/<rota>`; autorização por nível; repasse de `Idempotency-Key` e `X-Request-Id`; 503 legível com o túnel fora; testes sem rede.
 
 **Fora do escopo:** validar ou transformar corpo/resposta (é o FedHub que valida — ADR-0008); cache; qualquer rota do FedHub fora de `/api/etl`; a tela (spec do frontend); Kong (envs `FEDHUB_JWT_*` já existentes).
 
@@ -30,7 +30,8 @@
 
 - **QUANDO** o frontend faz `POST/PUT/PATCH cadastro/<rota>` com corpo JSON, **ENTÃO** o sistema **DEVE** repassar método, corpo (bytes como vieram) e o header `Idempotency-Key`, se presente, e devolver status e corpo do FedHub (201/200/409/422). `[D]` ADR-0008
 - **QUANDO** o cliente manda `X-Request-Id`, **ENTÃO** o sistema **DEVE** repassá-lo; senão **DEVE** gerar um uuid, mandá-lo ao FedHub e devolvê-lo no header da resposta. `[D]` ADR-0008
-- **QUANDO** o método não é GET/POST/PUT/PATCH, **ENTÃO** 405. `[D]` ADR-0008
+- **QUANDO** o frontend faz `DELETE cadastro/<rota>` (hoje só `admin/linhas/grupo_produto_papel/<chave>`, modelo v21 do banco `etl`, `FedHub-Backend/specs/etl-modelo-v21/requirements.md`), **ENTÃO** o sistema **DEVE** repassar método e query (`?motivo=`), sem corpo, com `X-Operador` do JWT, e devolver status e corpo do FedHub. `[E]` acrescentado em 2026-09-29
+- **QUANDO** o método não é GET/POST/PUT/PATCH/DELETE, **ENTÃO** 405. `[D]` ADR-0008
 
 ### RF-CAD-003: Autorização
 

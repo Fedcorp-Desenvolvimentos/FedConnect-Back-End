@@ -28,7 +28,7 @@ def _erro(codigo: str, mensagem: str, http: int) -> Response:
 class CadastroProxyView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "put", "patch", "options"]
+    http_method_names = ["get", "post", "put", "patch", "delete", "options"]
 
     @property
     def service(self) -> CadastroService:
@@ -46,8 +46,8 @@ class CadastroProxyView(APIView):
         request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
         resultado = self.service.repassar(
             metodo, rota,
-            params=request.query_params if metodo == "GET" else None,
-            corpo=request.body if metodo != "GET" else None,
+            params=request.query_params if metodo in ("GET", "DELETE") else None,   # DELETE leva ?motivo= (admin/linhas)
+            corpo=request.body if metodo not in ("GET", "DELETE") else None,
             operador=getattr(request.user, "email", "") or "",
             request_id=request_id,
             idempotency_key=request.headers.get("Idempotency-Key"),
@@ -68,4 +68,7 @@ class CadastroProxyView(APIView):
         return self._repassar(request, rota)
 
     def patch(self, request, rota, *args, **kwargs):
+        return self._repassar(request, rota)
+
+    def delete(self, request, rota, *args, **kwargs):
         return self._repassar(request, rota)
