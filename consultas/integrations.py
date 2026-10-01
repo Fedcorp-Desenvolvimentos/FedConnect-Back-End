@@ -1,7 +1,10 @@
+import logging
 import requests
 import json
 import os
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 # `timeout=30` num `requests` é 30 s para CONECTAR **mais** 30 s para ler: um
@@ -29,6 +32,10 @@ def verificar_recusa_bigdatacorp(dados):
     uma lista de ocorrências `{Code, Message}`. Só código **negativo** é
     recusa: 0 é sucesso e os positivos são avisos, como "nada encontrado",
     que precisam continuar chegando à tela como consulta vazia.
+
+    Um grupo que traz o 0 junto com um negativo entregou os dados: o negativo
+    é aviso. O dataset `addresses` responde `OK` + "-205 DEPRECATED DATASET"
+    (visto em 01/10/2026) e não pode derrubar a consulta.
     """
     status = (dados or {}).get("Status")
     if not isinstance(status, dict):
@@ -37,6 +44,8 @@ def verificar_recusa_bigdatacorp(dados):
     recusas = []
     for grupo, ocorrencias in status.items():
         if not isinstance(ocorrencias, list):
+            continue
+        if any(isinstance(o, dict) and o.get("Code") == 0 for o in ocorrencias):
             continue
         for ocorrencia in ocorrencias:
             if not isinstance(ocorrencia, dict):
@@ -257,34 +266,177 @@ class ConsultaCPF:
             raise ValueError(f"Erro ao processar resposta da BigDataCorp (CPF alternativas): {e}")
 
 
+def _texto(valor):
+    """Texto sem espaços sobrando, ou None — a BigDataCorp usa " " para vazio."""
+    limpo = " ".join(str(valor or "").split())
+    return limpo or None
+
+
+def _data(valor):
+    """"1966-08-01T00:00:00Z" (BigDataCorp) → "1966-08-01" (formato da BrasilAPI)."""
+    texto = _texto(valor)
+    return texto[:10] if texto else None
+
+
+def _inteiro(valor):
+    try:
+        return int(str(valor).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def bigdatacorp_para_brasilapi(dados, cnpj_consultado):
+    """Converte a resposta da BigDataCorp (`basic_data` + `addresses`) no formato da BrasilAPI.
+
+    O frontend e o histórico só conhecem o formato da BrasilAPI (snake_case,
+    endereço solto na raiz), então o fallback precisa devolver o mesmo
+    contrato. O que a BigDataCorp não tem nesses datasets (telefones, e-mail,
+    QSA) vai vazio. `fonte` diz de onde o dado veio.
+
+    Devolve None quando não há empresa no resultado.
+    """
+    resultado = (dados or {}).get("Result") or []
+    primeiro = resultado[0] if resultado and isinstance(resultado[0], dict) else {}
+    basico = primeiro.get("BasicData") or {}
+    if not _texto(basico.get("OfficialName")):
+        return None
+
+    # O endereço da Receita vem como "OFFICIAL REGISTRATION"; os demais foram
+    # achados em outras fontes. Sem ele, fica o de maior prioridade.
+    enderecos = [e for e in (primeiro.get("Addresses") or []) if isinstance(e, dict)]
+    endereco = next(
+        (e for e in enderecos if str(e.get("Type") or "").upper() == "OFFICIAL REGISTRATION"),
+        None,
+    ) or min(enderecos, key=lambda e: e.get("Priority") or 99, default={})
+
+    atividades = [a for a in (basico.get("Activities") or []) if isinstance(a, dict)]
+    principal = next((a for a in atividades if a.get("IsMain")), {})
+    natureza = basico.get("LegalNature") or {}
+    adicionais = basico.get("AdditionalOutputData") or {}
+    regimes = basico.get("TaxRegimes") or {}
+    matriz = basico.get("IsHeadquarter")
+
+    try:
+        capital_social = float(adicionais.get("CapitalRS"))
+    except (TypeError, ValueError):
+        capital_social = None
+
+    return {
+        "cnpj": "".join(filter(str.isdigit, str(basico.get("TaxIdNumber") or ""))) or cnpj_consultado,
+        "razao_social": _texto(basico.get("OfficialName")),
+        "nome_fantasia": _texto(basico.get("TradeName")),
+        "descricao_situacao_cadastral": _texto(basico.get("TaxIdStatus")),
+        "data_situacao_cadastral": _data(basico.get("TaxIdStatusDate")),
+        "descricao_motivo_situacao_cadastral": _texto(basico.get("TaxIdStatusReason")),
+        "data_inicio_atividade": _data(basico.get("FoundedDate")),
+        "cnae_fiscal": _inteiro(principal.get("Code")),
+        "cnae_fiscal_descricao": _texto(principal.get("Activity")),
+        "cnaes_secundarios": [
+            {"codigo": _inteiro(a.get("Code")), "descricao": _texto(a.get("Activity"))}
+            for a in atividades
+            if not a.get("IsMain")
+        ],
+        "codigo_natureza_juridica": _inteiro(natureza.get("Code")),
+        "natureza_juridica": _texto(natureza.get("Activity")),
+        "porte": _texto(basico.get("CompanyType_ReceitaFederal")),
+        "capital_social": capital_social,
+        "identificador_matriz_filial": None if matriz is None else (1 if matriz else 2),
+        "descricao_identificador_matriz_filial": None if matriz is None else ("MATRIZ" if matriz else "FILIAL"),
+        "opcao_pelo_simples": regimes.get("Simples"),
+        "descricao_tipo_de_logradouro": _texto(endereco.get("Typology")),
+        "logradouro": _texto(endereco.get("AddressMain")),
+        "numero": _texto(endereco.get("Number")),
+        "complemento": _texto(endereco.get("Complement")),
+        "bairro": _texto(endereco.get("Neighborhood")),
+        "municipio": _texto(endereco.get("City")),
+        "uf": _texto(endereco.get("State")) or _texto(basico.get("HeadquarterState")),
+        "cep": "".join(filter(str.isdigit, str(endereco.get("ZipCode") or ""))) or None,
+        "ddd_telefone_1": None,
+        "ddd_telefone_2": None,
+        "email": None,
+        "qsa": [],
+        "fonte": "bigdatacorp",
+    }
+
+
 class ConsultaCNPJ:
     @staticmethod
     def consultar(cnpj):
         """
-        Realiza uma consulta de CNPJ padrão utilizando a URL configurada em settings.CNPJ_URL.
+        Consulta o CNPJ na BrasilAPI (settings.CNPJ_URL) e, se ela falhar, na BigDataCorp.
+
+        A BrasilAPI é gratuita mas instável (504 em produção, 01/10/2026). Fora
+        do ar, por timeout, 5xx, 429, 404 ou JSON inválido, a consulta segue
+        para a BigDataCorp, convertida para o mesmo formato. Só o 400 (CNPJ
+        inválido) não cai no fallback: a BigDataCorp diria o mesmo, cobrando.
+
+        Pior caso: dois `TEMPO_LIMITE` em série (40 s), abaixo dos 60 s do
+        balanceador da DigitalOcean.
         """
         if not cnpj:
             raise ValueError("CNPJ não pode ser vazio para consulta padrão.")
 
-        url = settings.CNPJ_URL + cnpj
-        
         try:
-            response = requests.get(url, timeout=TEMPO_LIMITE)
-            response.raise_for_status() # Lança um erro para status de resposta HTTP ruins (4xx ou 5xx)
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            status_code_info = f"Status: {e.response.status_code}" if e.response else "Sem status"
-            error_text = e.response.text if e.response else str(e)
-            print(f"Erro de comunicação com a API de consulta padrão de CNPJ ({status_code_info}): {error_text}")
-            raise requests.exceptions.RequestException(
-                f"Erro de comunicação com a API de consulta padrão de CNPJ ({status_code_info}): {error_text}"
-            )
-        except json.JSONDecodeError as e:
-            print(f"Erro ao decodificar JSON da API de consulta padrão de CNPJ: {e}. Resposta recebida: {response.text if 'response' in locals() else 'N/A'}")
-            raise ValueError(f"Resposta inválida da API de consulta padrão de CNPJ: Não foi possível decodificar JSON. Detalhes: {e}")
+            return ConsultaCNPJ.consultar_brasilapi(cnpj)
+        except ValueError:
+            raise
         except Exception as e:
-            print(f"Erro inesperado na consulta padrão de CNPJ: {e}")
-            raise Exception(f"Erro interno ao processar consulta padrão de CNPJ: {e}")
+            falha_brasilapi = str(e)
+            logger.warning(f"BrasilAPI falhou para o CNPJ {cnpj}, consultando a BigDataCorp: {falha_brasilapi}")
+
+        try:
+            return ConsultaCNPJ.consultar_bigdatacorp(cnpj)
+        except RecusaBigDataCorp as e:
+            raise RecusaBigDataCorp(f"BrasilAPI indisponível ({falha_brasilapi}) e {e}")
+        except requests.exceptions.RequestException as e:
+            raise requests.exceptions.RequestException(
+                f"BrasilAPI e BigDataCorp indisponíveis — BrasilAPI: {falha_brasilapi} | BigDataCorp: {e}"
+            )
+
+    @staticmethod
+    def consultar_brasilapi(cnpj):
+        """Consulta na BrasilAPI. ValueError só para CNPJ inválido (HTTP 400)."""
+        url = settings.CNPJ_URL + cnpj
+        response = requests.get(url, timeout=TEMPO_LIMITE)
+        if response.status_code == 400:
+            raise ValueError(f"CNPJ inválido: {response.text}")
+        if response.status_code != 200:
+            raise requests.exceptions.RequestException(f"HTTP {response.status_code}: {response.text[:200]}")
+        try:
+            return response.json()
+        except ValueError as e:  # JSONDecodeError herda de ValueError, mas aqui é falha da base
+            raise requests.exceptions.RequestException(f"resposta não é JSON: {e}")
+
+    @staticmethod
+    def consultar_bigdatacorp(cnpj):
+        """Consulta o CNPJ na BigDataCorp (`doc{cnpj}`) e devolve no formato da BrasilAPI."""
+        access_token = os.environ.get("BIGDATA_ACCESS_TOKEN")
+        token_id = os.environ.get("BIGDATA_TOKEN_ID")
+        if not access_token or not token_id:
+            raise requests.exceptions.RequestException(
+                "credenciais da BigDataCorp (BIGDATA_ACCESS_TOKEN e BIGDATA_TOKEN_ID) não configuradas"
+            )
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "AccessToken": access_token,
+            "TokenId": token_id,
+        }
+        payload = {"q": f"doc{{{cnpj}}}", "Datasets": "basic_data,addresses", "Limit": 1}
+
+        response = requests.post(settings.ALT_CNPJ_URL, json=payload, headers=headers, timeout=TEMPO_LIMITE)
+        if response.status_code != 200:
+            raise requests.exceptions.RequestException(f"HTTP {response.status_code}: {response.text[:200]}")
+        try:
+            dados = response.json()
+        except ValueError as e:
+            raise requests.exceptions.RequestException(f"resposta não é JSON: {e}")
+
+        convertido = bigdatacorp_para_brasilapi(verificar_recusa_bigdatacorp(dados), cnpj)
+        if convertido is None:
+            raise ValueError(f"CNPJ {cnpj} não encontrado nas bases de consulta.")
+        return convertido
 
 
     @staticmethod
