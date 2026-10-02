@@ -1,15 +1,17 @@
 """Endpoints dos indicadores executivos (spec indicadores-executivos, RF-IEX-002..008).
 
 Seis leituras, uma por seção do painel, com os mesmos parâmetros de filtro,
-mais o cadastro de metas mensais (RF-IEX-008). Só `admin` e `ti` leem **e
-cadastram metas** (RNF-IEX-001; PA-036 revisada em 2026-09-23 — antes, qualquer
-autenticado, por PA-018 e PA-023). A regra vive em `users.permissions.IsAdminOrTi`
-e é aplicada numa linha em `_IndicadorBase`. Nada aqui passa pelo FedHub: o dado
-é o espelho local.
+mais o cadastro de metas mensais (RF-IEX-008). Qualquer autenticado **lê** tudo,
+inclusive o painel de TV e as metas; só `admin` e `ti` **cadastram e alteram
+metas** (RNF-IEX-001; PA-018 revisada em 2026-10-02 — entre 2026-09-23 e
+2026-10-02 só `admin` e `ti` liam). A leitura é `IsAuthenticated` em
+`_IndicadorBase`; as metas usam `users.permissions.LeituraAutenticadaEscritaAdminOuTi`.
+Nada aqui passa pelo FedHub: o dado é o espelho local.
 """
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -25,7 +27,7 @@ from indicadores.serializers import (
 )
 from indicadores.services import agregacao, fedhub_lake, metas, nao_fechadas, painel_tv
 from indicadores.services.periodos import ParametroInvalido
-from users.permissions import IsAdminOrTi
+from users.permissions import LeituraAutenticadaEscritaAdminOuTi
 
 PARAMETROS_COMUNS = [
     OpenApiParameter("periodo", OpenApiTypes.STR, description="hoje · semana · mes · ano · faixa (padrão mes)"),
@@ -42,7 +44,7 @@ PARAMETROS_COMUNS = [
 
 class _IndicadorBase(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAdminOrTi]
+    permission_classes = [IsAuthenticated]
 
     def filtros(self, request):
         """`(Filtros, None)` ou `(None, Response 400)`."""
@@ -158,7 +160,10 @@ class ComposicaoView(_IndicadorBase):
 
 
 class MetasView(_IndicadorBase):
-    """`GET/POST indicadores/metas/` — metas mensais por seguradora × ramo (RF-IEX-008, PA-023)."""
+    """`GET/POST indicadores/metas/` — metas mensais por seguradora × ramo (RF-IEX-008, PA-023).
+    Todos leem; só `admin` e `ti` gravam (PA-018, 2026-10-02)."""
+
+    permission_classes = [LeituraAutenticadaEscritaAdminOuTi]
 
     @extend_schema(
         parameters=[OpenApiParameter("competencia", OpenApiTypes.STR, description="AAAA-MM; padrão mês corrente")],
@@ -198,7 +203,10 @@ class MetasView(_IndicadorBase):
 
 
 class MetaDetalheView(_IndicadorBase):
-    """`PUT`/`DELETE indicadores/metas/<id>/` — edita ou remove uma meta (RF-IEX-008)."""
+    """`PUT`/`DELETE indicadores/metas/<id>/` — edita ou remove uma meta (RF-IEX-008).
+    Só `admin` e `ti` (PA-018, 2026-10-02)."""
+
+    permission_classes = [LeituraAutenticadaEscritaAdminOuTi]
 
     @extend_schema(
         request=MetaMensalEntradaSerializer,
