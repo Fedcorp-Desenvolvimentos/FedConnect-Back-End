@@ -44,6 +44,13 @@ class PainelTvTests(APITestCase):
         self.assertIn("gerado_em", corpo)
         self.assertEqual(corpo["linhas"], [LINHA])
 
+    def test_usuario_comum_tambem_le_o_painel(self):
+        """PA-018, revisão de 2026-10-02: o painel de TV é para todos os níveis."""
+        comum = get_user_model().objects.create_user(email="comum@teste.local", password="x", nivel_acesso="usuario")
+        self.client.force_authenticate(comum)
+        with patch.object(painel_tv, "linhas", return_value=[LINHA]):
+            self.assertEqual(self.client.get(ROTA).status_code, status.HTTP_200_OK)
+
     def test_lake_sem_contrato_publicado_e_503_nomeado(self):
         """No servidor do lake as views ainda não existem: o estado é esperado e a tela
         precisa distingui-lo de "FedHub caiu" — um se resolve publicando, o outro ligando."""

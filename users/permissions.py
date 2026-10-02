@@ -13,12 +13,27 @@ class IsAdmin(permissions.BasePermission):
 class IsAdminOrTi(permissions.BasePermission):
     """
     Permissão personalizada para permitir apenas usuários com nível de acesso 'admin' ou 'ti'.
-    Usada pelos indicadores executivos (PA-036, revisão de 2026-09-23).
+    Usada pela gravação de metas dos indicadores (PA-018, revisões de 2026-09-23 e 2026-10-02).
     """
 
     def has_permission(self, request, view):
         return (request.user and request.user.is_authenticated
                 and request.user.nivel_acesso in ('admin', 'ti'))
+
+
+class LeituraAutenticadaEscritaAdminOuTi(permissions.BasePermission):
+    """
+    Leitura (GET/HEAD/OPTIONS) para qualquer autenticado; escrita só para 'admin' ou 'ti'.
+    Usada pelas metas dos indicadores (PA-018, revisão de 2026-10-02): todos leem o painel
+    e as metas, só admin e ti cadastram ou alteram.
+    """
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user.nivel_acesso in ('admin', 'ti')
 
 
 class IsAdminOrModerador(permissions.BasePermission):

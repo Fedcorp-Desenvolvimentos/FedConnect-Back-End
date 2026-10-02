@@ -611,17 +611,33 @@ class ComposicaoTests(_ComCarga):
 
 
 class SegurancaTests(_ComCarga):
-    """CT-IEX-008: sem JWT → 401; `usuario` comum → 403; `admin` e `ti` → 200; nenhum CPF completo na resposta."""
+    """CT-IEX-008: sem JWT → 401; qualquer autenticado lê (`usuario` comum, `admin`, `ti` → 200);
+    gravar meta só `admin` e `ti` (`usuario` comum → 403); nenhum CPF completo na resposta.
+    (PA-018, revisão de 2026-10-02 — entre 2026-09-23 e 2026-10-02 a leitura era só admin e ti.)"""
+
+    META = {"seguradora": "PORT", "ramo": "FIAN", "competencia": "2026-09", "valor_meta": "1000.00"}
 
     def test_sem_login_401_em_todas_as_rotas(self):
         self.client.force_authenticate(None)
         for nome in URLS:
             self.assertEqual(self.get(nome).status_code, status.HTTP_401_UNAUTHORIZED, nome)
+        self.assertEqual(self.client.get("/indicadores/metas/").status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_usuario_comum_403_em_todas_as_rotas(self):
+    def test_usuario_comum_le_todas_as_rotas_e_as_metas(self):
         self.client.force_authenticate(self.comum)
         for nome in URLS:
-            self.assertEqual(self.get(nome).status_code, status.HTTP_403_FORBIDDEN, nome)
+            self.assertEqual(self.get(nome).status_code, status.HTTP_200_OK, nome)
+        self.assertEqual(self.client.get("/indicadores/metas/").status_code, status.HTTP_200_OK)
+
+    def test_usuario_comum_nao_grava_nem_apaga_meta(self):
+        self.client.force_authenticate(self.comum)
+        self.assertEqual(self.client.post("/indicadores/metas/", self.META, format="json").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.put("/indicadores/metas/1/", self.META, format="json").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.delete("/indicadores/metas/1/").status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_grava_meta(self):
+        resposta = self.client.post("/indicadores/metas/", self.META, format="json")
+        self.assertIn(resposta.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), resposta.content[:200])
 
     def test_admin_le_todas_as_rotas(self):
         for nome in URLS:

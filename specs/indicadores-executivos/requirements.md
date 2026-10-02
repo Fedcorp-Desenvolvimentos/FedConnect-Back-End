@@ -98,7 +98,7 @@
 
 ### RNF-IEX-001: Segurança
 
-Todas as rotas exigem JWT válido e nível `admin` ou `ti` (`users.permissions.IsAdminOrTi`), inclusive para gravar metas; qualquer outro nível recebe 403. `[D]` PA-018 (revisão de 2026-09-23; antes só `IsAuthenticated`, por PA-018 e PA-023). CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
+Todas as rotas exigem JWT válido. A **leitura** (seis seções, painel de TV e lista de metas) é para qualquer nível autenticado; **gravar, alterar e apagar metas** exige nível `admin` ou `ti` (`users.permissions.LeituraAutenticadaEscritaAdminOuTi`); outro nível recebe 403 só na escrita. `[D]` PA-018 (revisão de 2026-10-02: o gestor liberou a área para todos; entre 2026-09-23 e 2026-10-02 a leitura também era só `admin` e `ti`; antes de 2026-09-23, só `IsAuthenticated`, por PA-018 e PA-023). `[P]` a escrita de metas restrita a `admin` e `ti` é hipótese — o pedido de 2026-10-02 falou em acesso, não em edição (PA-018). CPF sai mascarado em toda lista; CNPJ e nome saem completos. `[P]` PA-022. Nenhum token da CORP ou do lake em código, log, spec ou resposta: só variável de ambiente, quando existir. `[E]` `CLAUDE.md` e CONVENCOES §8. Snapshot com dado real fica fora do repositório; os testes usam dados sintéticos. `[E]` CONVENCOES §8
 
 ### RNF-IEX-002: Compatibilidade e contrato
 
