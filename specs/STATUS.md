@@ -1,6 +1,6 @@
 # Painel de status das specs
 
-> **Atualizado:** 2026-09-23
+> **Atualizado:** 2026-10-08
 
 Estado de cada documento. Se esta página divergir do cabeçalho de um documento, **esta página vence**. Significado dos estados em [CONVENCOES.md](./CONVENCOES.md) §4 — só `aprovado` vincula.
 
@@ -19,3 +19,4 @@ Estado de cada documento. Se esta página divergir do cabeçalho de um documento
 
 | `auth-refresh-token` | formato legado (sem matriz — não verificado); cabeçalho diz Aprovado (2026-08-24) | — | — |
 | `cadastro-etl` | em revisão (2026-09-23) — RF-CAD-001..003, RNF-CAD-001..003; proxy `cadastro/<rota>` → `/api/etl/<rota>` do FedHub (DELETE repassado desde 2026-09-29, RF-CAD-002, modelo v21) (spec `FedHub-Backend/specs/etl-cadastro-api/`); contexto `CAD` novo; PA-014 aberta (só `admin` por ora); **implementado por instrução do dono, aprovação retroativa pendente** | em revisão (2026-09-23) — ADR-0008 | em revisão (2026-09-23) — fase 1 implementada e testada; fase 2 (deploy, PA-014) do dono |
+| `cadastro-permissoes` | rascunho (2026-10-08) — RF-CAD-004..013, RNF-CAD-004..006; revisão de 08/10 pela decisão do dono (PA-040): apólice = divisão, sem aba `contrato:apolices` nem rotas `contratos/{id}/apolices` e `contratos/{id}/divisoes/{id}`; `contrato:divisoes` com `ver`/`exportar`/`fundir`; abas `administradora:pessoas` e `contrato:pessoas` (PII, PA-029); o Hamilton aprova direto, mas ainda não leu (PA-038 aberta); autorização do cadastro por objeto × aba × ação (capacidades `cad:<objeto>:<aba>:<ação>` em `users/me/`, mapa rota → capacidade no proxy com negação por padrão, modo sombra antes de bloquear), a pedido do dono em 07/10; ADR-0011 proposto (PA-038); correção do app `users` na fase 0 (PA-035, PA-039); pares `FedConnect-FrontEnd/specs/cadastro-object-pages/` e `FedHub-Backend/specs/etl-object-pages/` | — | — |
