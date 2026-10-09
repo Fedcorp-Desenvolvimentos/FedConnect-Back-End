@@ -1,6 +1,6 @@
 # Registro de questões abertas
 
-> **Atualizado:** 2026-09-23
+> **Atualizado:** 2026-10-08
 
 Toda `PA-###` citada em qualquer spec deste repositório nasce e vive aqui. Questão fechada não some: recebe status `fechada`, a resposta e a data. O número nunca é reciclado.
 
@@ -206,6 +206,7 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Questão:** `ti` entra? Hipótese de trabalho: **só `admin`**, como o dono disse; `ti` entra quando ele pedir (é trocar a tupla). Responde: dono.
 - **Decisão parcial (2026-09-24):** `financeiro` liberado. `NIVEIS_TELA = ("admin", "financeiro")`; o frontend acompanha em `ROUTE_ACCESS.cadastroPessoas` (questão 035 do registro do frontend). A entrada de `ti` segue em aberto.
 - **Decisão parcial (2026-09-29):** o dono pediu a nova role `nivel_acesso = faturamento-analista` (tudo que `faturamento` acessa + cadastro) e cadastro (consultar e cadastrar) também para `comercial`. `NIVEIS_TELA = ("admin", "financeiro", "faturamento-analista", "comercial")`; `faturamento-analista` entra nas telas de `faturamento` (fedpay, envio Porto, relatório de faturas pendentes). Frontend deve acompanhar `ROUTE_ACCESS`. `ti` segue em aberto.
+- **Proposta (2026-10-07):** `specs/cadastro-permissoes/` (matriz de RF-CAD-004) propõe `ti` com leitura e sem gravação nem exportação de dados financeiros. Enquanto não houver resposta, o Front deve tirar `ti` do menu (hoje `cadastroPessoas = ["admin", "ti"]` desde o commit `e6d97e6`, em contradição com `NIVEIS_TELA`). Segue aberta.
 
 ## PA-028 — "Este mês" é o mês civil inteiro, não do dia 1 até hoje
 
@@ -215,3 +216,88 @@ Formato de cada entrada: título, status (`aberta` | `fechada`), dono, severidad
 - **Resposta (2026-09-24):** "tem que filtrar do dia 1 ao dia 30 ou 31 nos meses que tiver". O período `mes` passa a ser o mês civil inteiro, `[dia 1, último dia]`, e o anterior equivalente é o mês anterior inteiro. Para o mês corrente o efeito prático é o mesmo (não há emissão futura), mas com referência num mês passado as emissões após a referência passam a entrar. Semana e ano não mudam.
 - **Complemento (2026-09-24, mesmo dia):** o dono apontou a conta da meta "errada": com a meta em R$ 966.709 e o valor fechado em R$ 869.435, "faltam" mostrava R$ 225.429 em vez de menos de R$ 100 mil. Causa: o realizado da meta ia do dia 1 até a referência, e o cartão de valor fechado usava o mês inteiro. Decisão: o realizado da meta passa a usar a mesma janela do mês civil inteiro, `faltam = meta − realizado` fecha com o cartão, e a projeção pelo ritmo dos dias deixa de existir (`projecao` sai `null`).
 - **Complemento 2 (2026-09-24):** em Não fechadas, "vencem no mês 180" não batia com as abas (34 vencidas + 43 a vencer). Faltavam as vencidas que a CORP ainda marca como "vigente" (sem decisão), que o protótipo deixava fora das abas. A resposta ganha a terceira lista `vencidas_sem_decisao`, e as três abas somam o total do mês.
+
+## PA-029 — `comercial` vê dado pessoal e exporta dados financeiros do cadastro?
+
+- **Status:** aberta · **Dono:** Hamilton (produto) · **Severidade:** alta
+- **Trava:** as células `comercial` da matriz de RF-CAD-004 (`specs/cadastro-permissoes/`): `cad:condominio:funcionarios:ver`, `cad:funcionario:lista:ver`, `cad:administradora:pessoas:ver` e `cad:contrato:pessoas:ver` (lista por CPF, acrescentadas em 08/10 — PA-040), as `:exportar` de faturas, PDD, comissões e listas, e as escritas de cadastro.
+- **Evidência (2026-10-07):** hoje `comercial` está em `NIVEIS_TELA` (`fedhub/views/cadastro_view.py:20`, decisão parcial de 29/09 em PA-027: "consultar e cadastrar") e portanto vê e exporta tudo, inclusive CPF, nascimento e salário de funcionários de condomínio.
+- **Questão:** `comercial` deve ver funcionários (dado pessoal, LGPD) e exportar faturas, PDD e comissões? Hipótese de trabalho: **não** vê funcionários nem PDD/comissões e não exporta; continua consultando e cadastrando administradora, condomínio, contrato, comissionado e seguradora. Responde: dono.
+
+## PA-030 — `faturamento` puro ganha leitura do cadastro?
+
+- **Status:** aberta · **Dono:** Hamilton (produto) · **Severidade:** média
+- **Trava:** a coluna `faturamento` da matriz de RF-CAD-004 (`specs/cadastro-permissoes/`).
+- **Evidência (2026-10-07):** `faturamento` recebe 403 hoje (`fedhub/views/cadastro_view.py:20`); `faturamento-analista` foi criado em 29/09 justamente como "tudo que `faturamento` acessa + cadastro" (PA-027).
+- **Questão:** o faturista sem o sufixo analista passa a consultar o cadastro (sem gravar), com exportação de faturas e boletos? Hipótese de trabalho: **sim**, só leitura + exportação de faturas e boletos. Se a resposta for não, a coluna inteira fica vazia e nada muda em relação a hoje. Responde: dono.
+
+## PA-031 — `faturamento-analista`: comissões, PDD e escrita
+
+- **Status:** aberta · **Dono:** Hamilton (produto) · **Severidade:** média
+- **Trava:** as células `faturamento-analista` da matriz de RF-CAD-004 (`specs/cadastro-permissoes/`).
+- **Evidência (2026-10-07):** desde 29/09 o nível tem o cadastro inteiro por prefixo (PA-027), inclusive comissões pagas (favorecidos e valores) e criação/edição de cadastros.
+- **Questão:** o analista de faturamento vê comissões pagas? Exporta PDD (boletos sem baixa)? Continua criando e editando administradora, condomínio, contrato, funcionário, comissionado, seguradora e produto? Hipótese de trabalho: não vê comissões, vê PDD sem exportar, continua criando e editando como hoje, menos produto. Responde: dono.
+
+## PA-032 — CSV de boletos da competência continua só `admin`?
+
+- **Status:** aberta · **Dono:** Hamilton (produto) · **Severidade:** baixa
+- **Trava:** `cad:produto:boletos:exportar` na matriz de RF-CAD-004 e o critério de RF-CAD-006 sobre `GET grupos-produto/boletos` (`specs/cadastro-permissoes/`).
+- **Evidência (2026-10-07):** o Front restringiu o botão a `admin` em 01/10 por pedido do dono (`FedConnect-FrontEnd/src/utils/routeAccess.js:47`, RF-CAD-061 do Front); no Django a rota está aberta a quem está em `NIVEIS_TELA`, então a restrição hoje é só visual.
+- **Questão:** o CSV abre para `financeiro` (ou outro papel)? Hipótese de trabalho: **só `admin`**, agora cobrado também no servidor. Responde: dono.
+
+## PA-033 — Exceções por pessoa além da matriz por papel
+
+- **Status:** aberta · **Dono:** Hamilton (produto) · **Severidade:** baixa
+- **Trava:** a fase 5 de `specs/cadastro-permissoes/` (fora do escopo de RF-CAD-004 enquanto aberta).
+- **Questão:** basta a matriz por papel (`nivel_acesso`), ou há pessoas que precisam de uma capacidade que o papel delas não tem (ex.: um comercial que vê comissões)? Se sim, a proposta é um campo `capacidades_extra` editável só por `admin`, que **soma** à matriz e nunca subtrai. Hipótese de trabalho: **só a matriz**; exceção vira pedido de papel novo. Responde: dono.
+
+## PA-034 — Trilha do operador no FedHub: texto truncado ou coluna própria
+
+- **Status:** aberta · **Dono:** Daniel Mello (ETL e FedHub) · **Severidade:** média
+- **Trava:** a trilha das escritas do cadastro; o lado FedHub mora em `FedHub-Backend/specs/etl-object-pages/`. Aqui só afeta o que o log do Django precisa guardar (RF-CAD-013 de `specs/cadastro-permissoes/`).
+- **Evidência (2026-10-07):** o FedHub grava `criado_por/alterado_por` com o `client_id` truncado em 50 caracteres e ignora `X-Operador` nas escritas fora de `/admin/*` (`FedHub-Backend/src/modules/etl/controller.py:354-359,439-460`, levantamento de 07/10); o Django já manda `X-Operador` em toda chamada (`fedhub/services/cadastro_service.py:44`).
+- **Questão:** gravar `"<client_id>|<e-mail>"` truncado em 50 (perde o fim de e-mails longos) ou pedir ao ETL uma coluna `operador` (DDL fora do FedHub)? Hipótese de trabalho: truncar até a coluna existir. Responde: Daniel Mello.
+
+## PA-035 — Correção do app `users`: recusar ou ignorar campos de papel; fluxo público de criação
+
+- **Status:** aberta · **Dono:** Daniel Mello · **Severidade:** alta
+- **Trava:** RF-CAD-012 (`specs/cadastro-permissoes/`), fase 0.
+- **Evidência (2026-10-07):** `POST users/` é `AllowAny` sem autenticação (`users/views.py:31-33,40-43`) e o serializer aceita `nivel_acesso`, `is_active` e `is_fed` de qualquer chamador (`users/serializers.py:17-26`); o dono do registro pode fazer `PATCH` em si mesmo (`users/permissions.py:49-68`). A tela de usuários do Front já é só `admin`.
+- **Questão:** (1) quando um não-admin manda `nivel_acesso`, `is_active` ou `is_fed` diferente do atual, o sistema **recusa com 403** (explícito; quebra quem manda o objeto inteiro alterado) ou **ignora em silêncio**? (2) existe algum fluxo público (cadastro próprio, Condomed, integração) que dependa de `POST users/` anônimo? (3) a correção pode subir antes do resto da spec? Hipótese de trabalho: (1) recusar com 403 e aceitar valor igual ao atual; (2) não existe; (3) sim. Responde: dono, com o Daniel.
+
+## PA-036 — Dois ADR-0008 e o DELETE não emendado no ADR do proxy
+
+- **Status:** aberta · **Dono:** Daniel Mello (processo) · **Severidade:** baixa
+- **Trava:** as citações de "ADR-0008" em `specs/consulta-espelho-voucher/`, `specs/cadastro-etl/` e `specs/cadastro-permissoes/` (ambíguas); a emenda que o ADR-0011 propõe.
+- **Evidência (2026-10-07):** `specs/adr/0008-composicao-do-voucher-registrada-no-django.md` e `specs/adr/0008-proxy-transparente-para-api-etl.md` usam o mesmo número; o verificador não acusa porque só confere que o número existe. O ADR do proxy lista `GET/POST/PUT/PATCH` (decisões 1 e 6), mas o DELETE é repassado desde 29/09 (`fedhub/services/cadastro_service.py:29`, RF-CAD-002).
+- **Questão:** qual dos dois ganha número novo (IDs não se reciclam, CONVENCOES §2.2; o 0011 já é a autorização por capacidade), como ficam as citações antigas, e quem emenda o DELETE no ADR do proxy? Hipótese de trabalho: nada é renumerado até o dono decidir; as specs novas citam o ADR do proxy pelo nome do arquivo. Responde: Daniel Mello.
+
+## PA-037 — STATUS.md cita PA-014 na linha de `cadastro-etl` e tem linha duplicada
+
+- **Status:** aberta · **Dono:** Daniel Mello (processo) · **Severidade:** baixa
+- **Trava:** a leitura correta do painel (STATUS.md vence o cabeçalho).
+- **Evidência (2026-10-07):** a linha de `cadastro-etl` em `specs/STATUS.md` diz "PA-014 aberta" e "fase 2 (deploy, PA-014)", mas a questão foi renumerada para PA-027 em 24/09 (PA-014 é o layout de faturas pendentes, fechada); a linha de `auth-refresh-token` aparece duas vezes, e uma linha em branco separa as últimas linhas da tabela (renderizam fora dela).
+- **Questão:** corrigir o texto da linha de `cadastro-etl` (PA-014 → PA-027) e a tabela? Hipótese de trabalho: sim, em commit próprio de processo, sem mudar status. Responde: Daniel Mello.
+
+## PA-038 — Aprovação do modelo de autorização por capacidade (ADR-0011)
+
+- **Status:** aberta · **Dono:** Hamilton (produto), com Daniel Mello (proxy) · **Severidade:** bloqueia
+- **Trava:** RF-CAD-004..011 e RF-CAD-013 (`specs/cadastro-permissoes/`), o ADR-0011, a fase 2 em diante e o par do Front (`FedConnect-FrontEnd/specs/cadastro-object-pages/`).
+- **Evidência (2026-10-07):** pedido do dono de 07/10 ("um esquema de acesso que nos permita fazer a gestão por abas, bloqueando acessos indevidos"); o levantamento de código de 07/10 mostra autorização binária por prefixo (`fedhub/views/cadastro_view.py:20,38`).
+- **Questão:** aprova (1) o vocabulário `cad:<objeto>:<aba>:<ação>` com as ações `ver, exportar, criar, editar, vincular, excluir, fundir, converter`; (2) a matriz inicial como ponto de partida, inclusive `financeiro` sem exportar a lista global de funcionários e só `admin` com Admin de dados e com fundir divisões de contrato; (3) o mapa com negação por padrão, inclusive o 403 para rota nova do FedHub ainda não mapeada; (4) o corte de exportação em `X-Finalidade: exportar` ou `limite > 100`; (5) uma semana de modo sombra antes de bloquear; (6) 401/403 do FedHub respondidos como 502 `credencial_fedhub`? Hipótese de trabalho: sim aos seis. Responde: dono.
+- **Complemento (2026-10-08):** o Hamilton decidiu que aprova as specs diretamente (PA-040), sem intermediário. A aprovação desta questão e o `aprovado` de `specs/cadastro-permissoes/` saem dele, por escrito, depois de ler o documento — o que ainda não aconteceu; até lá a spec segue `rascunho` e esta questão, aberta. Na mesma data o catálogo perdeu `contrato:apolices` e as ações `criar`/`editar` de `contrato:divisoes` e ganhou `administradora:pessoas` e `contrato:pessoas` (PA-040); o item (2) acima já reflete isso.
+
+## PA-039 — Login Google: domínios aceitos e criação de usuário
+
+- **Status:** aberta · **Dono:** Daniel Mello · **Severidade:** alta
+- **Trava:** o critério de login Google em RF-CAD-012 (`specs/cadastro-permissoes/`).
+- **Evidência (2026-10-07):** `users/views.py:147-153` faz `get_or_create` para qualquer conta Google, sem checar domínio; o `defaults` usa `username`, que o modelo não tem (`username = None` em `users/models.py`), o que pode quebrar a criação — não verificado com requisição real.
+- **Questão:** quais domínios entram em `GOOGLE_LOGIN_DOMINIOS` (só o do grupo, ou também os das empresas atendidas, como a Condomed)? O login Google pode criar usuário novo (com `nivel_acesso = usuario`) ou só autenticar quem um admin já criou? Hipótese de trabalho: só o domínio do grupo; cria usuário novo como `usuario`. Responde: dono, com o Daniel.
+
+## PA-040 — Apólice × divisão no cadastro, rotas de pessoas e quem aprova as specs
+
+- **Status:** fechada (2026-10-08) · **Dono:** Hamilton (produto), via Lucas Guidi · **Severidade:** alta
+- **Trava:** o catálogo, a matriz inicial e o mapa de `specs/cadastro-permissoes/` (RF-CAD-004, RF-CAD-006, RF-CAD-008, INV-CAD-011, CT-CAD-010, CT-CAD-012, CT-CAD-014); a aprovação de PA-038.
+- **Evidência (2026-10-08):** auditoria da spec de 07/10 apontou a aba `contrato:apolices` ao lado de `contrato:divisoes` e o mapeamento de `contratos/{id}/apolices` e `contratos/{id}/divisoes/{id}`, que não existem no FedHub nem em `FedHub-Backend/specs/etl-object-pages/` (lá só há `GET contratos/{id}/divisoes` e `POST contratos/{id}/divisoes/fundir`).
+- **Questão:** o contrato tem aba "Apólices" separada de "Divisões"? Quais rotas novas o cadastro ganha? Quem aprova as specs?
+- **Resposta (2026-10-08):** (1) a apólice **é** a divisão (sem sequência); não existe aba "Apólices"; as divisões ficam em `GET contratos/{id}/divisoes` e `POST contratos/{id}/divisoes/fundir` (simular e confirmar). (2) Rotas novas de pessoas: `GET administradoras/{id}/pessoas` e `GET contratos/{id}/pessoas` (lista por CPF — dado pessoal); `quantitativos` no `GET administradoras/{id}`. (3) O Hamilton aprova as specs diretamente. Efeito aqui: `contrato:divisoes` fica com `ver`, `exportar` e `fundir`; entram `administradora:pessoas` e `contrato:pessoas` (`ver`, `exportar`), tratadas como dado pessoal na matriz (`[P]` PA-029); o status da spec não muda até o Hamilton ler e aprovar (PA-038).

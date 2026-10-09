@@ -1,0 +1,14 @@
+requisito;origem;design;invariantes;tarefas;testes;questoes
+RF-CAD-004;pedido do dono 2026-10-07|cadastro_view.py:20|ADR-0011 proposto|decisao do dono 2026-10-08 (PA-040);ADR-0011 decisoes 1 e 2|requirements Vocabulario e Matriz inicial;INV-CAD-004|INV-CAD-005|INV-CAD-006|INV-CAD-007|INV-CAD-008|INV-CAD-009|INV-CAD-013;;CT-CAD-007|CT-CAD-008;PA-038|PA-027|PA-029|PA-030|PA-031|PA-032|PA-033|PA-040
+RF-CAD-005;users/views.py:89-93|userService.js:66 do Front;ADR-0011 decisao 3;INV-CAD-012;;CT-CAD-009;PA-038
+RF-CAD-006;cadastro_view.py:38-45|ADR-0008 decisao 5|ADR-0011 proposto;ADR-0011 decisao 4|requirements Mapa;INV-CAD-010|INV-CAD-012;;CT-CAD-010|CT-CAD-011|CT-CAD-012;PA-038|PA-032|PA-029|PA-040
+RF-CAD-007;padrao AUTH_ENFORCE do FedHub auth_global.py:54|ADR-0011 proposto;ADR-0011 decisao 4;INV-CAD-010;;CT-CAD-013;PA-038
+RF-CAD-008;ADR-0008 consequencia 1|FedHub controller.py:82-476|ADR-0011 proposto|decisao do dono 2026-10-08 (PA-040);ADR-0011 decisao 6|requirements Mapa;INV-CAD-007|INV-CAD-011;;CT-CAD-014;PA-038|PA-040
+RF-CAD-009;cadastro_service.py:44|fedhub_auth.py:33-54|questao 056 do registro do FedHub;ADR-0011 decisao 5;;;CT-CAD-015;PA-038
+RF-CAD-010;settings.py:249|ADR-0008 decisao 3;ADR-0008 decisao 3;;;CT-CAD-016;PA-038
+RF-CAD-011;cadastro_service.py:49-57;ADR-0011 decisao 4;;;CT-CAD-017;PA-038
+RF-CAD-012;users/views.py:31-43|users/serializers.py:17-26|users/views.py:147-153;requirements RF-CAD-012;INV-CAD-012;;CT-CAD-018|CT-CAD-019;PA-035|PA-039
+RF-CAD-013;cadastro_service.py:54-70|CONVENCOES secao 8;ADR-0011 consequencias;;;CT-CAD-020;PA-038
+RNF-CAD-004;cadastro_view.py:38-39|settings.py:195-219;ADR-0011 decisoes 1 e 4;INV-CAD-007|INV-CAD-009|INV-CAD-010|INV-CAD-011|INV-CAD-012;;CT-CAD-021|CT-CAD-010;PA-038
+RNF-CAD-005;ADR-0008|CLAUDE.md god-object;Divergencia vs. producao;;;CT-CAD-022;PA-038
+RNF-CAD-006;userService.js:66 do Front|ADR-0011 proposto;ADR-0011 decisao 2;;;CT-CAD-023;PA-038
